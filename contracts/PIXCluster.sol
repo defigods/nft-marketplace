@@ -23,7 +23,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         _;
     }
 
-    constructor() ERC721("", "") {
+    constructor() ERC721("PIX Cluster", "PIX") {
         console.log("Cluster NFT deployed");
     }
 

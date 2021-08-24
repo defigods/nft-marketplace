@@ -2,7 +2,7 @@ const hre = require('hardhat');
 
 async function main() {
   const PIXCluster = await hre.ethers.getContractFactory('PIXCluster');
-  const cluster = await PIXCluster.deploy('PIX Cluster', 'PIX');
+  const cluster = await PIXCluster.deploy();
 
   await cluster.deployed();
 

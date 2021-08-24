@@ -8,7 +8,7 @@ describe('PIXCluster', function () {
 
   beforeEach(async function () {
     const PIXCluster = await ethers.getContractFactory('PIXCluster');
-    this.cluster = await PIXCluster.deploy('PIX Cluster', 'PIX');
+    this.cluster = await PIXCluster.deploy();
     await this.cluster.deployed();
   });
 
