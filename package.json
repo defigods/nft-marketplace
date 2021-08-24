@@ -1,0 +1,40 @@
+{
+  "name": "planet-ix-marketplace",
+  "description": "Planet IX Marketplace",
+  "version": "1.0.0",
+  "license": "MIT",
+  "scripts": {
+    "accounts": "npx hardhat accounts",
+    "compile": "npx hardhat compile",
+    "clean": "npx hardhat clean",
+    "test": "npx hardhat test",
+    "node": "npx hardhat node",
+    "help": "npx hardhat help",
+    "test-gas": "REPORT_GAS=true npx hardhat test",
+    "coverage": "npx hardhat coverage",
+    "deploy": "npx hardhat run scripts/deploy.js",
+    "deploy-node": "node scripts/deploy.js",
+    "lint-js": "npx eslint '**/*.js'",
+    "lint-js-fix": "npx eslint '**/*.js' --fix",
+    "prettier-check": "npx prettier '**/*.{json,sol,md}' --check",
+    "prettier-write": "npx prettier '**/*.{json,sol,md}' --write",
+    "solhint": "npx solhint 'contracts/**/*.sol'",
+    "solhint-fix": "npx solhint 'contracts/**/*.sol' --fix"
+  },
+  "dependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-etherscan": "^2.1.5",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@openzeppelin/contracts": "^4.3.0",
+    "chai": "^4.3.4",
+    "dotenv": "^10.0.0",
+    "ethereum-waffle": "^3.4.0",
+    "ethers": "^5.4.5",
+    "hardhat": "^2.6.1",
+    "hardhat-gas-reporter": "^1.0.4",
+    "prettier": "^2.3.2",
+    "prettier-plugin-solidity": "^1.0.0-beta.17",
+    "solhint": "^3.3.6",
+    "solidity-coverage": "^0.7.16"
+  }
+}
