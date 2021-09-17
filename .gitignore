@@ -12,3 +12,6 @@ artifacts
 
 # Coverage
 coverage/
+
+# Settings
+.vscode/
