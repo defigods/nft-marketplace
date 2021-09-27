@@ -48,7 +48,6 @@ contract PIXFixedSale is PIXBaseSale {
         uint256 _price
     ) external {
         require(_price > 0, ">0");
-        require(saleInfo[_tokenId].price == 0, "already!");
 
         pixCluster.safeTransferFrom(msg.sender, address(this), _tokenId);
 
@@ -71,9 +70,8 @@ contract PIXFixedSale is PIXBaseSale {
         address _token,
         uint256 _price
     ) external {
-        require(_price > 0, ">0");
-        require(saleInfo[_tokenId].price != 0, "!sale");
         require(saleInfo[_tokenId].seller == msg.sender, "!seller");
+        require(_price > 0, ">0");
 
         saleInfo[_tokenId].token = _token;
         saleInfo[_tokenId].price = _price;
@@ -86,7 +84,6 @@ contract PIXFixedSale is PIXBaseSale {
      */
     function cancelSale(uint256 _tokenId) external {
         FixedSaleInfo storage _saleInfo = saleInfo[_tokenId];
-        require(_saleInfo.price > 0, "!sale");
         require(_saleInfo.seller == msg.sender, "!seller");
 
         pixCluster.safeTransferFrom(address(this), msg.sender, _tokenId);
