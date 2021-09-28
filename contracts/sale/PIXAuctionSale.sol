@@ -20,6 +20,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
     event SaleUpdated(
         uint256 indexed tokenId,
         address indexed token,
+        uint64 endTime,
         uint256 newPrice
     );
     event SaleCancelled(uint256 indexed tokenId);
@@ -71,7 +72,6 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
     ) external {
         require(_minPrice > 0, ">0");
         require(_endTime > block.timestamp, "invalid time");
-        require(saleInfo[_tokenId].minPrice == 0, "already!");
 
         pixCluster.safeTransferFrom(msg.sender, address(this), _tokenId);
 
@@ -99,7 +99,6 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
         uint256 _minPrice
     ) external {
         require(_minPrice > 0, ">0");
-        require(saleInfo[_tokenId].minPrice != 0, "!sale");
         require(saleInfo[_tokenId].seller == msg.sender, "!seller");
         require(saleState[_tokenId].bidder == address(0), "has bid");
         require(_endTime > block.timestamp, "invalid time");
@@ -108,7 +107,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
         saleInfo[_tokenId].endTime = _endTime;
         saleInfo[_tokenId].minPrice = _minPrice;
 
-        emit SaleUpdated(_tokenId, _token, _minPrice);
+        emit SaleUpdated(_tokenId, _token, _endTime, _minPrice);
     }
 
     /** @notice cancel sale request
@@ -117,7 +116,6 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
      */
     function cancelSale(uint256 _tokenId) external {
         AuctionSaleInfo storage _saleInfo = saleInfo[_tokenId];
-        require(_saleInfo.minPrice > 0, "!sale");
         require(_saleInfo.seller == msg.sender, "!seller");
         require(saleState[_tokenId].bidder == address(0), "has bid");
 
@@ -140,14 +138,15 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
         AuctionSaleInfo storage _saleInfo = saleInfo[_tokenId];
         AuctionSaleState storage _saleState = saleState[_tokenId];
         require(_saleInfo.minPrice > 0, "!sale");
+        require(_saleInfo.endTime >= block.timestamp, "ended");
         require(
             (_saleState.bidAmount == 0 && _amount >= _saleInfo.minPrice) ||
                 (_saleState.bidAmount != 0 && _amount > _saleState.bidAmount),
-            "!invalid price"
+            "invalid price"
         );
 
         if (_saleInfo.token == address(0)) {
-            require(_amount == msg.value, "Invalid amount");
+            require(_amount == msg.value, "invalid amount");
         } else {
             uint256 balanceBefore = IERC20(_saleInfo.token).balanceOf(
                 address(this)
@@ -161,7 +160,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
                 IERC20(_saleInfo.token).balanceOf(address(this)) -
                     balanceBefore ==
                     _amount,
-                "Invalid amount"
+                "invalid amount"
             );
         }
 
@@ -177,7 +176,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
     function cancelBid(uint256 _tokenId) external nonReentrant {
         AuctionSaleInfo storage _saleInfo = saleInfo[_tokenId];
         AuctionSaleState storage _saleState = saleState[_tokenId];
-        require(_saleState.bidder == msg.sender, "!invalid bidder");
+        require(_saleState.bidder == msg.sender, "!bidder");
 
         if (_saleInfo.token == address(0)) {
             (bool success, ) = msg.sender.call{value: _saleState.bidAmount}("");
@@ -205,9 +204,9 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
     function endAuction(uint256 _tokenId) external nonReentrant {
         AuctionSaleInfo storage _saleInfo = saleInfo[_tokenId];
         AuctionSaleState storage _saleState = saleState[_tokenId];
-        require(_saleInfo.endTime > 0, "!sale");
-        require(_saleInfo.endTime <= block.timestamp, "!ended");
+
         require(_saleState.bidder != address(0), "!bid");
+        require(_saleInfo.endTime <= block.timestamp, "!ended");
 
         uint256 fee = _saleState.bidAmount.decimalMul(tradingFeePct);
         if (_saleInfo.token == address(0)) {
@@ -220,21 +219,16 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
                 require(success, "Transfer failed!");
             }
         } else {
-            IERC20(_saleInfo.token).safeTransferFrom(
-                address(this),
+            IERC20(_saleInfo.token).safeTransfer(
                 _saleInfo.seller,
                 _saleState.bidAmount - fee
             );
             if (fee > 0) {
-                IERC20(_saleInfo.token).safeTransferFrom(
-                    address(this),
-                    treasury,
-                    _saleState.bidAmount
-                );
+                IERC20(_saleInfo.token).safeTransfer(treasury, fee);
             }
         }
 
-        pixCluster.safeTransferFrom(address(this), msg.sender, _tokenId);
+        pixCluster.safeTransferFrom(address(this), _saleState.bidder, _tokenId);
 
         emit Purchased(
             _saleInfo.seller,

@@ -1,13 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import {
-  Signer,
-  Contract,
-  BigNumber,
-  utils,
-  ContractFactory,
-  constants,
-} from "ethers";
+import { Signer, Contract, BigNumber, utils, constants } from "ethers";
 import { DENOMINATOR, generateRandomAddress } from "./utils";
 
 describe("PIXFixedSale", function () {

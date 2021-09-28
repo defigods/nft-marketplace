@@ -1,10 +1,10 @@
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
+import "@nomiclabs/hardhat-web3";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
-import dotenv from "dotenv";
-dotenv.config();
+import "dotenv/config";
 
 export default {
   networks: {
