@@ -121,7 +121,7 @@ contract PIXFixedSale is PIXBaseSale {
                 IERC20(_saleInfo.token).safeTransferFrom(
                     msg.sender,
                     treasury,
-                    _saleInfo.price
+                    fee
                 );
             }
         }

@@ -158,4 +158,169 @@ describe("PIXFixedSale", function () {
       await expect(tx).emit(fixedSale, "SaleCancelled").withArgs(tokenId);
     });
   });
+
+  describe("#purchasePIX function", () => {
+    const tokenId = 0;
+    const price = utils.parseEther("1");
+
+    beforeEach(async () => {
+      await pixCluster.connect(owner).safeMint(await alice.getAddress());
+      await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
+    });
+
+    it("revert if NFT is not for sale", async () => {
+      await expect(fixedSale.connect(bob).purchasePIX(tokenId)).to.revertedWith(
+        "!sale"
+      );
+    });
+
+    it("revert if not send correct ether", async () => {
+      await fixedSale
+        .connect(alice)
+        .requestSale(tokenId, constants.AddressZero, price);
+      await expect(
+        fixedSale
+          .connect(bob)
+          .purchasePIX(tokenId, { value: utils.parseEther("2") })
+      ).to.revertedWith("!price");
+    });
+
+    it("should purchase PIX using ether and send to seller and treasury", async () => {
+      await fixedSale
+        .connect(alice)
+        .requestSale(tokenId, constants.AddressZero, price);
+      const aliceBalanceBefore = await alice.getBalance();
+      const treasuryBalanceBefore = await ethers.provider.getBalance(treasury);
+      const tx = await fixedSale
+        .connect(bob)
+        .purchasePIX(tokenId, { value: price });
+      expect(await pixCluster.ownerOf(tokenId)).to.be.equal(
+        await bob.getAddress()
+      );
+      const fee = price.mul(tradingFeePct).div(DENOMINATOR);
+      expect(await alice.getBalance()).to.be.equal(
+        aliceBalanceBefore.add(price).sub(fee)
+      );
+      expect(await ethers.provider.getBalance(treasury)).to.be.equal(
+        treasuryBalanceBefore.add(fee)
+      );
+      expect(tx)
+        .to.emit(fixedSale, "Purchased")
+        .withArgs(
+          await alice.getAddress(),
+          await bob.getAddress(),
+          tokenId,
+          constants.AddressZero,
+          price
+        );
+      const saleInfo = await fixedSale.saleInfo(tokenId);
+      expect(saleInfo.seller).to.be.equal(constants.AddressZero);
+      expect(saleInfo.price).to.be.equal(0);
+    });
+
+    it("should not send fee if tradingFeePct is zero", async () => {
+      await fixedSale.connect(owner).setTradingFeePct(0);
+      await fixedSale
+        .connect(alice)
+        .requestSale(tokenId, constants.AddressZero, price);
+      const aliceBalanceBefore = await alice.getBalance();
+      const treasuryBalanceBefore = await ethers.provider.getBalance(treasury);
+      const tx = await fixedSale
+        .connect(bob)
+        .purchasePIX(tokenId, { value: price });
+      expect(await pixCluster.ownerOf(tokenId)).to.be.equal(
+        await bob.getAddress()
+      );
+      expect(await alice.getBalance()).to.be.equal(
+        aliceBalanceBefore.add(price)
+      );
+      expect(await ethers.provider.getBalance(treasury)).to.be.equal(
+        treasuryBalanceBefore
+      );
+      expect(tx)
+        .to.emit(fixedSale, "Purchased")
+        .withArgs(
+          await alice.getAddress(),
+          await bob.getAddress(),
+          tokenId,
+          constants.AddressZero,
+          price
+        );
+      const saleInfo = await fixedSale.saleInfo(tokenId);
+      expect(saleInfo.seller).to.be.equal(constants.AddressZero);
+      expect(saleInfo.price).to.be.equal(0);
+    });
+
+    it("should purchase PIX using ERC20 token and send to seller and treasury", async () => {
+      const MockTokenFactory = await ethers.getContractFactory("MockToken");
+      const mockToken = await MockTokenFactory.connect(bob).deploy();
+      await mockToken.connect(bob).approve(fixedSale.address, price);
+      await fixedSale
+        .connect(alice)
+        .requestSale(tokenId, mockToken.address, price);
+      const aliceBalanceBefore = await mockToken.balanceOf(
+        await alice.getAddress()
+      );
+      const treasuryBalanceBefore = await mockToken.balanceOf(treasury);
+      const tx = await fixedSale.connect(bob).purchasePIX(tokenId);
+      expect(await pixCluster.ownerOf(tokenId)).to.be.equal(
+        await bob.getAddress()
+      );
+      const fee = price.mul(tradingFeePct).div(DENOMINATOR);
+      expect(await mockToken.balanceOf(await alice.getAddress())).to.be.equal(
+        aliceBalanceBefore.add(price).sub(fee)
+      );
+      expect(await mockToken.balanceOf(treasury)).to.be.equal(
+        treasuryBalanceBefore.add(fee)
+      );
+      expect(tx)
+        .to.emit(fixedSale, "Purchased")
+        .withArgs(
+          await alice.getAddress(),
+          await bob.getAddress(),
+          tokenId,
+          mockToken.address,
+          price
+        );
+      const saleInfo = await fixedSale.saleInfo(tokenId);
+      expect(saleInfo.seller).to.be.equal(constants.AddressZero);
+      expect(saleInfo.price).to.be.equal(0);
+    });
+
+    it("should not send fee if tradingFeePct is zero", async () => {
+      await fixedSale.connect(owner).setTradingFeePct(0);
+      const MockTokenFactory = await ethers.getContractFactory("MockToken");
+      const mockToken = await MockTokenFactory.connect(bob).deploy();
+      await mockToken.connect(bob).approve(fixedSale.address, price);
+      await fixedSale
+        .connect(alice)
+        .requestSale(tokenId, mockToken.address, price);
+      const aliceBalanceBefore = await mockToken.balanceOf(
+        await alice.getAddress()
+      );
+      const treasuryBalanceBefore = await mockToken.balanceOf(treasury);
+      const tx = await fixedSale.connect(bob).purchasePIX(tokenId);
+      expect(await pixCluster.ownerOf(tokenId)).to.be.equal(
+        await bob.getAddress()
+      );
+      expect(await mockToken.balanceOf(await alice.getAddress())).to.be.equal(
+        aliceBalanceBefore.add(price)
+      );
+      expect(await mockToken.balanceOf(treasury)).to.be.equal(
+        treasuryBalanceBefore
+      );
+      expect(tx)
+        .to.emit(fixedSale, "Purchased")
+        .withArgs(
+          await alice.getAddress(),
+          await bob.getAddress(),
+          tokenId,
+          mockToken.address,
+          price
+        );
+      const saleInfo = await fixedSale.saleInfo(tokenId);
+      expect(saleInfo.seller).to.be.equal(constants.AddressZero);
+      expect(saleInfo.price).to.be.equal(0);
+    });
+  });
 });

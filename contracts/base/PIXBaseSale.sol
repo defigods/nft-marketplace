@@ -52,7 +52,7 @@ abstract contract PIXBaseSale is Ownable, ERC721Holder {
         emit TreasuryUpdated(_treasury);
     }
 
-    function setTradingFee(uint256 _tradingFeePct) external onlyOwner {
+    function setTradingFeePct(uint256 _tradingFeePct) external onlyOwner {
         require(
             _tradingFeePct.isLessThanAndEqualToDenominator(),
             "Fee overflow!"

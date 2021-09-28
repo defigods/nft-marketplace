@@ -17,3 +17,5 @@ coverage/
 .vscode/
 
 src
+
+coverage.json

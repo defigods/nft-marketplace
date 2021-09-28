@@ -98,12 +98,12 @@ describe("PIXBaseSale", function () {
     });
   });
 
-  describe("#setTradingFee function", () => {
+  describe("#setTradingFeePct function", () => {
     const newTradingFeePct = BigNumber.from("300");
 
     it("revert if msg.sender is not owner", async () => {
       await expect(
-        fixedSale.connect(alice).setTradingFee(newTradingFeePct)
+        fixedSale.connect(alice).setTradingFeePct(newTradingFeePct)
       ).to.revertedWith("Ownable: caller is not the owner");
     });
 
@@ -111,12 +111,14 @@ describe("PIXBaseSale", function () {
       await expect(
         fixedSale
           .connect(owner)
-          .setTradingFee(DENOMINATOR.add(BigNumber.from("1")))
+          .setTradingFeePct(DENOMINATOR.add(BigNumber.from("1")))
       ).to.revertedWith("Fee overflow!");
     });
 
     it("should update new treasury and emit FeeUpdated event", async () => {
-      const tx = await fixedSale.connect(owner).setTradingFee(newTradingFeePct);
+      const tx = await fixedSale
+        .connect(owner)
+        .setTradingFeePct(newTradingFeePct);
       expect(await fixedSale.tradingFeePct()).to.be.equal(newTradingFeePct);
       expect(tx).to.emit(fixedSale, "FeeUpdated").withArgs(newTradingFeePct);
     });
