@@ -1,11 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
 contract PIXCluster is ERC721Enumerable, Ownable {
+    event Combined(uint256 indexed tokenId, PIXCategory category, PIXSize size);
+
     enum PIXCategory {
         Legendary,
         Rare,
@@ -23,8 +24,8 @@ contract PIXCluster is ERC721Enumerable, Ownable {
     }
 
     struct PIXInfo {
-        PIXSize size;
         PIXCategory category;
+        PIXSize size;
     }
 
     mapping(PIXCategory => uint256) public prices;
@@ -44,7 +45,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
 
     constructor() ERC721("PIX Cluster", "PIX") {
         combineCounts[PIXSize.Cluster] = 50;
-        combineCounts[PIXSize.Area] = 2;
+        combineCounts[PIXSize.Area] = 5;
         combineCounts[PIXSize.Sector] = 2;
         combineCounts[PIXSize.Domain] = 2;
     }
@@ -68,7 +69,9 @@ contract PIXCluster is ERC721Enumerable, Ownable {
     }
 
     function withdraw() external onlyOwner {
-        payable(msg.sender).transfer(address(this).balance);
+        require(address(this).balance > 0, "nothing to withdraw");
+        (bool success, ) = msg.sender.call{value: address(this).balance}("");
+        require(success, "withdraw failed");
     }
 
     function setModerator(address moderator, bool approved) external onlyOwner {
@@ -89,6 +92,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
             categories.length <= MAX_PURCHASE,
             "You cannot mint more than limit"
         );
+        require(categories.length > 0, "no list");
 
         uint256 price;
         for (uint256 i = 0; i < categories.length; i++) {
@@ -99,7 +103,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
                 PIXInfo({size: PIXSize.Cluster, category: categories[i]})
             );
         }
-        require(msg.value == price, "Insufficient for purchase");
+        require(msg.value == price, "invalid price");
     }
 
     function combine(uint256[] calldata tokenIds) external {
@@ -112,18 +116,21 @@ contract PIXCluster is ERC721Enumerable, Ownable {
             uint256 tokenId = tokenIds[i];
 
             require(infos[tokenId].size == info.size, "invalid sizes");
-            require(infos[tokenId].category == info.category, "invalid sizes");
+            require(
+                infos[tokenId].category == info.category,
+                "invalid categories"
+            );
             require(ownerOf(tokenId) == msg.sender, "not owner");
             _burn(tokenId);
         }
 
+        PIXSize newSize = PIXSize(uint8(info.size) + 1);
         _safeMint(
             msg.sender,
-            PIXInfo({
-                size: PIXSize(uint8(info.size) + 1),
-                category: info.category
-            })
+            PIXInfo({size: newSize, category: info.category})
         );
+
+        emit Combined(pixLength, info.category, newSize);
     }
 
     function _baseURI() internal view override returns (string memory) {
