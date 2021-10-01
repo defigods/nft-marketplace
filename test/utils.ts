@@ -11,3 +11,19 @@ export const getCurrentTime = async (): Promise<BigNumber> =>
 export const increaseTime = async (period: BigNumber) => {
   await time.increase(period.toString());
 };
+
+export enum PIXCategory {
+  Legendary = 0,
+  Rare = 1,
+  Uncommon = 2,
+  Common = 3,
+  Outliers = 4,
+}
+
+export enum PIXSize {
+  Cluster = 0,
+  Area = 1,
+  Sector = 2,
+  Domain = 3,
+  Federation = 4,
+}

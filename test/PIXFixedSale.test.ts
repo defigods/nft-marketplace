@@ -1,7 +1,12 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Signer, Contract, BigNumber, utils, constants } from "ethers";
-import { DENOMINATOR, generateRandomAddress } from "./utils";
+import {
+  DENOMINATOR,
+  generateRandomAddress,
+  PIXCategory,
+  PIXSize,
+} from "./utils";
 
 describe("PIXFixedSale", function () {
   let owner: Signer;
@@ -33,11 +38,13 @@ describe("PIXFixedSale", function () {
   });
 
   describe("#requestSale function", () => {
-    const tokenId = 0;
+    const tokenId = 1;
     const price = utils.parseEther("1");
 
     beforeEach(async () => {
-      await pixCluster.connect(owner).safeMint(await alice.getAddress());
+      await pixCluster
+        .connect(owner)
+        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
     });
 
     it("revert if price is 0", async () => {
@@ -77,12 +84,14 @@ describe("PIXFixedSale", function () {
   });
 
   describe("#updateSale function", () => {
-    const tokenId = 0;
+    const tokenId = 1;
     const price = utils.parseEther("1");
     const tokenAddress = generateRandomAddress();
 
     beforeEach(async () => {
-      await pixCluster.connect(owner).safeMint(await alice.getAddress());
+      await pixCluster
+        .connect(owner)
+        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
       await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
       await fixedSale.connect(alice).requestSale(tokenId, tokenAddress, price);
     });
@@ -120,12 +129,14 @@ describe("PIXFixedSale", function () {
   });
 
   describe("#cancelSale function", () => {
-    const tokenId = 0;
+    const tokenId = 1;
     const price = utils.parseEther("1");
     const tokenAddress = generateRandomAddress();
 
     beforeEach(async () => {
-      await pixCluster.connect(owner).safeMint(await alice.getAddress());
+      await pixCluster
+        .connect(owner)
+        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
       await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
       await fixedSale.connect(alice).requestSale(tokenId, tokenAddress, price);
     });
@@ -153,11 +164,13 @@ describe("PIXFixedSale", function () {
   });
 
   describe("#purchasePIX function", () => {
-    const tokenId = 0;
+    const tokenId = 1;
     const price = utils.parseEther("1");
 
     beforeEach(async () => {
-      await pixCluster.connect(owner).safeMint(await alice.getAddress());
+      await pixCluster
+        .connect(owner)
+        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
       await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
     });
 

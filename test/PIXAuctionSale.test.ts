@@ -6,6 +6,8 @@ import {
   generateRandomAddress,
   getCurrentTime,
   increaseTime,
+  PIXCategory,
+  PIXSize,
 } from "./utils";
 
 describe("PIXAuctionSale", function () {
@@ -42,13 +44,15 @@ describe("PIXAuctionSale", function () {
   });
 
   describe("#requestSale function", () => {
-    const tokenId = 0;
+    const tokenId = 1;
     const minPrice = utils.parseEther("1");
     const auctionPeriod = BigNumber.from("3600");
     let endTime: BigNumber;
 
     beforeEach(async () => {
-      await pixCluster.connect(owner).safeMint(await alice.getAddress());
+      await pixCluster
+        .connect(owner)
+        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
       endTime = (await getCurrentTime()).add(auctionPeriod);
     });
 
@@ -107,14 +111,16 @@ describe("PIXAuctionSale", function () {
   });
 
   describe("#updateSale function", () => {
-    const tokenId = 0;
+    const tokenId = 1;
     const minPrice = utils.parseEther("1");
     const tokenAddress = constants.AddressZero;
     const auctionPeriod = BigNumber.from("3600");
     let endTime: BigNumber;
 
     beforeEach(async () => {
-      await pixCluster.connect(owner).safeMint(await alice.getAddress());
+      await pixCluster
+        .connect(owner)
+        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
       await pixCluster.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
       await auctionSale
@@ -179,14 +185,16 @@ describe("PIXAuctionSale", function () {
   });
 
   describe("#cancelSale function", () => {
-    const tokenId = 0;
+    const tokenId = 1;
     const minPrice = utils.parseEther("1");
     const tokenAddress = constants.AddressZero;
     const auctionPeriod = BigNumber.from("3600");
     let endTime: BigNumber;
 
     beforeEach(async () => {
-      await pixCluster.connect(owner).safeMint(await alice.getAddress());
+      await pixCluster
+        .connect(owner)
+        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
       await pixCluster.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
       await auctionSale
@@ -227,13 +235,15 @@ describe("PIXAuctionSale", function () {
   });
 
   describe("#bid function", () => {
-    const tokenId = 0;
+    const tokenId = 1;
     const minPrice = utils.parseEther("1");
     const auctionPeriod = BigNumber.from("3600");
     let endTime: BigNumber;
 
     beforeEach(async () => {
-      await pixCluster.connect(owner).safeMint(await alice.getAddress());
+      await pixCluster
+        .connect(owner)
+        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
       await pixCluster.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
     });
@@ -351,13 +361,15 @@ describe("PIXAuctionSale", function () {
   });
 
   describe("#cancelBid function", () => {
-    const tokenId = 0;
+    const tokenId = 1;
     const minPrice = utils.parseEther("1");
     const auctionPeriod = BigNumber.from("3600");
     let endTime: BigNumber;
 
     beforeEach(async () => {
-      await pixCluster.connect(owner).safeMint(await alice.getAddress());
+      await pixCluster
+        .connect(owner)
+        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
       await pixCluster.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
     });
@@ -450,13 +462,15 @@ describe("PIXAuctionSale", function () {
   });
 
   describe("#endAuction function", () => {
-    const tokenId = 0;
+    const tokenId = 1;
     const minPrice = utils.parseEther("1");
     const auctionPeriod = BigNumber.from("3600");
     let endTime: BigNumber;
 
     beforeEach(async () => {
-      await pixCluster.connect(owner).safeMint(await alice.getAddress());
+      await pixCluster
+        .connect(owner)
+        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
       await pixCluster.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
     });
