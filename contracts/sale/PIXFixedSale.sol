@@ -47,6 +47,7 @@ contract PIXFixedSale is PIXBaseSale {
         address _token,
         uint256 _price
     ) external {
+        require(whitelistedTokens[_token], "not whitelisted");
         require(_price > 0, ">0");
 
         pixCluster.safeTransferFrom(msg.sender, address(this), _tokenId);
@@ -70,6 +71,7 @@ contract PIXFixedSale is PIXBaseSale {
         address _token,
         uint256 _price
     ) external {
+        require(whitelistedTokens[_token], "not whitelisted");
         require(saleInfo[_tokenId].seller == msg.sender, "!seller");
         require(_price > 0, ">0");
 

@@ -70,6 +70,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
         uint64 _endTime,
         uint256 _minPrice
     ) external {
+        require(whitelistedTokens[_token], "not whitelisted");
         require(_minPrice > 0, ">0");
         require(_endTime > block.timestamp, "invalid time");
 
@@ -98,6 +99,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
         uint64 _endTime,
         uint256 _minPrice
     ) external {
+        require(whitelistedTokens[_token], "not whitelisted");
         require(_minPrice > 0, ">0");
         require(saleInfo[_tokenId].seller == msg.sender, "!seller");
         require(saleState[_tokenId].bidder == address(0), "has bid");
