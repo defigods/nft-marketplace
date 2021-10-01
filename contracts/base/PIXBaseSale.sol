@@ -28,6 +28,8 @@ abstract contract PIXBaseSale is Ownable, ERC721Holder {
     // trading fee percentage
     uint256 public tradingFeePct;
 
+    mapping(address => bool) public whitelistedTokens;
+
     constructor(
         address _pixCluster,
         address _treasury,
@@ -60,5 +62,9 @@ abstract contract PIXBaseSale is Ownable, ERC721Holder {
         tradingFeePct = _tradingFeePct;
 
         emit FeeUpdated(_tradingFeePct);
+    }
+
+    function setWhitelist(address _token, bool _whitelist) external onlyOwner {
+        whitelistedTokens[_token] = _whitelist;
     }
 }

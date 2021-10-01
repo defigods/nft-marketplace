@@ -47,25 +47,34 @@ describe("PIXFixedSale", function () {
         .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
     });
 
-    it("revert if price is 0", async () => {
-      await expect(
-        fixedSale
-          .connect(alice)
-          .requestSale(tokenId, generateRandomAddress(), 0)
-      ).to.revertedWith(">0");
-    });
-
-    it("revert if PIX not approved", async () => {
+    it("revert if token is not whitelisted", async () => {
       await expect(
         fixedSale
           .connect(alice)
           .requestSale(tokenId, generateRandomAddress(), price)
+      ).to.revertedWith("not whitelisted");
+    });
+
+    it("revert if price is 0", async () => {
+      const tokenAddress = generateRandomAddress();
+      await fixedSale.connect(owner).setWhitelist(tokenAddress, true);
+      await expect(
+        fixedSale.connect(alice).requestSale(tokenId, tokenAddress, 0)
+      ).to.revertedWith(">0");
+    });
+
+    it("revert if PIX not approved", async () => {
+      const tokenAddress = generateRandomAddress();
+      await fixedSale.connect(owner).setWhitelist(tokenAddress, true);
+      await expect(
+        fixedSale.connect(alice).requestSale(tokenId, tokenAddress, price)
       ).to.revertedWith("ERC721: transfer caller is not owner nor approved");
     });
 
     it("should request sale and emit SaleRequested event", async () => {
       await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
       const tokenAddress = generateRandomAddress();
+      await fixedSale.connect(owner).setWhitelist(tokenAddress, true);
       const tx = await fixedSale
         .connect(alice)
         .requestSale(tokenId, tokenAddress, price);
@@ -93,25 +102,39 @@ describe("PIXFixedSale", function () {
         .connect(owner)
         .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
       await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
+      await fixedSale.connect(owner).setWhitelist(tokenAddress, true);
       await fixedSale.connect(alice).requestSale(tokenId, tokenAddress, price);
     });
 
-    it("revert if msg.sender is not seller", async () => {
+    it("revert if token is not whitelisted", async () => {
       await expect(
         fixedSale
-          .connect(bob)
+          .connect(alice)
           .updateSale(tokenId, generateRandomAddress(), price)
+      ).to.revertedWith("not whitelisted");
+    });
+
+    it("revert if msg.sender is not seller", async () => {
+      const newTokenAddress = generateRandomAddress();
+      await fixedSale.connect(owner).setWhitelist(newTokenAddress, true);
+
+      await expect(
+        fixedSale.connect(bob).updateSale(tokenId, newTokenAddress, price)
       ).to.revertedWith("!seller");
     });
 
     it("revert if price is 0", async () => {
+      const newTokenAddress = generateRandomAddress();
+      await fixedSale.connect(owner).setWhitelist(newTokenAddress, true);
+
       await expect(
-        fixedSale.connect(alice).updateSale(tokenId, generateRandomAddress(), 0)
+        fixedSale.connect(alice).updateSale(tokenId, newTokenAddress, 0)
       ).to.revertedWith(">0");
     });
 
     it("should update sale and emit SaleUpdated event", async () => {
       const newTokenAddress = generateRandomAddress();
+      await fixedSale.connect(owner).setWhitelist(newTokenAddress, true);
       const newPrice = utils.parseEther("2");
       const tx = await fixedSale
         .connect(alice)

@@ -123,4 +123,19 @@ describe("PIXBaseSale", function () {
       expect(tx).to.emit(fixedSale, "FeeUpdated").withArgs(newTradingFeePct);
     });
   });
+
+  describe("#setWhitelist function", () => {
+    const token = generateRandomAddress();
+
+    it("revert if msg.sender is not owner", async () => {
+      await expect(
+        fixedSale.connect(alice).setWhitelist(token, true)
+      ).to.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should whitelist payment token", async () => {
+      await fixedSale.connect(owner).setWhitelist(token, true);
+      expect(await fixedSale.whitelistedTokens(token)).to.be.equal(true);
+    });
+  });
 });
