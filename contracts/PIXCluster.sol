@@ -29,15 +29,13 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         PIXSize size;
     }
 
+    uint256 public constant CLUSTER_MINT_COUNT = 50;
     IERC20 public immutable pixToken;
     string private _baseURIExtended;
-    uint256 public maxSupply;
+    uint256 public lastTokenId;
 
-    /**
-     * @dev index 0 -> mint fee
-     * @dev index 1 -> combine fee
-    */
-    uint256[] public prices;
+    uint256 public mintFee;
+    uint256 public combineFee;
 
     mapping(address => bool) public moderators;
     mapping(address => bool) public requested;
@@ -53,8 +51,6 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         require(pixt != address(0), "PIX Token cannot be zero address");
         pixToken = IERC20(pixt);
         moderators[msg.sender] = true;
-        prices.push(0);
-        prices.push(0);
         combineCounts[PIXSize.Cluster] = 50;
         combineCounts[PIXSize.Area] = 5;
         combineCounts[PIXSize.Sector] = 2;
@@ -62,7 +58,13 @@ contract PIXCluster is ERC721Enumerable, Ownable {
     }
 
     function withdraw() external onlyOwner {
-        payable(msg.sender).transfer(address(this).balance);
+        require(
+            address(this).balance + pixToken.balanceOf(address(this)) > 0,
+            "Nothing to withdraw"
+        );
+        (bool success, ) = msg.sender.call{ value: address(this).balance }("");
+        require(success, "Withdraw failed");
+        pixToken.transfer(msg.sender, pixToken.balanceOf(address(this)));
     }
 
     function setModerator(address moderator, bool approved) external onlyOwner {
@@ -70,42 +72,42 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         moderators[moderator] = approved;
     }
 
-    function setPrice(uint256 mode, uint256 newPrice) external onlyOwner {
-        require(mode < 2, "Invalid price mode");
-        require(newPrice > 0, "Price cannot be zero");
-        prices[mode] = newPrice;
+    function setMintFee(uint256 fee) external onlyOwner {
+        require(fee > 0, "Fee cannot be zero");
+        mintFee = fee;
+    }
+
+    function setCombineFee(uint256 fee) external onlyOwner {
+        require(fee > 0, "Fee cannot be zero");
+        combineFee = fee;
     }
 
     function requestMint() external payable {
-        require(prices[0] > 0, "Purchase price not set");
-        require(msg.value >= prices[0], "Insufficient for purchase");
+        require(mintFee > 0, "Purchase price not set");
+        require(msg.value == mintFee, "Insufficient for purchase");
         require(!requested[msg.sender], "Pending mint request exists");
         requested[msg.sender] = true;
     }
 
     function mintTo(address to, PIXCategory[] calldata categories) external onlyMod {
         require(requested[to], "No pending mint request");
-        require(categories.length == 50, "Invalid categories length");
+        require(categories.length == CLUSTER_MINT_COUNT, "Invalid categories length");
 
-        for (uint256 i = 0; i < 50; i += 1) {
+        for (uint256 i = 0; i < CLUSTER_MINT_COUNT; i += 1) {
             _safeMint(to, PIXInfo({ size: PIXSize.Cluster, category: categories[i] }));
         }
         requested[to] = false;
     }
 
     function combine(uint256[] calldata tokenIds) external {
-        require(prices[1] > 0, "Combine price not set");
+        require(combineFee > 0, "Combine price not set");
         require(tokenIds.length > 0, "No tokens");
 
-        _doHardWork(msg.sender, tokenIds);
-        pixToken.transferFrom(msg.sender, address(this), prices[1]);
+        _proceedCombine(msg.sender, tokenIds);
+        pixToken.transferFrom(msg.sender, address(this), combineFee);
     }
 
-    function doHardWork(address account, uint256[] calldata tokenIds) external onlyMod {
-        _doHardWork(account, tokenIds);
-    }
-
-    function _doHardWork(address account, uint256[] calldata tokenIds) private {
+    function _proceedCombine(address account, uint256[] calldata tokenIds) private {
         PIXInfo storage firstPix = pixInfos[tokenIds[0]];
         require(firstPix.size < PIXSize.Federation, "Cannot combine max size");
         require(tokenIds.length == combineCounts[firstPix.size], "Invalid combination");
@@ -125,7 +127,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         PIXSize newSize = PIXSize(uint8(firstPix.size) + 1);
         _safeMint(account, PIXInfo({size: newSize, category: firstPix.category}));
 
-        emit Combined(maxSupply, firstPix.category, newSize);
+        emit Combined(lastTokenId, firstPix.category, newSize);
     }
 
     function safeMint(address to, PIXInfo memory info) external onlyMod {
@@ -133,9 +135,9 @@ contract PIXCluster is ERC721Enumerable, Ownable {
     }
 
     function _safeMint(address to, PIXInfo memory info) internal {
-        maxSupply += 1;
-        _safeMint(to, maxSupply);
-        pixInfos[maxSupply] = info;
+        lastTokenId += 1;
+        _safeMint(to, lastTokenId);
+        pixInfos[lastTokenId] = info;
     }
 
     function _baseURI() internal view override returns (string memory) {

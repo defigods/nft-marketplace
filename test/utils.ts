@@ -1,6 +1,5 @@
 import { Wallet, BigNumber } from "ethers";
 import { time } from "@openzeppelin/test-helpers";
-import { ethers } from "hardhat";
 
 export const DENOMINATOR = BigNumber.from("10000");
 
@@ -28,5 +27,3 @@ export enum PIXSize {
   Domain = 3,
   Federation = 4,
 }
-
-export const etherValueOf = (amount: string) => ethers.utils.parseEther(amount);
