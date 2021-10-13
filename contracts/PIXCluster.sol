@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
 contract PIXCluster is ERC721Enumerable, Ownable {
@@ -28,50 +29,40 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         PIXSize size;
     }
 
-    mapping(PIXCategory => uint256) public prices;
-    mapping(PIXSize => uint16) public combineCounts;
-    mapping(address => bool) public moderators;
-    mapping(uint256 => PIXInfo) public infos;
-
-    uint256 public pixLength;
-
-    uint8 public constant MAX_PURCHASE = 20;
+    IERC20 public immutable pixToken;
     string private _baseURIExtended;
+    uint256 public maxSupply;
+
+    /**
+     * @dev index 0 -> mint fee
+     * @dev index 1 -> combine fee
+    */
+    uint256[] public prices;
+
+    mapping(address => bool) public moderators;
+    mapping(address => bool) public requested;
+    mapping(PIXSize => uint16) public combineCounts;
+    mapping(uint256 => PIXInfo) public pixInfos;
 
     modifier onlyMod() {
         require(moderators[msg.sender], "Caller is not moderator");
         _;
     }
 
-    constructor() ERC721("PIX Cluster", "PIX") {
+    constructor(address pixt) ERC721("PIX Cluster", "PIX") {
+        require(pixt != address(0), "PIX Token cannot be zero address");
+        pixToken = IERC20(pixt);
+        moderators[msg.sender] = true;
+        prices.push(0);
+        prices.push(0);
         combineCounts[PIXSize.Cluster] = 50;
         combineCounts[PIXSize.Area] = 5;
         combineCounts[PIXSize.Sector] = 2;
         combineCounts[PIXSize.Domain] = 2;
     }
 
-    function _safeMint(address to, PIXInfo memory info)
-        internal
-        returns (uint256 tokenId)
-    {
-        pixLength += 1;
-        _safeMint(to, pixLength, "");
-        infos[pixLength] = info;
-        tokenId = pixLength;
-    }
-
-    function safeMint(address to, PIXInfo memory info)
-        external
-        onlyMod
-        returns (uint256 tokenId)
-    {
-        tokenId = _safeMint(to, info);
-    }
-
     function withdraw() external onlyOwner {
-        require(address(this).balance > 0, "nothing to withdraw");
-        (bool success, ) = msg.sender.call{value: address(this).balance}("");
-        require(success, "withdraw failed");
+        payable(msg.sender).transfer(address(this).balance);
     }
 
     function setModerator(address moderator, bool approved) external onlyOwner {
@@ -79,58 +70,72 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         moderators[moderator] = approved;
     }
 
-    function setPrice(PIXCategory category, uint256 newPrice)
-        external
-        onlyOwner
-    {
+    function setPrice(uint256 mode, uint256 newPrice) external onlyOwner {
+        require(mode < 2, "Invalid price mode");
         require(newPrice > 0, "Price cannot be zero");
-        prices[category] = newPrice;
+        prices[mode] = newPrice;
     }
 
-    function mint(PIXCategory[] calldata categories) external payable {
-        require(
-            categories.length <= MAX_PURCHASE,
-            "You cannot mint more than limit"
-        );
-        require(categories.length > 0, "no list");
+    function requestMint() external payable {
+        require(prices[0] > 0, "Purchase price not set");
+        require(msg.value >= prices[0], "Insufficient for purchase");
+        require(!requested[msg.sender], "Pending mint request exists");
+        requested[msg.sender] = true;
+    }
 
-        uint256 price;
-        for (uint256 i = 0; i < categories.length; i++) {
-            require(prices[categories[i]] > 0, "not for sale");
-            price += prices[categories[i]];
-            _safeMint(
-                msg.sender,
-                PIXInfo({size: PIXSize.Cluster, category: categories[i]})
-            );
+    function mintTo(address to, PIXCategory[] calldata categories) external onlyMod {
+        require(requested[to], "No pending mint request");
+        require(categories.length == 50, "Invalid categories length");
+
+        for (uint256 i = 0; i < 50; i += 1) {
+            _safeMint(to, PIXInfo({ size: PIXSize.Cluster, category: categories[i] }));
         }
-        require(msg.value == price, "invalid price");
+        requested[to] = false;
     }
 
     function combine(uint256[] calldata tokenIds) external {
-        require(tokenIds.length > 0, "no tokens");
-        PIXInfo storage info = infos[tokenIds[0]];
-        require(info.size < PIXSize.Federation, "max size");
-        require(tokenIds.length == combineCounts[info.size], "invalid length");
+        require(prices[1] > 0, "Combine price not set");
+        require(tokenIds.length > 0, "No tokens");
+
+        _doHardWork(msg.sender, tokenIds);
+        pixToken.transferFrom(msg.sender, address(this), prices[1]);
+    }
+
+    function doHardWork(address account, uint256[] calldata tokenIds) external onlyMod {
+        _doHardWork(account, tokenIds);
+    }
+
+    function _doHardWork(address account, uint256[] calldata tokenIds) private {
+        PIXInfo storage firstPix = pixInfos[tokenIds[0]];
+        require(firstPix.size < PIXSize.Federation, "Cannot combine max size");
+        require(tokenIds.length == combineCounts[firstPix.size], "Invalid combination");
 
         for (uint256 i = 0; i < tokenIds.length; i += 1) {
             uint256 tokenId = tokenIds[i];
 
-            require(infos[tokenId].size == info.size, "invalid sizes");
+            require(pixInfos[tokenId].size == firstPix.size, "Cannot combine different sizes");
+            require(pixInfos[tokenId].category == firstPix.category, "Cannot combine different categories");
             require(
-                infos[tokenId].category == info.category,
-                "invalid categories"
+                _isApprovedOrOwner(account, tokenIds[i]),
+                "Caller is not owner or operator"
             );
-            require(ownerOf(tokenId) == msg.sender, "not owner");
             _burn(tokenId);
         }
 
-        PIXSize newSize = PIXSize(uint8(info.size) + 1);
-        _safeMint(
-            msg.sender,
-            PIXInfo({size: newSize, category: info.category})
-        );
+        PIXSize newSize = PIXSize(uint8(firstPix.size) + 1);
+        _safeMint(account, PIXInfo({size: newSize, category: firstPix.category}));
 
-        emit Combined(pixLength, info.category, newSize);
+        emit Combined(maxSupply, firstPix.category, newSize);
+    }
+
+    function safeMint(address to, PIXInfo memory info) external onlyMod {
+        _safeMint(to, info);
+    }
+
+    function _safeMint(address to, PIXInfo memory info) internal {
+        maxSupply += 1;
+        _safeMint(to, maxSupply);
+        pixInfos[maxSupply] = info;
     }
 
     function _baseURI() internal view override returns (string memory) {
