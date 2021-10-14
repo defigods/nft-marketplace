@@ -161,6 +161,9 @@ describe("PIXFixedSale", function () {
         .connect(owner)
         .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
       await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
+
+      await fixedSale.connect(owner).setWhitelist(tokenAddress, true);
+
       await fixedSale.connect(alice).requestSale(tokenId, tokenAddress, price);
     });
 
@@ -194,6 +197,9 @@ describe("PIXFixedSale", function () {
       await pixCluster
         .connect(owner)
         .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
+
+      await fixedSale.connect(owner).setWhitelist(constants.AddressZero, true);
+
       await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
     });
 
@@ -284,6 +290,9 @@ describe("PIXFixedSale", function () {
       const MockTokenFactory = await ethers.getContractFactory("MockToken");
       const mockToken = await MockTokenFactory.connect(bob).deploy();
       await mockToken.connect(bob).approve(fixedSale.address, price);
+
+      await fixedSale.connect(owner).setWhitelist(mockToken.address, true);
+
       await fixedSale
         .connect(alice)
         .requestSale(tokenId, mockToken.address, price);
@@ -321,6 +330,9 @@ describe("PIXFixedSale", function () {
       const MockTokenFactory = await ethers.getContractFactory("MockToken");
       const mockToken = await MockTokenFactory.connect(bob).deploy();
       await mockToken.connect(bob).approve(fixedSale.address, price);
+
+      await fixedSale.connect(owner).setWhitelist(mockToken.address, true);
+
       await fixedSale
         .connect(alice)
         .requestSale(tokenId, mockToken.address, price);
