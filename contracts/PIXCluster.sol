@@ -3,9 +3,12 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
 contract PIXCluster is ERC721Enumerable, Ownable {
+    using SafeERC20 for IERC20;
+
     event Combined(uint256 indexed tokenId, PIXCategory category, PIXSize size);
 
     enum PIXCategory {
@@ -58,13 +61,13 @@ contract PIXCluster is ERC721Enumerable, Ownable {
     }
 
     function withdraw() external onlyOwner {
-        require(
-            address(this).balance + pixToken.balanceOf(address(this)) > 0,
-            "Nothing to withdraw"
-        );
-        (bool success, ) = msg.sender.call{ value: address(this).balance }("");
-        require(success, "Withdraw failed");
-        pixToken.transfer(msg.sender, pixToken.balanceOf(address(this)));
+        if (address(this).balance > 0) {
+            (bool success, ) = msg.sender.call{ value: address(this).balance }("");
+            require(success, "Withdraw failed");
+        }
+        if (pixToken.balanceOf(address(this)) > 0) {
+            pixToken.safeTransfer(msg.sender, pixToken.balanceOf(address(this)));
+        }
     }
 
     function setModerator(address moderator, bool approved) external onlyOwner {
@@ -104,7 +107,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         require(tokenIds.length > 0, "No tokens");
 
         _proceedCombine(msg.sender, tokenIds);
-        pixToken.transferFrom(msg.sender, address(this), combineFee);
+        pixToken.safeTransferFrom(msg.sender, address(this), combineFee);
     }
 
     function _proceedCombine(address account, uint256[] calldata tokenIds) private {
@@ -117,10 +120,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
 
             require(pixInfos[tokenId].size == firstPix.size, "Cannot combine different sizes");
             require(pixInfos[tokenId].category == firstPix.category, "Cannot combine different categories");
-            require(
-                _isApprovedOrOwner(account, tokenIds[i]),
-                "Caller is not owner or operator"
-            );
+            require(ownerOf(tokenId) == account, "Caller is not owner");
             _burn(tokenId);
         }
 

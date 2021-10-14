@@ -234,7 +234,7 @@ describe("PIXCluster", function () {
       ).to.revertedWith("Cannot combine different categories");
     });
 
-    it("revert if not owner or operator", async () => {
+    it("revert if not owner", async () => {
       await pixCluster.setCombineFee(50);
       const tokenIds = [];
       for (let i = 0; i < 2; i ++) {
@@ -243,9 +243,7 @@ describe("PIXCluster", function () {
         );
         tokenIds.push(i + 1);
       }
-      await expect(
-        pixCluster.combine(tokenIds)
-      ).to.revertedWith("Caller is not owner or operator");
+      await expect(pixCluster.combine(tokenIds)).to.revertedWith("Caller is not owner");
     });
 
     it("should combine clusters to mint area", async () => {
@@ -322,10 +320,6 @@ describe("PIXCluster", function () {
       await expect(
         pixCluster.connect(alice).withdraw()
       ).to.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("revert if nothing to withdraw", async () => {
-      await expect(pixCluster.withdraw()).to.revertedWith("Nothing to withdraw");
     });
 
     it("should withdraw ether to owner address", async () => {
