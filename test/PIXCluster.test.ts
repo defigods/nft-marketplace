@@ -118,7 +118,10 @@ describe("PIXCluster", function () {
 
     it("should request mint by paying ether", async function () {
       await pixCluster.setMintFee(price);
-      await pixCluster.connect(alice).requestMint({ value: price });
+      const tx = await pixCluster.connect(alice).requestMint({ value: price });
+      expect(tx)
+        .to.emit(pixCluster, "Requested")
+        .withArgs(await alice.getAddress());
       expect(await pixCluster.requested(await alice.getAddress())).to.equal(true);
       expect(await ethers.provider.getBalance(pixCluster.address)).equal(price);
     })

@@ -10,6 +10,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
     using SafeERC20 for IERC20;
 
     event Combined(uint256 indexed tokenId, PIXCategory category, PIXSize size);
+    event Requested(address indexed account);
 
     enum PIXCategory {
         Legendary,
@@ -90,6 +91,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         require(msg.value == mintFee, "Insufficient for purchase");
         require(!requested[msg.sender], "Pending mint request exists");
         requested[msg.sender] = true;
+        emit Requested(msg.sender);
     }
 
     function mintTo(address to, PIXCategory[] calldata categories) external onlyMod {
