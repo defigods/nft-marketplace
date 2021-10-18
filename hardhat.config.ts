@@ -6,9 +6,25 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "dotenv/config";
 
+console.log(process.env.API_KEY);
+
 export default {
+  defaultNetwork: 'testnet',
   networks: {
-    hardhat: {},
+    hardhat: {
+      allowUnlimitedContractSize: true,
+      timeout: 1000000,
+    },
+    mainnet: {
+      url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
+      chainId: 137,
+      accounts: [process.env.PRIVATE_KEY],
+    },
+    testnet: {
+      url: `https://polygon-mumbai.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
+      chainId: 80001,
+      accounts: [process.env.PRIVATE_KEY],
+    },
   },
   typechain: {
     outDir: "src/types",
@@ -19,7 +35,7 @@ export default {
     gasPrice: 100,
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: process.env.API_KEY,
   },
   solidity: {
     version: "0.8.4",
