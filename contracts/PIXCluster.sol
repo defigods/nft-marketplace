@@ -142,11 +142,11 @@ contract PIXCluster is ERC721Enumerable, Ownable {
 
             require(
                 pixInfos[tokenId].size == firstPix.size,
-                "Cannot combine different sizes"
+                "Should combine same sizes"
             );
             require(
                 pixInfos[tokenId].category == firstPix.category,
-                "Cannot combine different categories"
+                "Should combine same categories"
             );
             require(ownerOf(tokenId) == account, "Caller is not owner");
             _burn(tokenId);
