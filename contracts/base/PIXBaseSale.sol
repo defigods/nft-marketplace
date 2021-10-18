@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "../libraries/DecimalMath.sol";
 
@@ -14,13 +13,11 @@ abstract contract PIXBaseSale is Ownable, ERC721Holder {
     event Purchased(
         address indexed seller,
         address indexed buyer,
-        uint256 indexed tokenId,
-        address token,
+        uint256 indexed saleId,
+        address paymentToken,
         uint256 price
     );
-
-    // PIXCluster address
-    IERC721 public immutable pixCluster;
+    event SaleCancelled(uint256 indexed saleId);
 
     // treasury address
     address public treasury;
@@ -28,21 +25,32 @@ abstract contract PIXBaseSale is Ownable, ERC721Holder {
     // trading fee percentage
     uint256 public tradingFeePct;
 
-    mapping(address => bool) public whitelistedTokens;
+    // Whitelisted payment tokens
+    mapping(address => bool) public whitelistedPaymentTokens;
 
-    constructor(
-        address _pixCluster,
-        address _treasury,
-        uint256 _tradingFeePct
-    ) {
-        require(_pixCluster != address(0), "PIX 0x!");
+    // Whitelisted NFT tokens
+    mapping(address => bool) public whitelistedNftTokens;
+
+    // Last sale id
+    uint256 public lastSaleId;
+
+    modifier onlyWhitelistedPaymentToken(address token) {
+        require(whitelistedPaymentTokens[token], "Not whitelisted");
+        _;
+    }
+
+    modifier onlyWhitelistedNftToken(address token) {
+        require(whitelistedNftTokens[token], "Not whitelisted");
+        _;
+    }
+
+    constructor(address _treasury, uint256 _tradingFeePct) {
         require(_treasury != address(0), "Treasury 0x!");
         require(
             _tradingFeePct.isLessThanAndEqualToDenominator(),
             "Fee overflow"
         );
 
-        pixCluster = IERC721(_pixCluster);
         treasury = _treasury;
         tradingFeePct = _tradingFeePct;
     }
@@ -64,7 +72,17 @@ abstract contract PIXBaseSale is Ownable, ERC721Holder {
         emit FeeUpdated(_tradingFeePct);
     }
 
-    function setWhitelist(address _token, bool _whitelist) external onlyOwner {
-        whitelistedTokens[_token] = _whitelist;
+    function setWhitelistPaymentToken(address _token, bool _whitelist)
+        external
+        onlyOwner
+    {
+        whitelistedPaymentTokens[_token] = _whitelist;
+    }
+
+    function setWhitelistedNftTokens(address _token, bool _whitelist)
+        external
+        onlyOwner
+    {
+        whitelistedNftTokens[_token] = _whitelist;
     }
 }

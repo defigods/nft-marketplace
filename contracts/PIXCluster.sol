@@ -63,11 +63,17 @@ contract PIXCluster is ERC721Enumerable, Ownable {
 
     function withdraw() external onlyOwner {
         if (address(this).balance > 0) {
-            (bool success, ) = msg.sender.call{ value: address(this).balance }("");
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = msg.sender.call{value: address(this).balance}(
+                ""
+            );
             require(success, "Withdraw failed");
         }
         if (pixToken.balanceOf(address(this)) > 0) {
-            pixToken.safeTransfer(msg.sender, pixToken.balanceOf(address(this)));
+            pixToken.safeTransfer(
+                msg.sender,
+                pixToken.balanceOf(address(this))
+            );
         }
     }
 
@@ -94,12 +100,21 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         emit Requested(msg.sender);
     }
 
-    function mintTo(address to, PIXCategory[] calldata categories) external onlyMod {
+    function mintTo(address to, PIXCategory[] calldata categories)
+        external
+        onlyMod
+    {
         require(requested[to], "No pending mint request");
-        require(categories.length == CLUSTER_MINT_COUNT, "Invalid categories length");
+        require(
+            categories.length == CLUSTER_MINT_COUNT,
+            "Invalid categories length"
+        );
 
         for (uint256 i = 0; i < CLUSTER_MINT_COUNT; i += 1) {
-            _safeMint(to, PIXInfo({ size: PIXSize.Cluster, category: categories[i] }));
+            _safeMint(
+                to,
+                PIXInfo({size: PIXSize.Cluster, category: categories[i]})
+            );
         }
         requested[to] = false;
     }
@@ -112,22 +127,36 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         pixToken.safeTransferFrom(msg.sender, address(this), combineFee);
     }
 
-    function _proceedCombine(address account, uint256[] calldata tokenIds) private {
+    function _proceedCombine(address account, uint256[] calldata tokenIds)
+        private
+    {
         PIXInfo storage firstPix = pixInfos[tokenIds[0]];
         require(firstPix.size < PIXSize.Federation, "Cannot combine max size");
-        require(tokenIds.length == combineCounts[firstPix.size], "Invalid combination");
+        require(
+            tokenIds.length == combineCounts[firstPix.size],
+            "Invalid combination"
+        );
 
         for (uint256 i = 0; i < tokenIds.length; i += 1) {
             uint256 tokenId = tokenIds[i];
 
-            require(pixInfos[tokenId].size == firstPix.size, "Cannot combine different sizes");
-            require(pixInfos[tokenId].category == firstPix.category, "Cannot combine different categories");
+            require(
+                pixInfos[tokenId].size == firstPix.size,
+                "Cannot combine different sizes"
+            );
+            require(
+                pixInfos[tokenId].category == firstPix.category,
+                "Cannot combine different categories"
+            );
             require(ownerOf(tokenId) == account, "Caller is not owner");
             _burn(tokenId);
         }
 
         PIXSize newSize = PIXSize(uint8(firstPix.size) + 1);
-        _safeMint(account, PIXInfo({size: newSize, category: firstPix.category}));
+        _safeMint(
+            account,
+            PIXInfo({size: newSize, category: firstPix.category})
+        );
 
         emit Combined(lastTokenId, firstPix.category, newSize);
     }

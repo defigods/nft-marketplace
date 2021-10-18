@@ -28,7 +28,7 @@ describe("PIXAuctionSale", function () {
     carol = signers[3];
 
     const PIXClusterFactory = await ethers.getContractFactory("PIXCluster");
-    pixCluster = await PIXClusterFactory.deploy();
+    pixCluster = await PIXClusterFactory.deploy(generateRandomAddress());
     await pixCluster
       .connect(owner)
       .setModerator(await owner.getAddress(), true);
@@ -36,11 +36,9 @@ describe("PIXAuctionSale", function () {
     const PIXAuctionSaleFactory = await ethers.getContractFactory(
       "PIXAuctionSale"
     );
-    auctionSale = await PIXAuctionSaleFactory.deploy(
-      pixCluster.address,
-      treasury,
-      tradingFeePct
-    );
+    auctionSale = await PIXAuctionSaleFactory.deploy(treasury, tradingFeePct);
+
+    await auctionSale.setWhitelistedNftTokens(pixCluster.address, true);
   });
 
   describe("#requestSale function", () => {
@@ -60,56 +58,109 @@ describe("PIXAuctionSale", function () {
       await expect(
         auctionSale
           .connect(alice)
-          .requestSale(tokenId, generateRandomAddress(), endTime, 0)
-      ).to.revertedWith("not whitelisted");
+          .requestSale(
+            pixCluster.address,
+            [tokenId],
+            generateRandomAddress(),
+            endTime,
+            0
+          )
+      ).to.revertedWith("Not whitelisted");
     });
 
-    it("revert if minPrice is 0", async () => {
+    it("revert if nft token is not whitelisted", async () => {
       const tokenAddress = generateRandomAddress();
-      await auctionSale.connect(owner).setWhitelist(tokenAddress, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(tokenAddress, true);
 
       await expect(
         auctionSale
           .connect(alice)
-          .requestSale(tokenId, tokenAddress, endTime, 0)
+          .requestSale(
+            generateRandomAddress(),
+            [tokenId],
+            tokenAddress,
+            endTime,
+            0
+          )
+      ).to.revertedWith("Not whitelisted");
+    });
+
+    it("revert if minPrice is 0", async () => {
+      const tokenAddress = generateRandomAddress();
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(tokenAddress, true);
+
+      await expect(
+        auctionSale
+          .connect(alice)
+          .requestSale(pixCluster.address, [tokenId], tokenAddress, endTime, 0)
       ).to.revertedWith(">0");
     });
 
     it("revert if endTime is less than block timestamp", async () => {
       const tokenAddress = generateRandomAddress();
-      await auctionSale.connect(owner).setWhitelist(tokenAddress, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(tokenAddress, true);
 
       const oldEndTime = (await getCurrentTime()).sub(BigNumber.from("10"));
       await expect(
         auctionSale
           .connect(alice)
-          .requestSale(tokenId, tokenAddress, oldEndTime, minPrice)
+          .requestSale(
+            pixCluster.address,
+            [tokenId],
+            tokenAddress,
+            oldEndTime,
+            minPrice
+          )
       ).to.revertedWith("invalid time");
     });
 
     it("revert if PIX not approved", async () => {
       const tokenAddress = generateRandomAddress();
-      await auctionSale.connect(owner).setWhitelist(tokenAddress, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(tokenAddress, true);
 
       await expect(
         auctionSale
           .connect(alice)
-          .requestSale(tokenId, tokenAddress, endTime, minPrice)
+          .requestSale(
+            pixCluster.address,
+            [tokenId],
+            tokenAddress,
+            endTime,
+            minPrice
+          )
       ).to.revertedWith("ERC721: transfer caller is not owner nor approved");
     });
 
     it("should request sale and emit SaleRequested event", async () => {
       await pixCluster.connect(alice).approve(auctionSale.address, tokenId);
       const tokenAddress = generateRandomAddress();
-      await auctionSale.connect(owner).setWhitelist(tokenAddress, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(tokenAddress, true);
 
       const tx = await auctionSale
         .connect(alice)
-        .requestSale(tokenId, tokenAddress, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          tokenAddress,
+          endTime,
+          minPrice
+        );
 
-      const saleInfo = await auctionSale.saleInfo(tokenId);
+      const lastSaleId = 1;
+      const saleInfo = await auctionSale.saleInfo(lastSaleId);
       expect(saleInfo.seller).to.be.equal(await alice.getAddress());
-      expect(saleInfo.token).to.be.equal(tokenAddress);
+      expect(saleInfo.nftToken).to.be.equal(pixCluster.address);
+      expect(saleInfo.paymentToken).to.be.equal(tokenAddress);
       expect(saleInfo.endTime).to.be.equal(endTime);
       expect(saleInfo.minPrice).to.be.equal(minPrice);
 
@@ -121,9 +172,11 @@ describe("PIXAuctionSale", function () {
         .emit(auctionSale, "SaleRequested")
         .withArgs(
           await alice.getAddress(),
-          tokenId,
+          lastSaleId,
+          pixCluster.address,
           tokenAddress,
           endTime,
+          [tokenId],
           minPrice
         );
     });
@@ -143,11 +196,19 @@ describe("PIXAuctionSale", function () {
       await pixCluster.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
 
-      await auctionSale.connect(owner).setWhitelist(tokenAddress, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(tokenAddress, true);
 
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, tokenAddress, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          tokenAddress,
+          endTime,
+          minPrice
+        );
     });
 
     it("revert if token is not whitelisted", async () => {
@@ -155,12 +216,14 @@ describe("PIXAuctionSale", function () {
         auctionSale
           .connect(alice)
           .updateSale(tokenId, generateRandomAddress(), endTime, minPrice)
-      ).to.revertedWith("not whitelisted");
+      ).to.revertedWith("Not whitelisted");
     });
 
     it("revert if msg.sender is not seller", async () => {
       const newTokenAddress = generateRandomAddress();
-      await auctionSale.connect(owner).setWhitelist(newTokenAddress, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(newTokenAddress, true);
 
       await expect(
         auctionSale
@@ -171,7 +234,9 @@ describe("PIXAuctionSale", function () {
 
     it("revert if minPrice is 0", async () => {
       const newTokenAddress = generateRandomAddress();
-      await auctionSale.connect(owner).setWhitelist(newTokenAddress, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(newTokenAddress, true);
 
       await expect(
         auctionSale
@@ -182,7 +247,9 @@ describe("PIXAuctionSale", function () {
 
     it("revert if endTime is less than block timestamp", async () => {
       const newTokenAddress = generateRandomAddress();
-      await auctionSale.connect(owner).setWhitelist(newTokenAddress, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(newTokenAddress, true);
 
       const oldEndTime = (await getCurrentTime()).sub(BigNumber.from("10"));
       await expect(
@@ -194,7 +261,9 @@ describe("PIXAuctionSale", function () {
 
     it("revert if there is bidder", async () => {
       const newTokenAddress = generateRandomAddress();
-      await auctionSale.connect(owner).setWhitelist(newTokenAddress, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(newTokenAddress, true);
 
       await auctionSale
         .connect(bob)
@@ -208,16 +277,20 @@ describe("PIXAuctionSale", function () {
 
     it("should update sale and emit SaleUpdated event", async () => {
       const newTokenAddress = generateRandomAddress();
-      await auctionSale.connect(owner).setWhitelist(newTokenAddress, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(newTokenAddress, true);
       const newPrice = utils.parseEther("2");
       const newEndTime = endTime.add(auctionPeriod);
       const tx = await auctionSale
         .connect(alice)
         .updateSale(tokenId, newTokenAddress, newEndTime, newPrice);
 
-      const saleInfo = await auctionSale.saleInfo(tokenId);
+      const lastSaleId = 1;
+      const saleInfo = await auctionSale.saleInfo(lastSaleId);
       expect(saleInfo.seller).to.be.equal(await alice.getAddress());
-      expect(saleInfo.token).to.be.equal(newTokenAddress);
+      expect(saleInfo.nftToken).to.be.equal(pixCluster.address);
+      expect(saleInfo.paymentToken).to.be.equal(newTokenAddress);
       expect(saleInfo.endTime).to.be.equal(newEndTime);
       expect(saleInfo.minPrice).to.be.equal(newPrice);
 
@@ -240,10 +313,18 @@ describe("PIXAuctionSale", function () {
         .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
       await pixCluster.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
-      await auctionSale.connect(owner).setWhitelist(tokenAddress, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(tokenAddress, true);
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, tokenAddress, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          tokenAddress,
+          endTime,
+          minPrice
+        );
     });
 
     it("revert if msg.sender is not seller", async () => {
@@ -264,9 +345,11 @@ describe("PIXAuctionSale", function () {
     it("should cancel sale and emit SaleCancelled event", async () => {
       const tx = await auctionSale.connect(alice).cancelSale(tokenId);
 
-      const saleInfo = await auctionSale.saleInfo(tokenId);
+      const lastSaleId = 1;
+      const saleInfo = await auctionSale.saleInfo(lastSaleId);
       expect(saleInfo.seller).to.be.equal(constants.AddressZero);
-      expect(saleInfo.token).to.be.equal(constants.AddressZero);
+      expect(saleInfo.nftToken).to.be.equal(constants.AddressZero);
+      expect(saleInfo.paymentToken).to.be.equal(constants.AddressZero);
       expect(saleInfo.endTime).to.be.equal(0);
       expect(saleInfo.minPrice).to.be.equal(0);
 
@@ -274,7 +357,7 @@ describe("PIXAuctionSale", function () {
         await alice.getAddress()
       );
 
-      await expect(tx).emit(auctionSale, "SaleCancelled").withArgs(tokenId);
+      await expect(tx).emit(auctionSale, "SaleCancelled").withArgs(lastSaleId);
     });
   });
 
@@ -293,7 +376,7 @@ describe("PIXAuctionSale", function () {
 
       await auctionSale
         .connect(owner)
-        .setWhitelist(constants.AddressZero, true);
+        .setWhitelistPaymentToken(constants.AddressZero, true);
     });
 
     it("revert if NFT is not for sale", async () => {
@@ -305,7 +388,13 @@ describe("PIXAuctionSale", function () {
     it("revert if send less than minPrice", async () => {
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, constants.AddressZero, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          constants.AddressZero,
+          endTime,
+          minPrice
+        );
       const bidPrice = minPrice.sub(utils.parseEther("0.5"));
       await expect(
         auctionSale.connect(bob).bid(tokenId, bidPrice, { value: bidPrice })
@@ -315,7 +404,13 @@ describe("PIXAuctionSale", function () {
     it("revert if not send correct ether", async () => {
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, constants.AddressZero, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          constants.AddressZero,
+          endTime,
+          minPrice
+        );
       await expect(
         auctionSale
           .connect(bob)
@@ -326,7 +421,13 @@ describe("PIXAuctionSale", function () {
     it("revert if auction ended", async () => {
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, constants.AddressZero, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          constants.AddressZero,
+          endTime,
+          minPrice
+        );
       await increaseTime(auctionPeriod.add(auctionPeriod));
       await expect(
         auctionSale.connect(bob).bid(tokenId, minPrice, { value: minPrice })
@@ -337,7 +438,13 @@ describe("PIXAuctionSale", function () {
       const bidAmount = minPrice.add(utils.parseEther("0.5"));
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, constants.AddressZero, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          constants.AddressZero,
+          endTime,
+          minPrice
+        );
       const tx = await auctionSale
         .connect(bob)
         .bid(tokenId, bidAmount, { value: bidAmount });
@@ -366,11 +473,19 @@ describe("PIXAuctionSale", function () {
       const bidAmount = minPrice.add(utils.parseEther("0.5"));
       await mockToken.connect(bob).approve(auctionSale.address, bidAmount);
 
-      await auctionSale.connect(owner).setWhitelist(mockToken.address, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(mockToken.address, true);
 
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, mockToken.address, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          mockToken.address,
+          endTime,
+          minPrice
+        );
       const tx = await auctionSale.connect(bob).bid(tokenId, bidAmount);
 
       expect(await mockToken.balanceOf(auctionSale.address)).to.be.equal(
@@ -392,7 +507,13 @@ describe("PIXAuctionSale", function () {
     it("revert if send less than or equal to last bid amount", async () => {
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, constants.AddressZero, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          constants.AddressZero,
+          endTime,
+          minPrice
+        );
       const topBid = minPrice.add(utils.parseEther("0.5"));
       await auctionSale.connect(bob).bid(tokenId, topBid, { value: topBid });
 
@@ -425,13 +546,19 @@ describe("PIXAuctionSale", function () {
 
       await auctionSale
         .connect(owner)
-        .setWhitelist(constants.AddressZero, true);
+        .setWhitelistPaymentToken(constants.AddressZero, true);
     });
 
     it("revert if msg.sender is not bidder", async () => {
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, constants.AddressZero, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          constants.AddressZero,
+          endTime,
+          minPrice
+        );
       const bidPrice = minPrice.add(utils.parseEther("0.5"));
       await auctionSale
         .connect(bob)
@@ -446,7 +573,13 @@ describe("PIXAuctionSale", function () {
       const bidAmount = minPrice.add(utils.parseEther("0.5"));
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, constants.AddressZero, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          constants.AddressZero,
+          endTime,
+          minPrice
+        );
       await auctionSale
         .connect(bob)
         .bid(tokenId, bidAmount, { value: bidAmount });
@@ -483,11 +616,19 @@ describe("PIXAuctionSale", function () {
       const bidAmount = minPrice.add(utils.parseEther("0.5"));
       await mockToken.connect(bob).approve(auctionSale.address, bidAmount);
 
-      await auctionSale.connect(owner).setWhitelist(mockToken.address, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(mockToken.address, true);
 
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, mockToken.address, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          mockToken.address,
+          endTime,
+          minPrice
+        );
       await auctionSale
         .connect(bob)
         .bid(tokenId, bidAmount, { value: bidAmount });
@@ -532,13 +673,19 @@ describe("PIXAuctionSale", function () {
 
       await auctionSale
         .connect(owner)
-        .setWhitelist(constants.AddressZero, true);
+        .setWhitelistPaymentToken(constants.AddressZero, true);
     });
 
     it("revert if no bidder", async () => {
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, constants.AddressZero, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          constants.AddressZero,
+          endTime,
+          minPrice
+        );
       await increaseTime(auctionPeriod.add(auctionPeriod));
       await expect(auctionSale.endAuction(tokenId)).to.revertedWith("!bid");
     });
@@ -546,7 +693,13 @@ describe("PIXAuctionSale", function () {
     it("revert if not ended yet", async () => {
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, constants.AddressZero, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          constants.AddressZero,
+          endTime,
+          minPrice
+        );
       await auctionSale
         .connect(bob)
         .bid(tokenId, minPrice, { value: minPrice });
@@ -557,7 +710,13 @@ describe("PIXAuctionSale", function () {
       const bidAmount = minPrice.add(utils.parseEther("0.5"));
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, constants.AddressZero, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          constants.AddressZero,
+          endTime,
+          minPrice
+        );
       await auctionSale
         .connect(bob)
         .bid(tokenId, bidAmount, { value: bidAmount });
@@ -585,7 +744,9 @@ describe("PIXAuctionSale", function () {
           constants.AddressZero,
           bidAmount
         );
-      const saleInfo = await auctionSale.saleInfo(tokenId);
+
+      const lastSaleId = 1;
+      const saleInfo = await auctionSale.saleInfo(lastSaleId);
       expect(saleInfo.seller).to.be.equal(constants.AddressZero);
       expect(saleInfo.endTime).to.be.equal(0);
       expect(saleInfo.minPrice).to.be.equal(0);
@@ -600,7 +761,13 @@ describe("PIXAuctionSale", function () {
       const bidAmount = minPrice.add(utils.parseEther("0.5"));
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, constants.AddressZero, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          constants.AddressZero,
+          endTime,
+          minPrice
+        );
       await auctionSale
         .connect(bob)
         .bid(tokenId, bidAmount, { value: bidAmount });
@@ -627,7 +794,9 @@ describe("PIXAuctionSale", function () {
           constants.AddressZero,
           bidAmount
         );
-      const saleInfo = await auctionSale.saleInfo(tokenId);
+
+      const lastSaleId = 1;
+      const saleInfo = await auctionSale.saleInfo(lastSaleId);
       expect(saleInfo.seller).to.be.equal(constants.AddressZero);
       expect(saleInfo.endTime).to.be.equal(0);
       expect(saleInfo.minPrice).to.be.equal(0);
@@ -643,11 +812,19 @@ describe("PIXAuctionSale", function () {
       const mockToken = await MockTokenFactory.connect(bob).deploy();
       await mockToken.connect(bob).approve(auctionSale.address, bidAmount);
 
-      await auctionSale.connect(owner).setWhitelist(mockToken.address, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(mockToken.address, true);
 
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, mockToken.address, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          mockToken.address,
+          endTime,
+          minPrice
+        );
       await auctionSale.connect(bob).bid(tokenId, bidAmount);
       await increaseTime(auctionPeriod.add(auctionPeriod));
 
@@ -675,7 +852,9 @@ describe("PIXAuctionSale", function () {
           mockToken.address,
           bidAmount
         );
-      const saleInfo = await auctionSale.saleInfo(tokenId);
+
+      const lastSaleId = 1;
+      const saleInfo = await auctionSale.saleInfo(lastSaleId);
       expect(saleInfo.seller).to.be.equal(constants.AddressZero);
       expect(saleInfo.endTime).to.be.equal(0);
       expect(saleInfo.minPrice).to.be.equal(0);
@@ -692,11 +871,19 @@ describe("PIXAuctionSale", function () {
       const mockToken = await MockTokenFactory.connect(bob).deploy();
       await mockToken.connect(bob).approve(auctionSale.address, bidAmount);
 
-      await auctionSale.connect(owner).setWhitelist(mockToken.address, true);
+      await auctionSale
+        .connect(owner)
+        .setWhitelistPaymentToken(mockToken.address, true);
 
       await auctionSale
         .connect(alice)
-        .requestSale(tokenId, mockToken.address, endTime, minPrice);
+        .requestSale(
+          pixCluster.address,
+          [tokenId],
+          mockToken.address,
+          endTime,
+          minPrice
+        );
       await auctionSale.connect(bob).bid(tokenId, bidAmount);
       await increaseTime(auctionPeriod.add(auctionPeriod));
 
@@ -723,7 +910,9 @@ describe("PIXAuctionSale", function () {
           mockToken.address,
           bidAmount
         );
-      const saleInfo = await auctionSale.saleInfo(tokenId);
+
+      const lastSaleId = 1;
+      const saleInfo = await auctionSale.saleInfo(lastSaleId);
       expect(saleInfo.seller).to.be.equal(constants.AddressZero);
       expect(saleInfo.endTime).to.be.equal(0);
       expect(saleInfo.minPrice).to.be.equal(0);
