@@ -13,7 +13,6 @@ describe("PIXBaseSale", function () {
   let owner: Signer;
   let alice: Signer;
   let treasury: string = generateRandomAddress();
-  let pixCluster: Contract;
   let fixedSale: Contract;
   const tradingFeePct = BigNumber.from("100");
 
@@ -22,14 +21,8 @@ describe("PIXBaseSale", function () {
     owner = signers[0];
     alice = signers[1];
 
-    const PIXClusterFactory = await ethers.getContractFactory("PIXCluster");
-    pixCluster = await PIXClusterFactory.deploy();
     const PIXFixedSaleFactory = await ethers.getContractFactory("PIXFixedSale");
-    fixedSale = await PIXFixedSaleFactory.deploy(
-      pixCluster.address,
-      treasury,
-      tradingFeePct
-    );
+    fixedSale = await PIXFixedSaleFactory.deploy(treasury, tradingFeePct);
   });
 
   describe("constructor", () => {
@@ -42,33 +35,17 @@ describe("PIXBaseSale", function () {
     it("check initial values", async () => {
       expect(await fixedSale.tradingFeePct()).to.be.equal(tradingFeePct);
       expect(await fixedSale.treasury()).to.be.equal(treasury);
-      expect(await fixedSale.pixCluster()).to.be.equal(pixCluster.address);
-    });
-
-    it("revert if pixCluster is 0x0", async () => {
-      await expect(
-        PIXFixedSaleFactory.deploy(
-          constants.AddressZero,
-          treasury,
-          tradingFeePct
-        )
-      ).to.revertedWith("PIX 0x!");
     });
 
     it("revert if treasury is 0x0", async () => {
       await expect(
-        PIXFixedSaleFactory.deploy(
-          pixCluster.address,
-          constants.AddressZero,
-          tradingFeePct
-        )
+        PIXFixedSaleFactory.deploy(constants.AddressZero, tradingFeePct)
       ).to.revertedWith("Treasury 0x!");
     });
 
     it("revert if tradingFeePct is over 100%", async () => {
       await expect(
         PIXFixedSaleFactory.deploy(
-          pixCluster.address,
           treasury,
           DENOMINATOR.add(BigNumber.from("1"))
         )
@@ -124,18 +101,33 @@ describe("PIXBaseSale", function () {
     });
   });
 
-  describe("#setWhitelist function", () => {
+  describe("#setWhitelistPaymentToken function", () => {
     const token = generateRandomAddress();
 
     it("revert if msg.sender is not owner", async () => {
       await expect(
-        fixedSale.connect(alice).setWhitelist(token, true)
+        fixedSale.connect(alice).setWhitelistPaymentToken(token, true)
       ).to.revertedWith("Ownable: caller is not the owner");
     });
 
     it("should whitelist payment token", async () => {
-      await fixedSale.connect(owner).setWhitelist(token, true);
-      expect(await fixedSale.whitelistedTokens(token)).to.be.equal(true);
+      await fixedSale.connect(owner).setWhitelistPaymentToken(token, true);
+      expect(await fixedSale.whitelistedPaymentTokens(token)).to.be.equal(true);
+    });
+  });
+
+  describe("#setWhitelistedNftTokens function", () => {
+    const token = generateRandomAddress();
+
+    it("revert if msg.sender is not owner", async () => {
+      await expect(
+        fixedSale.connect(alice).setWhitelistedNftTokens(token, true)
+      ).to.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should whitelist payment token", async () => {
+      await fixedSale.connect(owner).setWhitelistedNftTokens(token, true);
+      expect(await fixedSale.whitelistedNftTokens(token)).to.be.equal(true);
     });
   });
 });
