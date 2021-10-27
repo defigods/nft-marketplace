@@ -6,25 +6,31 @@ import { PIXCategory, PIXSize } from "./utils";
 describe("PIXCluster", function () {
   let owner: Signer;
   let alice: Signer;
-  let bob: Signer;
+  let usdToken: Contract;
   let pixToken: Contract;
   let pixCluster: Contract;
-  const price = ethers.utils.parseEther("1.0");
+  const price = 50;
 
   beforeEach(async function () {
-    [owner, alice, bob] = await ethers.getSigners();
+    [owner, alice] = await ethers.getSigners();
 
     const MockTokenFactory = await ethers.getContractFactory("MockToken");
+    usdToken = await MockTokenFactory.deploy();
     pixToken = await MockTokenFactory.deploy();
     const PIXClusterFactory = await ethers.getContractFactory("PIXCluster");
-    pixCluster = await PIXClusterFactory.deploy(pixToken.address);
+    pixCluster = await PIXClusterFactory.deploy(usdToken.address, pixToken.address);
+    await usdToken.transfer(await alice.getAddress(), BigNumber.from(200));
+    await usdToken.connect(alice).approve(pixCluster.address, BigNumber.from(200));
   });
 
   describe("constructor", () => {
     it("revert if token is zero address", async function () {
       const PIXCluster = await ethers.getContractFactory("PIXCluster");
       await expect(
-        PIXCluster.deploy(constants.AddressZero)
+        PIXCluster.deploy(constants.AddressZero, constants.AddressZero)
+      ).to.revertedWith("USD Token cannot be zero address");
+      await expect(
+        PIXCluster.deploy(usdToken.address, constants.AddressZero)
       ).to.revertedWith("PIX Token cannot be zero address");
     });
 
@@ -95,71 +101,66 @@ describe("PIXCluster", function () {
   });
 
   describe("#requestMint", function () {
-    it("revert if price is not set", async function () {
+    it("revert if price not set", async function () {
       await expect(
         pixCluster.connect(alice).requestMint()
       ).to.revertedWith("Purchase price not set");
     })
 
-    it("revert if insufficient value", async function () {
-      await pixCluster.setMintFee(price);
-      await expect(
-        pixCluster.connect(alice).requestMint()
-      ).to.revertedWith("Insufficient for purchase");
-    })
-
     it("revert if pending request exists", async function () {
       await pixCluster.setMintFee(price);
-      await pixCluster.connect(alice).requestMint({ value: price });
+      await pixCluster.connect(alice).requestMint();
       await expect(
-        pixCluster.connect(alice).requestMint({ value: price })
+        pixCluster.connect(alice).requestMint()
       ).to.revertedWith("Pending mint request exists");
     })
 
-    it("should request mint by paying ether", async function () {
+    it("should request mint by paying usdt", async function () {
       await pixCluster.setMintFee(price);
-      const tx = await pixCluster.connect(alice).requestMint({ value: price });
+      const tx = await pixCluster.connect(alice).requestMint();
       expect(tx)
         .to.emit(pixCluster, "Requested")
         .withArgs(await alice.getAddress());
       expect(await pixCluster.requested(await alice.getAddress())).to.equal(true);
-      expect(await ethers.provider.getBalance(pixCluster.address)).equal(price);
+      expect(await usdToken.balanceOf(pixCluster.address)).equal(price);
     })
   });
 
   describe("#mintTo", () => {
     it("revert if msg.sender is not moderator", async function () {
       await expect(
-        pixCluster.connect(alice).mintTo(await alice.getAddress(), [])
+        pixCluster.connect(alice).mintTo(await alice.getAddress(), [], [])
       ).to.revertedWith("Caller is not moderator");
     })
 
     it("revert if no pending request exists", async function () {
       await expect(
-        pixCluster.mintTo(await alice.getAddress(), [])
+        pixCluster.mintTo(await alice.getAddress(), [], [])
       ).to.revertedWith("No pending mint request");
     })
 
     it("revert if invalid categories length", async function () {
       await pixCluster.setMintFee(price);
-      await pixCluster.connect(alice).requestMint({ value: price });
+      await pixCluster.connect(alice).requestMint();
       await expect(
-        pixCluster.mintTo(await alice.getAddress(), [])
+        pixCluster.mintTo(await alice.getAddress(), [], [])
       ).to.revertedWith("Invalid categories length");
     })
 
     it("should mint new clusters by moderator", async () => {
       await pixCluster.setMintFee(price);
-      await pixCluster.connect(alice).requestMint({ value: price });
+      await pixCluster.connect(alice).requestMint();
 
+      const pixIds = [];
       const categories = [];
       for (let i = 0; i < 50; i ++) {
+        pixIds.push(i + 1);
         categories.push([
           PIXCategory.Legendary, PIXCategory.Rare, PIXCategory.Uncommon,
           PIXCategory.Common, PIXCategory.Outliers][Math.floor(Math.random() * 5)]
         );
       }
-      await pixCluster.mintTo(await alice.getAddress(), categories);
+      await pixCluster.mintTo(await alice.getAddress(), pixIds, categories);
 
       expect(await pixCluster.balanceOf(await alice.getAddress())).to.equal(50);
     });
@@ -179,19 +180,19 @@ describe("PIXCluster", function () {
     });
 
     it("revert if no tokens", async () => {
-      await pixCluster.setCombineFee(50);
+      await pixCluster.setCombineFee(price);
       await expect(
         pixCluster.connect(alice).combine([])
       ).to.revertedWith("No tokens");
     });
 
     it("revert if size is federation", async () => {
-      await pixCluster.setCombineFee(50);
+      await pixCluster.setCombineFee(price);
       await pixCluster.safeMint(
-        await alice.getAddress(), [PIXCategory.Rare, PIXSize.Federation]
+        await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Federation]
       );
       await pixCluster.safeMint(
-        await alice.getAddress(), [PIXCategory.Rare, PIXSize.Federation]
+        await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Federation]
       );
       await expect(
         pixCluster.connect(alice).combine([1, 2])
@@ -199,12 +200,12 @@ describe("PIXCluster", function () {
     });
 
     it("revert if combine length is invalid", async () => {
-      await pixCluster.setCombineFee(50);
+      await pixCluster.setCombineFee(price);
       await pixCluster.safeMint(
-        await alice.getAddress(), [PIXCategory.Rare, PIXSize.Cluster]
+        await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Cluster]
       );
       await pixCluster.safeMint(
-        await alice.getAddress(), [PIXCategory.Rare, PIXSize.Cluster]
+        await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Cluster]
       );
       await expect(
         pixCluster.connect(alice).combine([1, 2])
@@ -212,37 +213,37 @@ describe("PIXCluster", function () {
     });
 
     it("revert if to combine different size", async () => {
-      await pixCluster.setCombineFee(50);
+      await pixCluster.setCombineFee(price);
       await pixCluster.safeMint(
-        await alice.getAddress(), [PIXCategory.Rare, PIXSize.Domain]
+        await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Domain]
       );
       await pixCluster.safeMint(
-        await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]
+        await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]
       );
       await expect(
         pixCluster.connect(alice).combine([1, 2])
-      ).to.revertedWith("Cannot combine different sizes");
+      ).to.revertedWith("Should combine same sizes");
     });
 
     it("revert if to combine different categories", async () => {
-      await pixCluster.setCombineFee(50);
+      await pixCluster.setCombineFee(price);
       await pixCluster.safeMint(
-        await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]
+        await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]
       );
       await pixCluster.safeMint(
-        await alice.getAddress(), [PIXCategory.Common, PIXSize.Sector]
+        await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Sector]
       );
       await expect(
         pixCluster.connect(alice).combine([1, 2])
-      ).to.revertedWith("Cannot combine different categories");
+      ).to.revertedWith("Should combine same categories");
     });
 
     it("revert if not owner", async () => {
-      await pixCluster.setCombineFee(50);
+      await pixCluster.setCombineFee(price);
       const tokenIds = [];
       for (let i = 0; i < 2; i ++) {
         await pixCluster.safeMint(
-          await alice.getAddress(), [PIXCategory.Rare, PIXSize.Domain]
+          await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Domain]
         );
         tokenIds.push(i + 1);
       }
@@ -250,14 +251,16 @@ describe("PIXCluster", function () {
     });
 
     it("should combine clusters to mint area", async () => {
-      await pixCluster.setCombineFee(50);
+      await pixCluster.setCombineFee(price);
       const tokenIds = [];
+      console.log((await pixCluster.totalSupply()).toNumber());
       for (let i = 0; i < 50; i ++) {
         await pixCluster.safeMint(
-          await alice.getAddress(), [PIXCategory.Common, PIXSize.Cluster]
+          await alice.getAddress(), [i + 1, PIXCategory.Common, PIXSize.Cluster]
         );
         tokenIds.push(i + 1);
       }
+      console.log((await pixCluster.totalSupply()).toNumber());
       const tx = await pixCluster.connect(alice).combine(tokenIds);
       expect(await pixCluster.ownerOf(51)).to.equal(await alice.getAddress());
       expect(tx)
@@ -267,11 +270,12 @@ describe("PIXCluster", function () {
     });
 
     it("should combine areas to mint sector", async () => {
-      await pixCluster.setCombineFee(50);
+      console.log((await pixCluster.totalSupply()).toNumber());
+      await pixCluster.setCombineFee(price);
       const tokenIds = [];
       for (let i = 0; i < 5; i ++) {
         await pixCluster.safeMint(
-          await alice.getAddress(), [PIXCategory.Common, PIXSize.Area]
+          await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Area]
         );
         tokenIds.push(i + 1);
       }
@@ -284,11 +288,11 @@ describe("PIXCluster", function () {
     });
 
     it("should combine sectors to mint domain", async () => {
-      await pixCluster.setCombineFee(50);
+      await pixCluster.setCombineFee(price);
       const tokenIds = [];
       for (let i = 0; i < 2; i ++) {
         await pixCluster.safeMint(
-          await alice.getAddress(), [PIXCategory.Common, PIXSize.Sector]
+          await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Sector]
         );
         tokenIds.push(i + 1);
       }
@@ -301,11 +305,11 @@ describe("PIXCluster", function () {
     });
 
     it("should combine domain to mint federation", async () => {
-      await pixCluster.setCombineFee(50);
+      await pixCluster.setCombineFee(price);
       const tokenIds = [];
       for (let i = 0; i < 2; i ++) {
         await pixCluster.safeMint(
-          await alice.getAddress(), [PIXCategory.Common, PIXSize.Domain]
+          await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Domain]
         );
         tokenIds.push(i + 1);
       }
@@ -325,20 +329,18 @@ describe("PIXCluster", function () {
       ).to.revertedWith("Ownable: caller is not the owner");
     });
 
-    it("should withdraw ether to owner address", async () => {
+    it("should withdraw erc20 tokens to owner address", async () => {
       await pixCluster.setMintFee(price);
-      await pixCluster.connect(alice).requestMint({ value: price });
-      expect(await ethers.provider.getBalance(pixCluster.address)).to.equal(price);
+      await pixCluster.connect(alice).requestMint();
+      expect(await usdToken.balanceOf(pixCluster.address)).to.equal(50);
       await pixCluster.withdraw();
-      expect(await ethers.provider.getBalance(pixCluster.address)).to.equal(0);
+      expect(await usdToken.balanceOf(pixCluster.address)).to.equal(0);
 
-      await pixCluster.setCombineFee(50);
-      await pixToken.transfer(await alice.getAddress(), BigNumber.from(100));
-      await pixToken.connect(alice).approve(pixCluster.address, BigNumber.from(100));
+      await pixCluster.setCombineFee(price);
       const tokenIds = [];
       for (let i = 0; i < 50; i ++) {
         await pixCluster.safeMint(
-          await alice.getAddress(), [PIXCategory.Common, PIXSize.Cluster]
+          await alice.getAddress(), [i + 1, PIXCategory.Common, PIXSize.Cluster]
         );
         tokenIds.push(i + 1);
       }
@@ -361,8 +363,12 @@ describe("PIXCluster", function () {
     it("should set base uri by owner", async () => {
       await pixCluster.setBaseURI(uri);
       await pixCluster.setMintFee(price);
-      await pixCluster.connect(alice).requestMint({ value: price });
-      await pixCluster.mintTo(await alice.getAddress(), new Array(50).fill(PIXCategory.Common));
+      await pixCluster.connect(alice).requestMint();
+      await pixCluster.mintTo(
+        await alice.getAddress(),
+        new Array(50).fill(1),
+        new Array(50).fill(PIXCategory.Common)
+      );
       expect(await pixCluster.tokenURI(1)).to.equal(uri + "1");
     });
   });
