@@ -6,14 +6,15 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "dotenv/config";
 
-console.log(process.env.API_KEY);
-
 export default {
-  defaultNetwork: 'testnet',
+  defaultNetwork: 'localhost',
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
       timeout: 1000000,
+    },
+    localhost: {
+      url: 'http://localhost:8545',
     },
     mainnet: {
       url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,

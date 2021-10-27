@@ -29,11 +29,13 @@ contract PIXCluster is ERC721Enumerable, Ownable {
     }
 
     struct PIXInfo {
+        uint256 pixId;
         PIXCategory category;
         PIXSize size;
     }
 
     uint256 public constant CLUSTER_MINT_COUNT = 50;
+    IERC20 public immutable usdToken;
     IERC20 public immutable pixToken;
     string private _baseURIExtended;
     uint256 public lastTokenId;
@@ -51,8 +53,10 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         _;
     }
 
-    constructor(address pixt) ERC721("PIX Cluster", "PIX") {
+    constructor(address usdt, address pixt) ERC721("PIX Cluster", "PIX") {
+        require(usdt != address(0), "USD Token cannot be zero address");
         require(pixt != address(0), "PIX Token cannot be zero address");
+        usdToken = IERC20(usdt);
         pixToken = IERC20(pixt);
         moderators[msg.sender] = true;
         combineCounts[PIXSize.Cluster] = 50;
@@ -62,18 +66,11 @@ contract PIXCluster is ERC721Enumerable, Ownable {
     }
 
     function withdraw() external onlyOwner {
-        if (address(this).balance > 0) {
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = msg.sender.call{value: address(this).balance}(
-                ""
-            );
-            require(success, "Withdraw failed");
+        if (usdToken.balanceOf(address(this)) > 0) {
+            usdToken.safeTransfer(msg.sender, usdToken.balanceOf(address(this)));
         }
         if (pixToken.balanceOf(address(this)) > 0) {
-            pixToken.safeTransfer(
-                msg.sender,
-                pixToken.balanceOf(address(this))
-            );
+            pixToken.safeTransfer(msg.sender, pixToken.balanceOf(address(this)));
         }
     }
 
@@ -92,19 +89,20 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         combineFee = fee;
     }
 
-    function requestMint() external payable {
+    function requestMint() external {
         require(mintFee > 0, "Purchase price not set");
-        require(msg.value == mintFee, "Insufficient for purchase");
         require(!requested[msg.sender], "Pending mint request exists");
+        usdToken.safeTransferFrom(msg.sender, address(this), mintFee);
         requested[msg.sender] = true;
         emit Requested(msg.sender);
     }
 
-    function mintTo(address to, PIXCategory[] calldata categories)
+    function mintTo(address to, uint256[] calldata pixIds, PIXCategory[] calldata categories)
         external
         onlyMod
     {
         require(requested[to], "No pending mint request");
+        require(pixIds.length == categories.length, "Invalid length of parameters");
         require(
             categories.length == CLUSTER_MINT_COUNT,
             "Invalid categories length"
@@ -113,7 +111,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         for (uint256 i = 0; i < CLUSTER_MINT_COUNT; i += 1) {
             _safeMint(
                 to,
-                PIXInfo({size: PIXSize.Cluster, category: categories[i]})
+                PIXInfo({pixId: pixIds[i], size: PIXSize.Cluster, category: categories[i]})
             );
         }
         requested[to] = false;
@@ -155,7 +153,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         PIXSize newSize = PIXSize(uint8(firstPix.size) + 1);
         _safeMint(
             account,
-            PIXInfo({size: newSize, category: firstPix.category})
+            PIXInfo({pixId: 0, size: newSize, category: firstPix.category})
         );
 
         emit Combined(lastTokenId, firstPix.category, newSize);
@@ -165,7 +163,17 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         _safeMint(to, info);
     }
 
+    function batchMint(address to, PIXInfo[] memory infos) external onlyMod {
+        require(infos.length > 0 && infos.length <= 50, "Invalid pixes length");
+
+        for (uint256 i = 0; i < infos.length; i += 1) {
+            _safeMint(to, infos[i]);
+        }
+    }
+
     function _safeMint(address to, PIXInfo memory info) internal {
+        require(info.pixId > 0 || info.size != PIXSize.Cluster, "Invalid PIX info");
+
         lastTokenId += 1;
         _safeMint(to, lastTokenId);
         pixInfos[lastTokenId] = info;
