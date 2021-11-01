@@ -11,6 +11,7 @@ export default {
     hardhat: {
       allowUnlimitedContractSize: true,
       timeout: 1000000,
+      initialBaseFeePerGas: 0,
     },
     mainnet: {
       url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,

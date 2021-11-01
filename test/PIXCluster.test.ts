@@ -182,6 +182,56 @@ describe("PIXCluster", function () {
     });
   });
 
+  describe("#safeMint", () => {
+    it("revert if pix info is invalid", async () => {
+      await expect(
+        pixCluster.safeMint(await alice.getAddress(), [
+          0,
+          PIXCategory.Common,
+          PIXSize.Cluster,
+        ])
+      ).to.revertedWith("Invalid PIX info");
+      await expect(
+        pixCluster.safeMint(await alice.getAddress(), [
+          1,
+          PIXCategory.Common,
+          PIXSize.Domain,
+        ])
+      ).to.revertedWith("Invalid PIX info");
+    });
+
+    it("should safe mint", async () => {
+      await pixCluster.safeMint(await alice.getAddress(), [
+        0,
+        PIXCategory.Common,
+        PIXSize.Domain,
+      ]);
+      await pixCluster.safeMint(await alice.getAddress(), [
+        1,
+        PIXCategory.Common,
+        PIXSize.Cluster,
+      ]);
+      expect(await pixCluster.totalSupply()).to.equal(2);
+    });
+  });
+
+  describe("#batchMint", () => {
+    it("revert if mint length is invalid", async () => {
+      await expect(
+        pixCluster.batchMint(await alice.getAddress(), [])
+      ).to.revertedWith("Invalid pixes length");
+    });
+
+    it("should batch mint", async () => {
+      const infos = [];
+      for (let i = 0; i < 10; i++) {
+        infos.push([0, PIXCategory.Common, PIXSize.Domain]);
+      }
+      await pixCluster.batchMint(await alice.getAddress(), infos);
+      expect(await pixCluster.totalSupply()).to.equal(10);
+    });
+  });
+
   describe("#combine", () => {
     beforeEach(async function () {
       await pixCluster.setMintFee(price);
