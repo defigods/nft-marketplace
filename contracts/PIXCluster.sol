@@ -67,10 +67,16 @@ contract PIXCluster is ERC721Enumerable, Ownable {
 
     function withdraw() external onlyOwner {
         if (usdToken.balanceOf(address(this)) > 0) {
-            usdToken.safeTransfer(msg.sender, usdToken.balanceOf(address(this)));
+            usdToken.safeTransfer(
+                msg.sender,
+                usdToken.balanceOf(address(this))
+            );
         }
         if (pixToken.balanceOf(address(this)) > 0) {
-            pixToken.safeTransfer(msg.sender, pixToken.balanceOf(address(this)));
+            pixToken.safeTransfer(
+                msg.sender,
+                pixToken.balanceOf(address(this))
+            );
         }
     }
 
@@ -97,12 +103,16 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         emit Requested(msg.sender);
     }
 
-    function mintTo(address to, uint256[] calldata pixIds, PIXCategory[] calldata categories)
-        external
-        onlyMod
-    {
+    function mintTo(
+        address to,
+        uint256[] calldata pixIds,
+        PIXCategory[] calldata categories
+    ) external onlyMod {
         require(requested[to], "No pending mint request");
-        require(pixIds.length == categories.length, "Invalid length of parameters");
+        require(
+            pixIds.length == categories.length,
+            "Invalid length of parameters"
+        );
         require(
             categories.length == CLUSTER_MINT_COUNT,
             "Invalid categories length"
@@ -111,7 +121,11 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         for (uint256 i = 0; i < CLUSTER_MINT_COUNT; i += 1) {
             _safeMint(
                 to,
-                PIXInfo({pixId: pixIds[i], size: PIXSize.Cluster, category: categories[i]})
+                PIXInfo({
+                    pixId: pixIds[i],
+                    size: PIXSize.Cluster,
+                    category: categories[i]
+                })
             );
         }
         requested[to] = false;
@@ -172,7 +186,10 @@ contract PIXCluster is ERC721Enumerable, Ownable {
     }
 
     function _safeMint(address to, PIXInfo memory info) internal {
-        require(info.pixId > 0 || info.size != PIXSize.Cluster, "Invalid PIX info");
+        require(
+            (info.pixId > 0) == (info.size == PIXSize.Cluster),
+            "Invalid PIX info"
+        );
 
         lastTokenId += 1;
         _safeMint(to, lastTokenId);
