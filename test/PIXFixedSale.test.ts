@@ -24,7 +24,10 @@ describe("PIXFixedSale", function () {
     bob = signers[2];
 
     const PIXClusterFactory = await ethers.getContractFactory("PIXCluster");
-    pixCluster = await PIXClusterFactory.deploy(generateRandomAddress(), generateRandomAddress());
+    pixCluster = await PIXClusterFactory.deploy(
+      generateRandomAddress(),
+      generateRandomAddress()
+    );
     await pixCluster
       .connect(owner)
       .setModerator(await owner.getAddress(), true);
@@ -42,7 +45,11 @@ describe("PIXFixedSale", function () {
     beforeEach(async () => {
       await pixCluster
         .connect(owner)
-        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
+        .safeMint(await alice.getAddress(), [
+          0,
+          PIXCategory.Rare,
+          PIXSize.Sector,
+        ]);
     });
 
     it("revert if token is not whitelisted", async () => {
@@ -150,7 +157,11 @@ describe("PIXFixedSale", function () {
     beforeEach(async () => {
       await pixCluster
         .connect(owner)
-        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
+        .safeMint(await alice.getAddress(), [
+          0,
+          PIXCategory.Rare,
+          PIXSize.Sector,
+        ]);
       await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
       await fixedSale
         .connect(owner)
@@ -221,7 +232,11 @@ describe("PIXFixedSale", function () {
     beforeEach(async () => {
       await pixCluster
         .connect(owner)
-        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
+        .safeMint(await alice.getAddress(), [
+          0,
+          PIXCategory.Rare,
+          PIXSize.Sector,
+        ]);
       await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
 
       await fixedSale
@@ -264,7 +279,11 @@ describe("PIXFixedSale", function () {
     beforeEach(async () => {
       await pixCluster
         .connect(owner)
-        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
+        .safeMint(await alice.getAddress(), [
+          0,
+          PIXCategory.Rare,
+          PIXSize.Sector,
+        ]);
 
       await fixedSale
         .connect(owner)

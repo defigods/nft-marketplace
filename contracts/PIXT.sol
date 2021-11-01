@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract MockToken is ERC20 {
-    constructor() ERC20("MockToken", "MOCK") {
-        _mint(msg.sender, 1e25);
+contract PIXT is ERC20("PIXT", "PIXT") {
+    constructor(uint256 totalSupply) {
+        _mint(msg.sender, totalSupply);
     }
 }

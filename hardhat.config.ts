@@ -7,14 +7,10 @@ import "solidity-coverage";
 import "dotenv/config";
 
 export default {
-  defaultNetwork: 'localhost',
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
       timeout: 1000000,
-    },
-    localhost: {
-      url: 'http://localhost:8545',
     },
     mainnet: {
       url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
@@ -32,8 +28,7 @@ export default {
     target: "ethers-v5",
   },
   gasReporter: {
-    currency: "USD",
-    gasPrice: 100,
+    currency: "ETH",
   },
   etherscan: {
     apiKey: process.env.API_KEY,
