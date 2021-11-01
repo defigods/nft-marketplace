@@ -60,12 +60,12 @@ describe("PIXCluster", function () {
 
     it("should set moderator by owner", async () => {
       await pixCluster.setModerator(await alice.getAddress(), true);
-      expect(await pixCluster.moderators(await alice.getAddress())).to.be.equal(
+      expect(await pixCluster.moderators(await alice.getAddress())).to.equal(
         true
       );
 
       await pixCluster.setModerator(await alice.getAddress(), false);
-      expect(await pixCluster.moderators(await alice.getAddress())).to.be.equal(
+      expect(await pixCluster.moderators(await alice.getAddress())).to.equal(
         false
       );
     });
@@ -304,7 +304,7 @@ describe("PIXCluster", function () {
       expect(tx)
         .to.emit(pixCluster, "Combined")
         .withArgs(51, PIXCategory.Common, PIXSize.Area);
-      expect(await pixCluster.totalSupply()).to.be.equal(1);
+      expect(await pixCluster.totalSupply()).to.equal(1);
     });
 
     it("should combine areas to mint sector", async () => {
@@ -323,7 +323,7 @@ describe("PIXCluster", function () {
       expect(tx)
         .to.emit(pixCluster, "Combined")
         .withArgs(6, PIXCategory.Common, PIXSize.Sector);
-      expect(await pixCluster.totalSupply()).to.be.equal(1);
+      expect(await pixCluster.totalSupply()).to.equal(1);
     });
 
     it("should combine sectors to mint domain", async () => {
@@ -342,7 +342,7 @@ describe("PIXCluster", function () {
       expect(tx)
         .to.emit(pixCluster, "Combined")
         .withArgs(3, PIXCategory.Common, PIXSize.Domain);
-      expect(await pixCluster.totalSupply()).to.be.equal(1);
+      expect(await pixCluster.totalSupply()).to.equal(1);
     });
 
     it("should combine domain to mint federation", async () => {
@@ -361,7 +361,7 @@ describe("PIXCluster", function () {
       expect(tx)
         .to.emit(pixCluster, "Combined")
         .withArgs(3, PIXCategory.Common, PIXSize.Federation);
-      expect(await pixCluster.totalSupply()).to.be.equal(1);
+      expect(await pixCluster.totalSupply()).to.equal(1);
     });
   });
 
