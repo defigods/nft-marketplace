@@ -35,7 +35,6 @@ contract PIXCluster is ERC721Enumerable, Ownable {
     }
 
     uint256 public constant CLUSTER_MINT_COUNT = 50;
-    IERC20 public immutable usdToken;
     IERC20 public immutable pixToken;
     string private _baseURIExtended;
     uint256 public lastTokenId;
@@ -53,10 +52,8 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         _;
     }
 
-    constructor(address usdt, address pixt) ERC721("PIX Cluster", "PIX") {
-        require(usdt != address(0), "USD Token cannot be zero address");
+    constructor(address pixt) ERC721("PIX Cluster", "PIX") {
         require(pixt != address(0), "PIX Token cannot be zero address");
-        usdToken = IERC20(usdt);
         pixToken = IERC20(pixt);
         moderators[msg.sender] = true;
         combineCounts[PIXSize.Cluster] = 50;
@@ -66,12 +63,6 @@ contract PIXCluster is ERC721Enumerable, Ownable {
     }
 
     function withdraw() external onlyOwner {
-        if (usdToken.balanceOf(address(this)) > 0) {
-            usdToken.safeTransfer(
-                msg.sender,
-                usdToken.balanceOf(address(this))
-            );
-        }
         if (pixToken.balanceOf(address(this)) > 0) {
             pixToken.safeTransfer(
                 msg.sender,
@@ -98,7 +89,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
     function requestMint() external {
         require(mintFee > 0, "Purchase price not set");
         require(!requested[msg.sender], "Pending mint request exists");
-        usdToken.safeTransferFrom(msg.sender, address(this), mintFee);
+        pixToken.safeTransferFrom(msg.sender, address(this), mintFee);
         requested[msg.sender] = true;
         emit Requested(msg.sender);
     }

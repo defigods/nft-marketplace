@@ -6,7 +6,6 @@ import { PIXCategory, PIXSize } from "./utils";
 describe("PIXCluster", function () {
   let owner: Signer;
   let alice: Signer;
-  let usdToken: Contract;
   let pixToken: Contract;
   let pixCluster: Contract;
   const price = 50;
@@ -15,15 +14,11 @@ describe("PIXCluster", function () {
     [owner, alice] = await ethers.getSigners();
 
     const MockTokenFactory = await ethers.getContractFactory("MockToken");
-    usdToken = await MockTokenFactory.deploy();
     pixToken = await MockTokenFactory.deploy();
     const PIXClusterFactory = await ethers.getContractFactory("PIXCluster");
-    pixCluster = await PIXClusterFactory.deploy(
-      usdToken.address,
-      pixToken.address
-    );
-    await usdToken.transfer(await alice.getAddress(), BigNumber.from(200));
-    await usdToken
+    pixCluster = await PIXClusterFactory.deploy(pixToken.address);
+    await pixToken.transfer(await alice.getAddress(), BigNumber.from(200));
+    await pixToken
       .connect(alice)
       .approve(pixCluster.address, BigNumber.from(200));
   });
@@ -31,12 +26,9 @@ describe("PIXCluster", function () {
   describe("constructor", () => {
     it("revert if token is zero address", async function () {
       const PIXCluster = await ethers.getContractFactory("PIXCluster");
-      await expect(
-        PIXCluster.deploy(constants.AddressZero, constants.AddressZero)
-      ).to.revertedWith("USD Token cannot be zero address");
-      await expect(
-        PIXCluster.deploy(usdToken.address, constants.AddressZero)
-      ).to.revertedWith("PIX Token cannot be zero address");
+      await expect(PIXCluster.deploy(constants.AddressZero)).to.revertedWith(
+        "PIX Token cannot be zero address"
+      );
     });
 
     it("check initial values", async function () {
@@ -124,7 +116,7 @@ describe("PIXCluster", function () {
       );
     });
 
-    it("should request mint by paying usdt", async function () {
+    it("should request mint by paying pixt", async function () {
       await pixCluster.setMintFee(price);
       const tx = await pixCluster.connect(alice).requestMint();
       expect(tx)
@@ -133,7 +125,7 @@ describe("PIXCluster", function () {
       expect(await pixCluster.requested(await alice.getAddress())).to.equal(
         true
       );
-      expect(await usdToken.balanceOf(pixCluster.address)).equal(price);
+      expect(await pixToken.balanceOf(pixCluster.address)).equal(price);
     });
   });
 
@@ -430,11 +422,11 @@ describe("PIXCluster", function () {
       );
     });
 
-    it("should withdraw erc20 tokens to owner address", async () => {
+    it("should withdraw pixt tokens to owner address", async () => {
       await pixCluster.connect(alice).requestMint();
-      expect(await usdToken.balanceOf(pixCluster.address)).to.equal(50);
+      expect(await pixToken.balanceOf(pixCluster.address)).to.equal(50);
       await pixCluster.withdraw();
-      expect(await usdToken.balanceOf(pixCluster.address)).to.equal(0);
+      expect(await pixToken.balanceOf(pixCluster.address)).to.equal(0);
 
       await pixCluster.setCombineFee(price);
       const tokenIds = [];
