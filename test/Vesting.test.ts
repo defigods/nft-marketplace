@@ -308,7 +308,7 @@ describe("Vesting", function () {
         totalAmount = totalAmount.add(amounts[i]);
       }
 
-      await vesting.getPendingAmounts([0, 1]).to.equal(totalAmount);
+      expect(await vesting.getPendingAmounts([0, 1])).to.equal(totalAmount);
       await vesting.connect(bob).claimInBatch([0, 1]);
 
       for (let i = 0; i < amounts.length; i += 1) {
@@ -330,7 +330,7 @@ describe("Vesting", function () {
 
       await vesting.connect(bob).claimInBatch([0, 1]);
 
-      await vesting.getPendingAmounts([0, 1]).to.equal(0);
+      expect(await vesting.getPendingAmounts([0, 1])).to.equal(0);
 
       await expect(vesting.connect(bob).claimInBatch([0, 1])).to.revertedWith(
         "Vesting: nothing to claim"
