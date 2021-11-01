@@ -1,19 +1,16 @@
 const hre = require('hardhat');
 
 async function main() {
-  const MockToken = await hre.ethers.getContractFactory('MockToken');
-  const usdt = await MockToken.deploy();
-  await usdt.deployed();
-  const pixt = await MockToken.deploy();
+  const PIX = await hre.ethers.getContractFactory('PIX');
+  const pixt = await PIX.deploy();
   await pixt.deployed();
 
   const PIXCluster = await hre.ethers.getContractFactory('PIXCluster');
-  const cluster = await PIXCluster.deploy(usdt.address, pixt.address);
+  const cluster = await PIXCluster.deploy(pixt.address);
 
   await cluster.deployed();
 
   console.log('PIXCluster at ', cluster.address);
-  console.log('USD Token at ', usdt.address);
   console.log('PIX Token at ', pixt.address);
 }
 

@@ -25,10 +25,7 @@ describe("PIXAuctionSale", function () {
     [owner, alice, bob, carol] = signers;
 
     const PIXClusterFactory = await ethers.getContractFactory("PIXCluster");
-    pixCluster = await PIXClusterFactory.deploy(
-      generateRandomAddress(),
-      generateRandomAddress()
-    );
+    pixCluster = await PIXClusterFactory.deploy(generateRandomAddress());
     await pixCluster
       .connect(owner)
       .setModerator(await owner.getAddress(), true);
