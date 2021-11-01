@@ -22,13 +22,13 @@ describe("PIXAuctionSale", function () {
 
   beforeEach(async function () {
     const signers = await ethers.getSigners();
-    owner = signers[0];
-    alice = signers[1];
-    bob = signers[2];
-    carol = signers[3];
+    [owner, alice, bob, carol] = signers;
 
     const PIXClusterFactory = await ethers.getContractFactory("PIXCluster");
-    pixCluster = await PIXClusterFactory.deploy(generateRandomAddress(), generateRandomAddress());
+    pixCluster = await PIXClusterFactory.deploy(
+      generateRandomAddress(),
+      generateRandomAddress()
+    );
     await pixCluster
       .connect(owner)
       .setModerator(await owner.getAddress(), true);
@@ -50,7 +50,11 @@ describe("PIXAuctionSale", function () {
     beforeEach(async () => {
       await pixCluster
         .connect(owner)
-        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
+        .safeMint(await alice.getAddress(), [
+          0,
+          PIXCategory.Rare,
+          PIXSize.Sector,
+        ]);
       endTime = (await getCurrentTime()).add(auctionPeriod);
     });
 
@@ -192,7 +196,11 @@ describe("PIXAuctionSale", function () {
     beforeEach(async () => {
       await pixCluster
         .connect(owner)
-        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
+        .safeMint(await alice.getAddress(), [
+          0,
+          PIXCategory.Rare,
+          PIXSize.Sector,
+        ]);
       await pixCluster.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
 
@@ -310,7 +318,11 @@ describe("PIXAuctionSale", function () {
     beforeEach(async () => {
       await pixCluster
         .connect(owner)
-        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
+        .safeMint(await alice.getAddress(), [
+          0,
+          PIXCategory.Rare,
+          PIXSize.Sector,
+        ]);
       await pixCluster.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
       await auctionSale
@@ -370,7 +382,11 @@ describe("PIXAuctionSale", function () {
     beforeEach(async () => {
       await pixCluster
         .connect(owner)
-        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
+        .safeMint(await alice.getAddress(), [
+          0,
+          PIXCategory.Rare,
+          PIXSize.Sector,
+        ]);
       await pixCluster.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
 
@@ -540,7 +556,11 @@ describe("PIXAuctionSale", function () {
     beforeEach(async () => {
       await pixCluster
         .connect(owner)
-        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
+        .safeMint(await alice.getAddress(), [
+          0,
+          PIXCategory.Rare,
+          PIXSize.Sector,
+        ]);
       await pixCluster.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
 
@@ -667,7 +687,11 @@ describe("PIXAuctionSale", function () {
     beforeEach(async () => {
       await pixCluster
         .connect(owner)
-        .safeMint(await alice.getAddress(), [PIXCategory.Rare, PIXSize.Sector]);
+        .safeMint(await alice.getAddress(), [
+          0,
+          PIXCategory.Rare,
+          PIXSize.Sector,
+        ]);
       await pixCluster.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
 
