@@ -15,34 +15,29 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
         address indexed seller,
         uint256 indexed saleId,
         address nftToken,
-        address paymentToken,
         uint64 endTime,
         uint256[] tokenIds,
         uint256 price
     );
     event SaleUpdated(
         uint256 indexed saleId,
-        address indexed paymentToken,
         uint64 newEndTime,
         uint256 newPrice
     );
     event Bid(
         address indexed bidder,
         uint256 indexed saleId,
-        address indexed paymentToken,
         uint256 bidAmount
     );
     event BidCancelled(
         address indexed bidder,
         uint256 indexed saleId,
-        address indexed paymentToken,
         uint256 bidAmount
     );
 
     struct AuctionSaleInfo {
         address seller; // Seller address
         address nftToken; // Nft token address
-        address paymentToken; // Sell token - address(0) is Eth
         uint64 endTime; // Auction end time
         uint256 minPrice; // min auction price
         uint256[] tokenIds; // List of tokenIds
@@ -56,8 +51,12 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
     mapping(uint256 => AuctionSaleInfo) public saleInfo;
     mapping(uint256 => AuctionSaleState) public saleState;
 
-    constructor(address _treasury, uint256 _tradingFeePct)
-        PIXBaseSale(_treasury, _tradingFeePct)
+    constructor(
+        address _treasury,
+        uint256 _tradingFeePct,
+        address _pixt
+    )
+        PIXBaseSale(_treasury, _tradingFeePct, _pixt)
     // solhint-disable-next-line no-empty-blocks
     {
 
@@ -66,21 +65,15 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
     /** @notice request sale for fixed price
      *  @param _nftToken NFT token address for sale
      *  @param _tokenIds List of tokenIds
-     *  @param _paymentToken Token address for sale
      *  @param _endTime Auction end time
      *  @param _minPrice fixed sale price
      */
     function requestSale(
         address _nftToken,
         uint256[] calldata _tokenIds,
-        address _paymentToken,
         uint64 _endTime,
         uint256 _minPrice
-    )
-        external
-        onlyWhitelistedNftToken(_nftToken)
-        onlyWhitelistedPaymentToken(_paymentToken)
-    {
+    ) external onlyWhitelistedNftToken(_nftToken) {
         require(_minPrice > 0, ">0");
         require(_tokenIds.length > 0, "No tokens");
         // solhint-disable-next-line not-rely-on-time
@@ -98,7 +91,6 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
         saleInfo[lastSaleId] = AuctionSaleInfo({
             seller: msg.sender,
             nftToken: _nftToken,
-            paymentToken: _paymentToken,
             endTime: _endTime,
             minPrice: _minPrice,
             tokenIds: _tokenIds
@@ -108,7 +100,6 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
             msg.sender,
             lastSaleId,
             _nftToken,
-            _paymentToken,
             _endTime,
             _tokenIds,
             _minPrice
@@ -118,27 +109,24 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
     /** @notice update auction info
      *  @dev can update when there is no bid
      *  @param _saleId Sale id to update
-     *  @param _paymentToken new token address
      *  @param _endTime new auction end time
      *  @param _minPrice new min price
      */
     function updateSale(
         uint256 _saleId,
-        address _paymentToken,
         uint64 _endTime,
         uint256 _minPrice
-    ) external onlyWhitelistedPaymentToken(_paymentToken) {
+    ) external {
         require(_minPrice > 0, ">0");
         require(saleInfo[_saleId].seller == msg.sender, "!seller");
         require(saleState[_saleId].bidder == address(0), "has bid");
         // solhint-disable-next-line not-rely-on-time
         require(_endTime > block.timestamp, "invalid time");
 
-        saleInfo[_saleId].paymentToken = _paymentToken;
         saleInfo[_saleId].endTime = _endTime;
         saleInfo[_saleId].minPrice = _minPrice;
 
-        emit SaleUpdated(_saleId, _paymentToken, _endTime, _minPrice);
+        emit SaleUpdated(_saleId, _endTime, _minPrice);
     }
 
     /** @notice cancel sale request
@@ -183,56 +171,27 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
             "invalid price"
         );
 
-        if (_saleInfo.paymentToken == address(0)) {
-            require(_amount == msg.value, "invalid amount");
-        } else {
-            uint256 balanceBefore = IERC20(_saleInfo.paymentToken).balanceOf(
-                address(this)
-            );
-            IERC20(_saleInfo.paymentToken).safeTransferFrom(
-                msg.sender,
-                address(this),
-                _amount
-            );
-            require(
-                IERC20(_saleInfo.paymentToken).balanceOf(address(this)) -
-                    balanceBefore ==
-                    _amount,
-                "invalid amount"
-            );
+        if (_saleState.bidder != address(0)) {
+            pixt.safeTransfer(_saleState.bidder, _saleState.bidAmount);
         }
+        pixt.safeTransferFrom(msg.sender, address(this), _amount);
 
         _saleState.bidder = msg.sender;
         _saleState.bidAmount = _amount;
 
-        emit Bid(msg.sender, _saleId, _saleInfo.paymentToken, _amount);
+        emit Bid(msg.sender, _saleId, _amount);
     }
 
     /** @notice cancel bid
      *  @param _saleId Sale ID
      */
     function cancelBid(uint256 _saleId) external nonReentrant {
-        AuctionSaleInfo storage _saleInfo = saleInfo[_saleId];
         AuctionSaleState storage _saleState = saleState[_saleId];
         require(_saleState.bidder == msg.sender, "!bidder");
 
-        if (_saleInfo.paymentToken == address(0)) {
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = msg.sender.call{value: _saleState.bidAmount}("");
-            require(success, "Transfer failed!");
-        } else {
-            IERC20(_saleInfo.paymentToken).safeTransfer(
-                msg.sender,
-                _saleState.bidAmount
-            );
-        }
+        pixt.safeTransfer(msg.sender, _saleState.bidAmount);
 
-        emit BidCancelled(
-            msg.sender,
-            _saleId,
-            _saleInfo.paymentToken,
-            _saleState.bidAmount
-        );
+        emit BidCancelled(msg.sender, _saleId, _saleState.bidAmount);
 
         delete saleState[_saleId];
     }
@@ -249,25 +208,9 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
         require(_saleInfo.endTime <= block.timestamp, "!ended");
 
         uint256 fee = _saleState.bidAmount.decimalMul(tradingFeePct);
-        if (_saleInfo.paymentToken == address(0)) {
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = _saleInfo.seller.call{
-                value: _saleState.bidAmount - fee
-            }("");
-            require(success, "Transfer failed!");
-            if (fee > 0) {
-                // solhint-disable-next-line avoid-low-level-calls
-                (success, ) = treasury.call{value: fee}("");
-                require(success, "Transfer failed!");
-            }
-        } else {
-            IERC20(_saleInfo.paymentToken).safeTransfer(
-                _saleInfo.seller,
-                _saleState.bidAmount - fee
-            );
-            if (fee > 0) {
-                IERC20(_saleInfo.paymentToken).safeTransfer(treasury, fee);
-            }
+        pixt.safeTransfer(_saleInfo.seller, _saleState.bidAmount - fee);
+        if (fee > 0) {
+            pixt.safeTransfer(treasury, fee);
         }
 
         for (uint256 i = 0; i < _saleInfo.tokenIds.length; i += 1) {
@@ -282,7 +225,6 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
             _saleInfo.seller,
             _saleState.bidder,
             _saleId,
-            _saleInfo.paymentToken,
             _saleState.bidAmount
         );
 

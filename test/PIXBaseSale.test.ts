@@ -6,6 +6,7 @@ import {
   BigNumber,
   ContractFactory,
   constants,
+  utils,
 } from "ethers";
 import { DENOMINATOR, generateRandomAddress } from "./utils";
 
@@ -14,6 +15,7 @@ describe("PIXBaseSale", function () {
   let alice: Signer;
   let treasury: string = generateRandomAddress();
   let fixedSale: Contract;
+  let pixtToken: Contract;
   const tradingFeePct = BigNumber.from("100");
 
   beforeEach(async function () {
@@ -21,8 +23,15 @@ describe("PIXBaseSale", function () {
     owner = signers[0];
     alice = signers[1];
 
+    const PIXTFactory = await ethers.getContractFactory("PIXT");
+    pixtToken = await PIXTFactory.deploy(utils.parseEther("140000000"));
+
     const PIXFixedSaleFactory = await ethers.getContractFactory("PIXFixedSale");
-    fixedSale = await PIXFixedSaleFactory.deploy(treasury, tradingFeePct);
+    fixedSale = await PIXFixedSaleFactory.deploy(
+      treasury,
+      tradingFeePct,
+      pixtToken.address
+    );
   });
 
   describe("constructor", () => {
@@ -35,11 +44,16 @@ describe("PIXBaseSale", function () {
     it("check initial values", async () => {
       expect(await fixedSale.tradingFeePct()).to.be.equal(tradingFeePct);
       expect(await fixedSale.treasury()).to.be.equal(treasury);
+      expect(await fixedSale.pixt()).to.be.equal(pixtToken.address);
     });
 
     it("revert if treasury is 0x0", async () => {
       await expect(
-        PIXFixedSaleFactory.deploy(constants.AddressZero, tradingFeePct)
+        PIXFixedSaleFactory.deploy(
+          constants.AddressZero,
+          tradingFeePct,
+          pixtToken.address
+        )
       ).to.revertedWith("Treasury 0x!");
     });
 
@@ -47,9 +61,20 @@ describe("PIXBaseSale", function () {
       await expect(
         PIXFixedSaleFactory.deploy(
           treasury,
-          DENOMINATOR.add(BigNumber.from("1"))
+          DENOMINATOR.add(BigNumber.from("1")),
+          pixtToken.address
         )
       ).to.revertedWith("Fee overflow");
+    });
+
+    it("revert if pixtToken is zero", async () => {
+      await expect(
+        PIXFixedSaleFactory.deploy(
+          treasury,
+          tradingFeePct,
+          constants.AddressZero
+        )
+      ).to.revertedWith("PIXT 0x!");
     });
   });
 
@@ -98,21 +123,6 @@ describe("PIXBaseSale", function () {
         .setTradingFeePct(newTradingFeePct);
       expect(await fixedSale.tradingFeePct()).to.be.equal(newTradingFeePct);
       expect(tx).to.emit(fixedSale, "FeeUpdated").withArgs(newTradingFeePct);
-    });
-  });
-
-  describe("#setWhitelistPaymentToken function", () => {
-    const token = generateRandomAddress();
-
-    it("revert if msg.sender is not owner", async () => {
-      await expect(
-        fixedSale.connect(alice).setWhitelistPaymentToken(token, true)
-      ).to.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("should whitelist payment token", async () => {
-      await fixedSale.connect(owner).setWhitelistPaymentToken(token, true);
-      expect(await fixedSale.whitelistedPaymentTokens(token)).to.be.equal(true);
     });
   });
 
