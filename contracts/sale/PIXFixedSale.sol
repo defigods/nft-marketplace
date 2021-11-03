@@ -15,28 +15,26 @@ contract PIXFixedSale is PIXBaseSale {
         address indexed seller,
         uint256 indexed saleId,
         address nftToken,
-        address paymentToken,
         uint256[] tokenIds,
         uint256 price
     );
-    event SaleUpdated(
-        uint256 indexed saleId,
-        address indexed token,
-        uint256 newPrice
-    );
+    event SaleUpdated(uint256 indexed saleId, uint256 newPrice);
 
     struct FixedSaleInfo {
         address seller; // Seller address
         address nftToken; // Nft token address
-        address paymentToken; // Sell token - address(0) is Eth
         uint256 price; // Fixed sale price
         uint256[] tokenIds; // List of tokenIds
     }
 
     mapping(uint256 => FixedSaleInfo) public saleInfo;
 
-    constructor(address _treasury, uint256 _tradingFeePct)
-        PIXBaseSale(_treasury, _tradingFeePct)
+    constructor(
+        address _treasury,
+        uint256 _tradingFeePct,
+        address _pixt
+    )
+        PIXBaseSale(_treasury, _tradingFeePct, _pixt)
     // solhint-disable-next-line no-empty-blocks
     {
 
@@ -45,19 +43,13 @@ contract PIXFixedSale is PIXBaseSale {
     /** @notice request sale for fixed price
      *  @param _nftToken NFT token address for sale
      *  @param _tokenIds List of tokenIds
-     *  @param _paymentToken Token address for payment
      *  @param _price fixed sale price
      */
     function requestSale(
         address _nftToken,
         uint256[] calldata _tokenIds,
-        address _paymentToken,
         uint256 _price
-    )
-        external
-        onlyWhitelistedNftToken(_nftToken)
-        onlyWhitelistedPaymentToken(_paymentToken)
-    {
+    ) external onlyWhitelistedNftToken(_nftToken) {
         require(_price > 0, ">0");
         require(_tokenIds.length > 0, "No tokens");
 
@@ -73,7 +65,6 @@ contract PIXFixedSale is PIXBaseSale {
         saleInfo[lastSaleId] = FixedSaleInfo({
             seller: msg.sender,
             nftToken: _nftToken,
-            paymentToken: _paymentToken,
             price: _price,
             tokenIds: _tokenIds
         });
@@ -82,7 +73,6 @@ contract PIXFixedSale is PIXBaseSale {
             msg.sender,
             lastSaleId,
             _nftToken,
-            _paymentToken,
             _tokenIds,
             _price
         );
@@ -90,21 +80,15 @@ contract PIXFixedSale is PIXBaseSale {
 
     /** @notice update sale info
      *  @param _saleId Sale id to update
-     *  @param _paymentToken new token address
      *  @param _price new price
      */
-    function updateSale(
-        uint256 _saleId,
-        address _paymentToken,
-        uint256 _price
-    ) external onlyWhitelistedPaymentToken(_paymentToken) {
+    function updateSale(uint256 _saleId, uint256 _price) external {
         require(saleInfo[_saleId].seller == msg.sender, "!seller");
         require(_price > 0, ">0");
 
-        saleInfo[_saleId].paymentToken = _paymentToken;
         saleInfo[_saleId].price = _price;
 
-        emit SaleUpdated(_saleId, _paymentToken, _price);
+        emit SaleUpdated(_saleId, _price);
     }
 
     /** @notice cancel sale request
@@ -135,31 +119,13 @@ contract PIXFixedSale is PIXBaseSale {
         require(_saleInfo.price > 0, "!sale");
 
         uint256 fee = _saleInfo.price.decimalMul(tradingFeePct);
-        if (_saleInfo.paymentToken == address(0)) {
-            require(_saleInfo.price == msg.value, "!price");
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = _saleInfo.seller.call{
-                value: _saleInfo.price - fee
-            }("");
-            require(success, "Transfer failed!");
-            if (fee > 0) {
-                // solhint-disable-next-line avoid-low-level-calls
-                (success, ) = treasury.call{value: fee}("");
-                require(success, "Transfer failed!");
-            }
-        } else {
-            IERC20(_saleInfo.paymentToken).safeTransferFrom(
-                msg.sender,
-                _saleInfo.seller,
-                _saleInfo.price - fee
-            );
-            if (fee > 0) {
-                IERC20(_saleInfo.paymentToken).safeTransferFrom(
-                    msg.sender,
-                    treasury,
-                    fee
-                );
-            }
+        pixt.safeTransferFrom(
+            msg.sender,
+            _saleInfo.seller,
+            _saleInfo.price - fee
+        );
+        if (fee > 0) {
+            pixt.safeTransferFrom(msg.sender, treasury, fee);
         }
 
         for (uint256 i = 0; i < _saleInfo.tokenIds.length; i += 1) {
@@ -170,13 +136,7 @@ contract PIXFixedSale is PIXBaseSale {
             );
         }
 
-        emit Purchased(
-            _saleInfo.seller,
-            msg.sender,
-            _saleId,
-            _saleInfo.paymentToken,
-            _saleInfo.price
-        );
+        emit Purchased(_saleInfo.seller, msg.sender, _saleId, _saleInfo.price);
 
         delete saleInfo[_saleId];
     }

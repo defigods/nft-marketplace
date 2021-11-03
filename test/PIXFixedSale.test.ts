@@ -15,6 +15,7 @@ describe("PIXFixedSale", function () {
   let treasury: string = generateRandomAddress();
   let pixCluster: Contract;
   let fixedSale: Contract;
+  let pixtToken: Contract;
   const tradingFeePct = BigNumber.from("100");
 
   beforeEach(async function () {
@@ -29,8 +30,17 @@ describe("PIXFixedSale", function () {
       .connect(owner)
       .setModerator(await owner.getAddress(), true);
 
+    const PIXTFactory = await ethers.getContractFactory("PIXT");
+    pixtToken = await PIXTFactory.connect(bob).deploy(
+      utils.parseEther("140000000")
+    );
+
     const PIXFixedSaleFactory = await ethers.getContractFactory("PIXFixedSale");
-    fixedSale = await PIXFixedSaleFactory.deploy(treasury, tradingFeePct);
+    fixedSale = await PIXFixedSaleFactory.deploy(
+      treasury,
+      tradingFeePct,
+      pixtToken.address
+    );
 
     await fixedSale.setWhitelistedNftTokens(pixCluster.address, true);
   });
@@ -49,77 +59,40 @@ describe("PIXFixedSale", function () {
         ]);
     });
 
-    it("revert if token is not whitelisted", async () => {
-      await expect(
-        fixedSale
-          .connect(alice)
-          .requestSale(
-            pixCluster.address,
-            [tokenId],
-            generateRandomAddress(),
-            price
-          )
-      ).to.revertedWith("Not whitelisted");
-    });
-
     it("revert if nft token is not whitelisted", async () => {
-      const tokenAddress = generateRandomAddress();
-      await fixedSale
-        .connect(owner)
-        .setWhitelistPaymentToken(tokenAddress, true);
-
       await expect(
         fixedSale
           .connect(alice)
-          .requestSale(generateRandomAddress(), [tokenId], tokenAddress, 0)
+          .requestSale(generateRandomAddress(), [tokenId], 1)
       ).to.revertedWith("Not whitelisted");
     });
 
     it("revert if price is 0", async () => {
-      const tokenAddress = generateRandomAddress();
-      await fixedSale
-        .connect(owner)
-        .setWhitelistPaymentToken(tokenAddress, true);
       await expect(
-        fixedSale
-          .connect(alice)
-          .requestSale(pixCluster.address, [tokenId], tokenAddress, 0)
+        fixedSale.connect(alice).requestSale(pixCluster.address, [tokenId], 0)
       ).to.revertedWith(">0");
     });
 
     it("revert if no token list", async () => {
-      const tokenAddress = generateRandomAddress();
-      await fixedSale
-        .connect(owner)
-        .setWhitelistPaymentToken(tokenAddress, true);
       await expect(
-        fixedSale
-          .connect(alice)
-          .requestSale(pixCluster.address, [], tokenAddress, 1)
+        fixedSale.connect(alice).requestSale(pixCluster.address, [], 1)
       ).to.revertedWith("No tokens");
     });
 
     it("revert if PIX not approved", async () => {
-      const tokenAddress = generateRandomAddress();
-      await fixedSale
-        .connect(owner)
-        .setWhitelistPaymentToken(tokenAddress, true);
       await expect(
         fixedSale
           .connect(alice)
-          .requestSale(pixCluster.address, [tokenId], tokenAddress, price)
+          .requestSale(pixCluster.address, [tokenId], price)
       ).to.revertedWith("ERC721: transfer caller is not owner nor approved");
     });
 
     it("should request sale and emit SaleRequested event", async () => {
       await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
-      const tokenAddress = generateRandomAddress();
-      await fixedSale
-        .connect(owner)
-        .setWhitelistPaymentToken(tokenAddress, true);
+
       const tx = await fixedSale
         .connect(alice)
-        .requestSale(pixCluster.address, [tokenId], tokenAddress, price);
+        .requestSale(pixCluster.address, [tokenId], price);
 
       const lastSaleId = 1;
       expect(await fixedSale.lastSaleId()).to.be.equal(lastSaleId);
@@ -127,7 +100,6 @@ describe("PIXFixedSale", function () {
       const saleInfo = await fixedSale.saleInfo(lastSaleId);
       expect(saleInfo.seller).to.be.equal(await alice.getAddress());
       expect(saleInfo.nftToken).to.be.equal(pixCluster.address);
-      expect(saleInfo.paymentToken).to.be.equal(tokenAddress);
       expect(saleInfo.price).to.be.equal(price);
 
       expect(await pixCluster.ownerOf(tokenId)).to.be.equal(fixedSale.address);
@@ -138,7 +110,6 @@ describe("PIXFixedSale", function () {
           await alice.getAddress(),
           lastSaleId,
           pixCluster.address,
-          tokenAddress,
           [tokenId],
           price
         );
@@ -148,7 +119,6 @@ describe("PIXFixedSale", function () {
   describe("#updateSale function", () => {
     const tokenId = 1;
     const price = utils.parseEther("1");
-    const tokenAddress = generateRandomAddress();
     const lastSaleId = 1;
 
     beforeEach(async () => {
@@ -161,69 +131,42 @@ describe("PIXFixedSale", function () {
         ]);
       await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
       await fixedSale
-        .connect(owner)
-        .setWhitelistPaymentToken(tokenAddress, true);
-      await fixedSale
         .connect(alice)
-        .requestSale(pixCluster.address, [tokenId], tokenAddress, price);
-    });
-
-    it("revert if token is not whitelisted", async () => {
-      await expect(
-        fixedSale
-          .connect(alice)
-          .updateSale(lastSaleId, generateRandomAddress(), price)
-      ).to.revertedWith("Not whitelisted");
+        .requestSale(pixCluster.address, [tokenId], price);
     });
 
     it("revert if msg.sender is not seller", async () => {
-      const newTokenAddress = generateRandomAddress();
-      await fixedSale
-        .connect(owner)
-        .setWhitelistPaymentToken(newTokenAddress, true);
-
       await expect(
-        fixedSale.connect(bob).updateSale(lastSaleId, newTokenAddress, price)
+        fixedSale.connect(bob).updateSale(lastSaleId, price)
       ).to.revertedWith("!seller");
     });
 
     it("revert if price is 0", async () => {
-      const newTokenAddress = generateRandomAddress();
-      await fixedSale
-        .connect(owner)
-        .setWhitelistPaymentToken(newTokenAddress, true);
-
       await expect(
-        fixedSale.connect(alice).updateSale(lastSaleId, newTokenAddress, 0)
+        fixedSale.connect(alice).updateSale(lastSaleId, 0)
       ).to.revertedWith(">0");
     });
 
     it("should update sale and emit SaleUpdated event", async () => {
-      const newTokenAddress = generateRandomAddress();
-      await fixedSale
-        .connect(owner)
-        .setWhitelistPaymentToken(newTokenAddress, true);
       const newPrice = utils.parseEther("2");
       const tx = await fixedSale
         .connect(alice)
-        .updateSale(lastSaleId, newTokenAddress, newPrice);
+        .updateSale(lastSaleId, newPrice);
 
       const saleInfo = await fixedSale.saleInfo(lastSaleId);
       expect(saleInfo.seller).to.be.equal(await alice.getAddress());
       expect(saleInfo.nftToken).to.be.equal(pixCluster.address);
-      expect(saleInfo.paymentToken).to.be.equal(newTokenAddress);
       expect(saleInfo.price).to.be.equal(newPrice);
 
       await expect(tx)
         .emit(fixedSale, "SaleUpdated")
-        .withArgs(lastSaleId, newTokenAddress, newPrice);
+        .withArgs(lastSaleId, newPrice);
     });
   });
 
   describe("#cancelSale function", () => {
     const tokenId = 1;
     const price = utils.parseEther("1");
-    const tokenAddress = generateRandomAddress();
     const lastSaleId = 1;
 
     beforeEach(async () => {
@@ -235,14 +178,9 @@ describe("PIXFixedSale", function () {
           PIXSize.Sector,
         ]);
       await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
-
-      await fixedSale
-        .connect(owner)
-        .setWhitelistPaymentToken(tokenAddress, true);
-
       await fixedSale
         .connect(alice)
-        .requestSale(pixCluster.address, [tokenId], tokenAddress, price);
+        .requestSale(pixCluster.address, [tokenId], price);
     });
 
     it("revert if msg.sender is not seller", async () => {
@@ -257,7 +195,6 @@ describe("PIXFixedSale", function () {
       const saleInfo = await fixedSale.saleInfo(lastSaleId);
       expect(saleInfo.seller).to.be.equal(constants.AddressZero);
       expect(saleInfo.nftToken).to.be.equal(constants.AddressZero);
-      expect(saleInfo.paymentToken).to.be.equal(constants.AddressZero);
       expect(saleInfo.price).to.be.equal(0);
 
       expect(await pixCluster.ownerOf(tokenId)).to.be.equal(
@@ -282,10 +219,6 @@ describe("PIXFixedSale", function () {
           PIXSize.Sector,
         ]);
 
-      await fixedSale
-        .connect(owner)
-        .setWhitelistPaymentToken(constants.AddressZero, true);
-
       await pixCluster.connect(alice).approve(fixedSale.address, tokenId);
     });
 
@@ -295,127 +228,25 @@ describe("PIXFixedSale", function () {
       ).to.revertedWith("!sale");
     });
 
-    it("revert if not send correct ether", async () => {
-      await fixedSale
-        .connect(alice)
-        .requestSale(
-          pixCluster.address,
-          [tokenId],
-          constants.AddressZero,
-          price
-        );
-      await expect(
-        fixedSale
-          .connect(bob)
-          .purchasePIX(tokenId, { value: utils.parseEther("2") })
-      ).to.revertedWith("!price");
-    });
-
-    it("should purchase PIX using ether and send to seller and treasury", async () => {
-      await fixedSale
-        .connect(alice)
-        .requestSale(
-          pixCluster.address,
-          [tokenId],
-          constants.AddressZero,
-          price
-        );
-      const aliceBalanceBefore = await alice.getBalance();
-      const treasuryBalanceBefore = await ethers.provider.getBalance(treasury);
-      const tx = await fixedSale
-        .connect(bob)
-        .purchasePIX(lastTokenId, { value: price });
-      expect(await pixCluster.ownerOf(tokenId)).to.be.equal(
-        await bob.getAddress()
-      );
-      const fee = price.mul(tradingFeePct).div(DENOMINATOR);
-      expect(await alice.getBalance()).to.be.equal(
-        aliceBalanceBefore.add(price).sub(fee)
-      );
-      expect(await ethers.provider.getBalance(treasury)).to.be.equal(
-        treasuryBalanceBefore.add(fee)
-      );
-      expect(tx)
-        .to.emit(fixedSale, "Purchased")
-        .withArgs(
-          await alice.getAddress(),
-          await bob.getAddress(),
-          lastTokenId,
-          constants.AddressZero,
-          price
-        );
-      const saleInfo = await fixedSale.saleInfo(lastTokenId);
-      expect(saleInfo.seller).to.be.equal(constants.AddressZero);
-      expect(saleInfo.nftToken).to.be.equal(constants.AddressZero);
-      expect(saleInfo.paymentToken).to.be.equal(constants.AddressZero);
-      expect(saleInfo.price).to.be.equal(0);
-    });
-
-    it("should not send fee if tradingFeePct is zero", async () => {
-      await fixedSale.connect(owner).setTradingFeePct(0);
-      await fixedSale
-        .connect(alice)
-        .requestSale(
-          pixCluster.address,
-          [tokenId],
-          constants.AddressZero,
-          price
-        );
-      const aliceBalanceBefore = await alice.getBalance();
-      const treasuryBalanceBefore = await ethers.provider.getBalance(treasury);
-      const tx = await fixedSale
-        .connect(bob)
-        .purchasePIX(lastTokenId, { value: price });
-      expect(await pixCluster.ownerOf(tokenId)).to.be.equal(
-        await bob.getAddress()
-      );
-      expect(await alice.getBalance()).to.be.equal(
-        aliceBalanceBefore.add(price)
-      );
-      expect(await ethers.provider.getBalance(treasury)).to.be.equal(
-        treasuryBalanceBefore
-      );
-      expect(tx)
-        .to.emit(fixedSale, "Purchased")
-        .withArgs(
-          await alice.getAddress(),
-          await bob.getAddress(),
-          lastTokenId,
-          constants.AddressZero,
-          price
-        );
-      const saleInfo = await fixedSale.saleInfo(lastTokenId);
-      expect(saleInfo.seller).to.be.equal(constants.AddressZero);
-      expect(saleInfo.nftToken).to.be.equal(constants.AddressZero);
-      expect(saleInfo.paymentToken).to.be.equal(constants.AddressZero);
-      expect(saleInfo.price).to.be.equal(0);
-    });
-
-    it("should purchase PIX using ERC20 token and send to seller and treasury", async () => {
-      const MockTokenFactory = await ethers.getContractFactory("MockToken");
-      const mockToken = await MockTokenFactory.connect(bob).deploy();
-      await mockToken.connect(bob).approve(fixedSale.address, price);
-
-      await fixedSale
-        .connect(owner)
-        .setWhitelistPaymentToken(mockToken.address, true);
+    it("should purchase PIX and send to seller and treasury", async () => {
+      await pixtToken.connect(bob).approve(fixedSale.address, price);
 
       await fixedSale
         .connect(alice)
-        .requestSale(pixCluster.address, [tokenId], mockToken.address, price);
-      const aliceBalanceBefore = await mockToken.balanceOf(
+        .requestSale(pixCluster.address, [tokenId], price);
+      const aliceBalanceBefore = await pixtToken.balanceOf(
         await alice.getAddress()
       );
-      const treasuryBalanceBefore = await mockToken.balanceOf(treasury);
+      const treasuryBalanceBefore = await pixtToken.balanceOf(treasury);
       const tx = await fixedSale.connect(bob).purchasePIX(lastTokenId);
       expect(await pixCluster.ownerOf(tokenId)).to.be.equal(
         await bob.getAddress()
       );
       const fee = price.mul(tradingFeePct).div(DENOMINATOR);
-      expect(await mockToken.balanceOf(await alice.getAddress())).to.be.equal(
+      expect(await pixtToken.balanceOf(await alice.getAddress())).to.be.equal(
         aliceBalanceBefore.add(price).sub(fee)
       );
-      expect(await mockToken.balanceOf(treasury)).to.be.equal(
+      expect(await pixtToken.balanceOf(treasury)).to.be.equal(
         treasuryBalanceBefore.add(fee)
       );
       expect(tx)
@@ -424,7 +255,6 @@ describe("PIXFixedSale", function () {
           await alice.getAddress(),
           await bob.getAddress(),
           lastTokenId,
-          mockToken.address,
           price
         );
       const saleInfo = await fixedSale.saleInfo(lastTokenId);
@@ -434,29 +264,23 @@ describe("PIXFixedSale", function () {
 
     it("should not send fee if tradingFeePct is zero", async () => {
       await fixedSale.connect(owner).setTradingFeePct(0);
-      const MockTokenFactory = await ethers.getContractFactory("MockToken");
-      const mockToken = await MockTokenFactory.connect(bob).deploy();
-      await mockToken.connect(bob).approve(fixedSale.address, price);
-
-      await fixedSale
-        .connect(owner)
-        .setWhitelistPaymentToken(mockToken.address, true);
+      await pixtToken.connect(bob).approve(fixedSale.address, price);
 
       await fixedSale
         .connect(alice)
-        .requestSale(pixCluster.address, [tokenId], mockToken.address, price);
-      const aliceBalanceBefore = await mockToken.balanceOf(
+        .requestSale(pixCluster.address, [tokenId], price);
+      const aliceBalanceBefore = await pixtToken.balanceOf(
         await alice.getAddress()
       );
-      const treasuryBalanceBefore = await mockToken.balanceOf(treasury);
+      const treasuryBalanceBefore = await pixtToken.balanceOf(treasury);
       const tx = await fixedSale.connect(bob).purchasePIX(tokenId);
       expect(await pixCluster.ownerOf(tokenId)).to.be.equal(
         await bob.getAddress()
       );
-      expect(await mockToken.balanceOf(await alice.getAddress())).to.be.equal(
+      expect(await pixtToken.balanceOf(await alice.getAddress())).to.be.equal(
         aliceBalanceBefore.add(price)
       );
-      expect(await mockToken.balanceOf(treasury)).to.be.equal(
+      expect(await pixtToken.balanceOf(treasury)).to.be.equal(
         treasuryBalanceBefore
       );
       expect(tx)
@@ -465,13 +289,11 @@ describe("PIXFixedSale", function () {
           await alice.getAddress(),
           await bob.getAddress(),
           tokenId,
-          mockToken.address,
           price
         );
       const saleInfo = await fixedSale.saleInfo(tokenId);
       expect(saleInfo.seller).to.be.equal(constants.AddressZero);
       expect(saleInfo.nftToken).to.be.equal(constants.AddressZero);
-      expect(saleInfo.paymentToken).to.be.equal(constants.AddressZero);
       expect(saleInfo.price).to.be.equal(0);
     });
   });
