@@ -1,8 +1,9 @@
 const hre = require('hardhat');
+const { utils } = require('ethers');
 
 async function main() {
-  const PIX = await hre.ethers.getContractFactory('PIX');
-  const pixt = await PIX.deploy();
+  const PIXT = await hre.ethers.getContractFactory('PIXT');
+  const pixt = await PIXT.deploy(utils.parseEther('140000000'));
   await pixt.deployed();
 
   const PIXCluster = await hre.ethers.getContractFactory('PIXCluster');
@@ -10,8 +11,8 @@ async function main() {
 
   await cluster.deployed();
 
-  console.log('PIXCluster at ', cluster.address);
-  console.log('PIX Token at ', pixt.address);
+  console.log('PIXCluster at', cluster.address);
+  console.log('PIX Token at', pixt.address);
 }
 
 main()
