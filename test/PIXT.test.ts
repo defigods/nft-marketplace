@@ -6,8 +6,8 @@ describe("PIXT", function () {
   let pixtToken: Contract;
   let alice: Signer;
   let totalSupply = utils.parseEther("100000");
-  const NAME = "PIXT";
-  const SYMBOL = "PIXT";
+  const NAME = "PlanetIX";
+  const SYMBOL = "IXT";
 
   beforeEach(async function () {
     const signers = await ethers.getSigners();

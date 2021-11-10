@@ -6,11 +6,11 @@ async function main() {
   await pixt.deployed();
 
   const PIXCluster = await hre.ethers.getContractFactory('PIXCluster');
-  const cluster = await PIXCluster.deploy(pixt.address);
+  const pix = await PIXCluster.deploy(pixt.address);
 
-  await cluster.deployed();
+  await pix.deployed();
 
-  console.log('PIXCluster at ', cluster.address);
+  console.log('PIXCluster at ', pix.address);
   console.log('PIX Token at ', pixt.address);
 }
 
