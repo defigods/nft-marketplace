@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 import { Signer, Contract, BigNumber, constants } from "ethers";
 import { PIXCategory, PIXSize } from "./utils";
 
-describe("PIXCluster", function () {
+describe("PIX", function () {
   let owner: Signer;
   let alice: Signer;
   let pixToken: Contract;
@@ -15,22 +15,22 @@ describe("PIXCluster", function () {
 
     const MockTokenFactory = await ethers.getContractFactory("MockToken");
     pixToken = await MockTokenFactory.deploy();
-    const PIXClusterFactory = await ethers.getContractFactory("PIXCluster");
-    pixNFT = await PIXClusterFactory.deploy(pixToken.address);
+    const PIXFactory = await ethers.getContractFactory("PIX");
+    pixNFT = await PIXFactory.deploy(pixToken.address);
     await pixToken.transfer(await alice.getAddress(), BigNumber.from(200));
     await pixToken.connect(alice).approve(pixNFT.address, BigNumber.from(200));
   });
 
   describe("constructor", () => {
     it("revert if token is zero address", async function () {
-      const PIXCluster = await ethers.getContractFactory("PIXCluster");
-      await expect(PIXCluster.deploy(constants.AddressZero)).to.revertedWith(
+      const PIX = await ethers.getContractFactory("PIX");
+      await expect(PIX.deploy(constants.AddressZero)).to.revertedWith(
         "PIX Token cannot be zero address"
       );
     });
 
     it("check initial values", async function () {
-      expect(await pixNFT.combineCounts(PIXSize.Cluster)).equal(50);
+      expect(await pixNFT.combineCounts(PIXSize.Pix)).equal(50);
       expect(await pixNFT.moderators(await owner.getAddress())).equal(true);
     });
   });
@@ -132,6 +132,14 @@ describe("PIXCluster", function () {
       ).to.revertedWith("No pending mint request");
     });
 
+    it("revert if invalid parameters", async function () {
+      await pixNFT.setMintFee(price);
+      await pixNFT.connect(alice).requestMint();
+      await expect(
+        pixNFT.mintTo(await alice.getAddress(), [1], [])
+      ).to.revertedWith("Invalid length of parameters");
+    });
+
     it("revert if invalid categories length", async function () {
       await pixNFT.setMintFee(price);
       await pixNFT.connect(alice).requestMint();
@@ -140,7 +148,7 @@ describe("PIXCluster", function () {
       ).to.revertedWith("Invalid categories length");
     });
 
-    it("should mint new clusters by moderator", async () => {
+    it("should mint new pixes by moderator", async () => {
       await pixNFT.setMintFee(price);
       await pixNFT.connect(alice).requestMint();
 
@@ -170,14 +178,14 @@ describe("PIXCluster", function () {
         pixNFT.safeMint(await alice.getAddress(), [
           0,
           PIXCategory.Common,
-          PIXSize.Cluster,
+          PIXSize.Pix,
         ])
       ).to.revertedWith("Invalid PIX info");
       await expect(
         pixNFT.safeMint(await alice.getAddress(), [
           1,
           PIXCategory.Common,
-          PIXSize.Domain,
+          PIXSize.Zone,
         ])
       ).to.revertedWith("Invalid PIX info");
     });
@@ -186,12 +194,12 @@ describe("PIXCluster", function () {
       await pixNFT.safeMint(await alice.getAddress(), [
         0,
         PIXCategory.Common,
-        PIXSize.Domain,
+        PIXSize.Zone,
       ]);
       await pixNFT.safeMint(await alice.getAddress(), [
         1,
         PIXCategory.Common,
-        PIXSize.Cluster,
+        PIXSize.Pix,
       ]);
       expect(await pixNFT.totalSupply()).to.equal(2);
     });
@@ -207,10 +215,28 @@ describe("PIXCluster", function () {
     it("should batch mint", async () => {
       const infos = [];
       for (let i = 0; i < 10; i++) {
-        infos.push([0, PIXCategory.Common, PIXSize.Domain]);
+        infos.push([0, PIXCategory.Common, PIXSize.Zone]);
       }
       await pixNFT.batchMint(await alice.getAddress(), infos);
       expect(await pixNFT.totalSupply()).to.equal(10);
+    });
+  });
+
+  describe("#safeBurn", () => {
+    it("should safe burn", async () => {
+      await pixNFT.safeMint(await alice.getAddress(), [
+        0,
+        PIXCategory.Common,
+        PIXSize.Zone,
+      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [
+        1,
+        PIXCategory.Common,
+        PIXSize.Pix,
+      ]);
+      expect(await pixNFT.totalSupply()).to.equal(2);
+      await pixNFT.safeBurn(1);
+      expect(await pixNFT.totalSupply()).to.equal(1);
     });
   });
 
@@ -236,17 +262,17 @@ describe("PIXCluster", function () {
       );
     });
 
-    it("revert if size is federation", async () => {
+    it("revert if size is domain", async () => {
       await pixNFT.setCombineFee(price);
       await pixNFT.safeMint(await alice.getAddress(), [
         0,
         PIXCategory.Rare,
-        PIXSize.Federation,
+        PIXSize.Domain,
       ]);
       await pixNFT.safeMint(await alice.getAddress(), [
         0,
         PIXCategory.Rare,
-        PIXSize.Federation,
+        PIXSize.Domain,
       ]);
       await expect(pixNFT.connect(alice).combine([1, 2])).to.revertedWith(
         "Cannot combine max size"
@@ -258,12 +284,12 @@ describe("PIXCluster", function () {
       await pixNFT.safeMint(await alice.getAddress(), [
         1,
         PIXCategory.Rare,
-        PIXSize.Cluster,
+        PIXSize.Pix,
       ]);
       await pixNFT.safeMint(await alice.getAddress(), [
         1,
         PIXCategory.Rare,
-        PIXSize.Cluster,
+        PIXSize.Pix,
       ]);
       await expect(pixNFT.connect(alice).combine([1, 2])).to.revertedWith(
         "Invalid combination"
@@ -275,7 +301,7 @@ describe("PIXCluster", function () {
       await pixNFT.safeMint(await alice.getAddress(), [
         0,
         PIXCategory.Rare,
-        PIXSize.Domain,
+        PIXSize.Zone,
       ]);
       await pixNFT.safeMint(await alice.getAddress(), [
         0,
@@ -311,7 +337,7 @@ describe("PIXCluster", function () {
         await pixNFT.safeMint(await alice.getAddress(), [
           0,
           PIXCategory.Rare,
-          PIXSize.Domain,
+          PIXSize.Zone,
         ]);
         tokenIds.push(i + 1);
       }
@@ -320,14 +346,14 @@ describe("PIXCluster", function () {
       );
     });
 
-    it("should combine clusters to mint area", async () => {
+    it("should combine pixes to mint area", async () => {
       await pixNFT.setCombineFee(price);
       const tokenIds = [];
       for (let i = 0; i < 50; i++) {
         await pixNFT.safeMint(await alice.getAddress(), [
           i + 1,
           PIXCategory.Common,
-          PIXSize.Cluster,
+          PIXSize.Pix,
         ]);
         tokenIds.push(i + 1);
       }
@@ -358,7 +384,7 @@ describe("PIXCluster", function () {
       expect(await pixNFT.totalSupply()).to.equal(1);
     });
 
-    it("should combine sectors to mint domain", async () => {
+    it("should combine sectors to mint zone", async () => {
       await pixNFT.setCombineFee(price);
       const tokenIds = [];
       for (let i = 0; i < 2; i++) {
@@ -373,18 +399,18 @@ describe("PIXCluster", function () {
       expect(await pixNFT.ownerOf(3)).to.equal(await alice.getAddress());
       expect(tx)
         .to.emit(pixNFT, "Combined")
-        .withArgs(3, PIXCategory.Common, PIXSize.Domain);
+        .withArgs(3, PIXCategory.Common, PIXSize.Zone);
       expect(await pixNFT.totalSupply()).to.equal(1);
     });
 
-    it("should combine domain to mint federation", async () => {
+    it("should combine zone to mint domain", async () => {
       await pixNFT.setCombineFee(price);
       const tokenIds = [];
       for (let i = 0; i < 2; i++) {
         await pixNFT.safeMint(await alice.getAddress(), [
           0,
           PIXCategory.Common,
-          PIXSize.Domain,
+          PIXSize.Zone,
         ]);
         tokenIds.push(i + 1);
       }
@@ -392,7 +418,7 @@ describe("PIXCluster", function () {
       expect(await pixNFT.ownerOf(3)).to.equal(await alice.getAddress());
       expect(tx)
         .to.emit(pixNFT, "Combined")
-        .withArgs(3, PIXCategory.Common, PIXSize.Federation);
+        .withArgs(3, PIXCategory.Common, PIXSize.Domain);
       expect(await pixNFT.totalSupply()).to.equal(1);
     });
   });
@@ -424,7 +450,7 @@ describe("PIXCluster", function () {
         await pixNFT.safeMint(await alice.getAddress(), [
           i + 1,
           PIXCategory.Common,
-          PIXSize.Cluster,
+          PIXSize.Pix,
         ]);
         tokenIds.push(i + 1);
       }

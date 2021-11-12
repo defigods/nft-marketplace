@@ -25,8 +25,8 @@ describe("PIXAuctionSale", function () {
     const signers = await ethers.getSigners();
     [owner, alice, bob, carol] = signers;
 
-    const PIXClusterFactory = await ethers.getContractFactory("PIXCluster");
-    pixNFT = await PIXClusterFactory.deploy(generateRandomAddress());
+    const PIXFactory = await ethers.getContractFactory("PIX");
+    pixNFT = await PIXFactory.deploy(generateRandomAddress());
     await pixNFT.connect(owner).setModerator(await owner.getAddress(), true);
 
     const PIXTFactory = await ethers.getContractFactory("PIXT");
@@ -80,6 +80,12 @@ describe("PIXAuctionSale", function () {
           .connect(alice)
           .requestSale(pixNFT.address, [tokenId], endTime, 0)
       ).to.revertedWith(">0");
+    });
+
+    it("revert if no tokens", async () => {
+      await expect(
+        auctionSale.connect(alice).requestSale(pixNFT.address, [], endTime, 1)
+      ).to.revertedWith("No tokens");
     });
 
     it("revert if endTime is less than block timestamp", async () => {

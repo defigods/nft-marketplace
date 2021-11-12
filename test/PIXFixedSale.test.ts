@@ -24,8 +24,8 @@ describe("PIXFixedSale", function () {
     alice = signers[1];
     bob = signers[2];
 
-    const PIXClusterFactory = await ethers.getContractFactory("PIXCluster");
-    pixNFT = await PIXClusterFactory.deploy(generateRandomAddress());
+    const PIXFactory = await ethers.getContractFactory("PIX");
+    pixNFT = await PIXFactory.deploy(generateRandomAddress());
     await pixNFT.connect(owner).setModerator(await owner.getAddress(), true);
 
     const PIXTFactory = await ethers.getContractFactory("PIXT");

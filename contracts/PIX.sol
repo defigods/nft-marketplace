@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
-contract PIXCluster is ERC721Enumerable, Ownable {
+contract PIX is ERC721Enumerable, Ownable {
     using SafeERC20 for IERC20;
 
     event Combined(uint256 indexed tokenId, PIXCategory category, PIXSize size);
@@ -21,11 +21,11 @@ contract PIXCluster is ERC721Enumerable, Ownable {
     }
 
     enum PIXSize {
-        Cluster,
+        Pix,
         Area,
         Sector,
-        Domain,
-        Federation
+        Zone,
+        Domain
     }
 
     struct PIXInfo {
@@ -34,7 +34,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         PIXSize size;
     }
 
-    uint256 public constant CLUSTER_MINT_COUNT = 50;
+    uint256 public constant PIX_MINT_COUNT = 50;
     IERC20 public immutable pixToken;
     string private _baseURIExtended;
     uint256 public lastTokenId;
@@ -52,14 +52,14 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         _;
     }
 
-    constructor(address pixt) ERC721("PIX Cluster", "PIX") {
+    constructor(address pixt) ERC721("PlanetIX", "PIX") {
         require(pixt != address(0), "PIX Token cannot be zero address");
         pixToken = IERC20(pixt);
         moderators[msg.sender] = true;
-        combineCounts[PIXSize.Cluster] = 50;
+        combineCounts[PIXSize.Pix] = 50;
         combineCounts[PIXSize.Area] = 5;
         combineCounts[PIXSize.Sector] = 2;
-        combineCounts[PIXSize.Domain] = 2;
+        combineCounts[PIXSize.Zone] = 2;
     }
 
     function withdraw() external onlyOwner {
@@ -105,16 +105,16 @@ contract PIXCluster is ERC721Enumerable, Ownable {
             "Invalid length of parameters"
         );
         require(
-            categories.length == CLUSTER_MINT_COUNT,
+            categories.length == PIX_MINT_COUNT,
             "Invalid categories length"
         );
 
-        for (uint256 i = 0; i < CLUSTER_MINT_COUNT; i += 1) {
+        for (uint256 i = 0; i < PIX_MINT_COUNT; i += 1) {
             _safeMint(
                 to,
                 PIXInfo({
                     pixId: pixIds[i],
-                    size: PIXSize.Cluster,
+                    size: PIXSize.Pix,
                     category: categories[i]
                 })
             );
@@ -134,7 +134,7 @@ contract PIXCluster is ERC721Enumerable, Ownable {
         private
     {
         PIXInfo storage firstPix = pixInfos[tokenIds[0]];
-        require(firstPix.size < PIXSize.Federation, "Cannot combine max size");
+        require(firstPix.size < PIXSize.Domain, "Cannot combine max size");
         require(
             tokenIds.length == combineCounts[firstPix.size],
             "Invalid combination"
@@ -178,13 +178,17 @@ contract PIXCluster is ERC721Enumerable, Ownable {
 
     function _safeMint(address to, PIXInfo memory info) internal {
         require(
-            (info.pixId > 0) == (info.size == PIXSize.Cluster),
+            (info.pixId > 0) == (info.size == PIXSize.Pix),
             "Invalid PIX info"
         );
 
         lastTokenId += 1;
         _safeMint(to, lastTokenId);
         pixInfos[lastTokenId] = info;
+    }
+
+    function safeBurn(uint256 tokenId) external onlyMod {
+        _burn(tokenId);
     }
 
     function _baseURI() internal view override returns (string memory) {
