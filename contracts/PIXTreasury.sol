@@ -8,12 +8,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 contract PIXTreasury is Ownable {
     using Address for address;
     using SafeERC20 for IERC20;
-    using Address for address;
 
     IERC20 public immutable pixToken;
+    address public immutable pixNFT;
     address public immutable saleContract;
     address public immutable auctionContract;
-    address public immutable pixCluster;
 
     address[] public stakingPools;
 
@@ -25,25 +24,25 @@ contract PIXTreasury is Ownable {
         _;
     }
 
-    modifier onlyCluster() {
-        require(msg.sender == pixCluster, "Caller is not cluster contract");
+    modifier onlyPIX() {
+        require(msg.sender == pixNFT, "Caller is not PIX contract");
         _;
     }
 
     constructor(
         address pixt,
+        address pix,
         address sale,
-        address auction,
-        address cluster
+        address auction
     ) {
         require(pixt != address(0), "PIX Token cannot be zero address");
+        require(pix != address(0), "PIX cannot be zero address");
         require(sale != address(0), "Sale cannot be zero address");
         require(auction != address(0), "Auction cannot be zero address");
-        require(cluster != address(0), "Cluster cannot be zero address");
         pixToken = IERC20(pixt);
+        pixNFT = pix;
         saleContract = sale;
         auctionContract = auction;
-        pixCluster = cluster;
         stakingPools = new address[](3);
     }
 
@@ -59,7 +58,7 @@ contract PIXTreasury is Ownable {
         pixToken.safeTransfer(stakingPools[2], (amount * 2) / 3);
     }
 
-    function redirectCluster() external onlyCluster {
+    function redirectPIX() external onlyPIX {
         pixToken.safeTransfer(
             stakingPools[1],
             pixToken.balanceOf(address(this))
