@@ -6,13 +6,13 @@ async function main() {
   const pixt = await PIXT.deploy(utils.parseEther('140000000'));
   await pixt.deployed();
 
-  const PIXCluster = await hre.ethers.getContractFactory('PIXCluster');
-  const cluster = await PIXCluster.deploy(pixt.address);
+  const PIX = await hre.ethers.getContractFactory('PIX');
+  const pix = await PIX.deploy(pixt.address);
 
-  await cluster.deployed();
+  await pix.deployed();
 
-  console.log('PIXCluster at', cluster.address);
-  console.log('PIX Token at', pixt.address);
+  console.log('PIX NFT at ', pix.address);
+  console.log('PIX Token at ', pixt.address);
 }
 
 main()

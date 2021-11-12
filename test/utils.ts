@@ -21,9 +21,9 @@ export enum PIXCategory {
 }
 
 export enum PIXSize {
-  Cluster = 0,
+  Pix = 0,
   Area = 1,
   Sector = 2,
-  Domain = 3,
-  Federation = 4,
+  Zone = 3,
+  Domain = 4,
 }

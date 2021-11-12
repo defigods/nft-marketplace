@@ -1,5 +1,5 @@
 # Planet IX Marketplace
 
-## Cluster NFT
+## PIX NFT
 
 ## Marketplace Utilities

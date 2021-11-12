@@ -9,13 +9,13 @@ describe("PIXTreasury", function () {
   let mockPool: Contract;
   let owner: Signer;
   let alice: Signer;
-  let cluster: Signer;
+  let pix: Signer;
   let sale: Signer;
 
   let auction: string = generateRandomAddress();
 
   beforeEach(async function () {
-    [owner, alice, cluster, sale] = await ethers.getSigners();
+    [owner, alice, pix, sale] = await ethers.getSigners();
 
     const MockTokenFactory = await ethers.getContractFactory("MockToken");
     pixToken = await MockTokenFactory.deploy();
@@ -24,9 +24,9 @@ describe("PIXTreasury", function () {
     const PIXTreasuryFactory = await ethers.getContractFactory("PIXTreasury");
     pixTreasury = await PIXTreasuryFactory.deploy(
       pixToken.address,
+      await pix.getAddress(),
       await sale.getAddress(),
-      auction,
-      await cluster.getAddress()
+      auction
     );
   });
 
@@ -48,30 +48,30 @@ describe("PIXTreasury", function () {
           constants.AddressZero,
           constants.AddressZero
         )
+      ).to.revertedWith("PIX cannot be zero address");
+      await expect(
+        PIXTreasury.deploy(
+          pixToken.address,
+          await pix.getAddress(),
+          constants.AddressZero,
+          constants.AddressZero
+        )
       ).to.revertedWith("Sale cannot be zero address");
       await expect(
         PIXTreasury.deploy(
           pixToken.address,
+          await pix.getAddress(),
           await sale.getAddress(),
-          constants.AddressZero,
           constants.AddressZero
         )
       ).to.revertedWith("Auction cannot be zero address");
-      await expect(
-        PIXTreasury.deploy(
-          pixToken.address,
-          await sale.getAddress(),
-          auction,
-          constants.AddressZero
-        )
-      ).to.revertedWith("Cluster cannot be zero address");
     });
 
     it("check initial values", async function () {
       expect(await pixTreasury.pixToken()).equal(pixToken.address);
       expect(await pixTreasury.saleContract()).equal(await sale.getAddress());
       expect(await pixTreasury.auctionContract()).equal(auction);
-      expect(await pixTreasury.pixCluster()).equal(await cluster.getAddress());
+      expect(await pixTreasury.pixNFT()).equal(await pix.getAddress());
     });
   });
 
@@ -100,23 +100,23 @@ describe("PIXTreasury", function () {
     });
   });
 
-  describe("#redirectCluster", () => {
-    it("revert if msg.sender is not cluster", async () => {
-      await expect(pixTreasury.redirectCluster()).to.revertedWith(
-        "Caller is not cluster contract"
+  describe("#redirectPIX", () => {
+    it("revert if msg.sender is not pix", async () => {
+      await expect(pixTreasury.redirectPIX()).to.revertedWith(
+        "Caller is not PIX contract"
       );
     });
 
-    it("should redirect to cluster", async () => {
+    it("should redirect to pix", async () => {
       await pixTreasury.setStakingPool(1, mockPool.address);
       await pixToken.transfer(pixTreasury.address, 100);
-      await pixTreasury.connect(cluster).redirectCluster();
+      await pixTreasury.connect(pix).redirectPIX();
       expect(await pixToken.balanceOf(mockPool.address)).to.equal(100);
     });
   });
 
   describe("#redirectMarket", () => {
-    it("revert if msg.sender is not cluster", async () => {
+    it("revert if msg.sender is not market", async () => {
       await expect(pixTreasury.redirectMarket()).to.revertedWith(
         "Caller is not market contract"
       );
