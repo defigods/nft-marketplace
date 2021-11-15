@@ -1,21 +1,36 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interfaces/IPIXSale.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "../libraries/DecimalMath.sol";
 
-abstract contract PIXBaseSale is IPIXSale, Ownable, ERC721Holder {
+abstract contract PIXBaseSale is OwnableUpgradeable, ERC721HolderUpgradeable {
     using DecimalMath for uint256;
+
+    event Purchased(
+        address indexed seller,
+        address indexed buyer,
+        uint256 indexed saleId,
+        uint256 price
+    );
+
+    event SaleCancelled(uint256 indexed saleId);
+
+    event TreasuryUpdated(address treasury, uint256 fee, bool mode);
+
+    struct Treasury {
+        address treasury;
+        uint256 fee;
+    }
 
     // treasury information
     Treasury public landTreasury;
     Treasury public pixtTreasury;
 
     // PIXT token
-    IERC20 public immutable pixToken;
+    IERC20Upgradeable public pixToken;
 
     // Whitelisted NFT tokens
     mapping(address => bool) public whitelistedNFTs;
@@ -28,9 +43,11 @@ abstract contract PIXBaseSale is IPIXSale, Ownable, ERC721Holder {
         _;
     }
 
-    constructor(address pixt) {
+    function initialize(address pixt) public virtual initializer {
         require(pixt != address(0), "Sale: INVALID_PIXT");
-        pixToken = IERC20(pixt);
+        pixToken = IERC20Upgradeable(pixt);
+        __Ownable_init();
+        __ERC721Holder_init();
     }
 
     function setTreasury(

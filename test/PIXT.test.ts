@@ -9,8 +9,7 @@ describe('PIXT', function () {
   const SYMBOL = 'IXT';
 
   beforeEach(async function () {
-    const signers = await ethers.getSigners();
-    owner = signers[0];
+    [owner] = await ethers.getSigners();
 
     const PIXTFactory = await ethers.getContractFactory('PIXT');
     pixtToken = await PIXTFactory.deploy();

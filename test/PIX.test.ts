@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
+import { ethers, upgrades } from 'hardhat';
 import { Signer, Contract, BigNumber, constants } from 'ethers';
 import { PIXCategory, PIXSize, PIXClassification, DENOMINATOR } from './utils';
 
@@ -16,16 +16,19 @@ describe('PIX', function () {
 
     const PIXTFactory = await ethers.getContractFactory('PIXT');
     pixToken = await PIXTFactory.deploy();
+
     const PIXFactory = await ethers.getContractFactory('PIX');
-    pixNFT = await PIXFactory.deploy(pixToken.address);
+    pixNFT = await upgrades.deployProxy(PIXFactory, [pixToken.address]);
     await pixToken.transfer(await alice.getAddress(), BigNumber.from(200));
     await pixToken.connect(alice).approve(pixNFT.address, BigNumber.from(200));
   });
 
-  describe('constructor', () => {
+  describe('#initialize', () => {
     it('revert if token is zero address', async function () {
       const PIX = await ethers.getContractFactory('PIX');
-      await expect(PIX.deploy(constants.AddressZero)).to.revertedWith('Pix: INVALID_PIXT');
+      await expect(upgrades.deployProxy(PIX, [constants.AddressZero])).to.revertedWith(
+        'Pix: INVALID_PIXT',
+      );
     });
 
     it('check initial values', async function () {
@@ -220,19 +223,6 @@ describe('PIX', function () {
       );
     });
 
-    it('revert if invalid categories length', async function () {
-      await pixNFT.connect(alice).requestMint(pixToken.address, 1);
-      await expect(
-        pixNFT.mintTo(
-          await alice.getAddress(),
-          new Array(51).fill(1),
-          new Array(51).fill(1),
-          new Array(51).fill(1),
-          new Array(51).fill('US'),
-        ),
-      ).to.revertedWith('Pix: TOO_MANY_ARGUMENTS');
-    });
-
     it('should mint new pixes by moderator', async () => {
       await pixNFT.connect(alice).requestMint(pixToken.address, 1);
 
@@ -324,12 +314,6 @@ describe('PIX', function () {
   });
 
   describe('#batchMint', () => {
-    it('revert if mint length is invalid', async () => {
-      await expect(pixNFT.batchMint(await alice.getAddress(), [])).to.revertedWith(
-        'Pix: INVALID_LENGTH',
-      );
-    });
-
     it('should batch mint', async () => {
       const infos = [];
       for (let i = 0; i < 10; i++) {

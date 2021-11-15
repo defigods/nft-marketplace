@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
+import { ethers, upgrades } from 'hardhat';
 import { Signer, Contract, constants } from 'ethers';
 import { PIXCategory } from './utils';
 
@@ -12,10 +12,10 @@ describe('PIXLandmark', function () {
     [owner, alice] = await ethers.getSigners();
 
     const PIXLandmarkFactory = await ethers.getContractFactory('PIXLandmark');
-    pixLandmark = await PIXLandmarkFactory.deploy();
+    pixLandmark = await upgrades.deployProxy(PIXLandmarkFactory);
   });
 
-  describe('constructor', () => {
+  describe('#initialize', () => {
     it('check initial values', async function () {
       expect(await pixLandmark.moderators(await owner.getAddress())).equal(true);
     });
