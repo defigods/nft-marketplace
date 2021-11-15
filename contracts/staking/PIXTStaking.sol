@@ -40,12 +40,12 @@ contract PIXTStaking is Ownable {
     }
 
     modifier onlyRewardDistributor() {
-        require(msg.sender == rewardDistributor, "Caller is not distributor");
+        require(msg.sender == rewardDistributor, "Staking: NON_DISTRIBUTOR");
         _;
     }
 
     constructor(address token) {
-        require(token != address(0), "PIX Token cannot be zero address");
+        require(token != address(0), "Staking: INVALID_PIXT");
         pixToken = IERC20(token);
     }
 
@@ -61,9 +61,7 @@ contract PIXTStaking is Ownable {
         }
         return
             rewardPerTokenStored +
-            ((lastTimeRewardApplicable() - lastUpdateTime) *
-                rewardRate *
-                1e18) /
+            ((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18) /
             totalStaked;
     }
 
@@ -73,8 +71,7 @@ contract PIXTStaking is Ownable {
      */
     function earned(address account) public view returns (uint256) {
         return
-            (stakedAmounts[account] *
-                (rewardPerToken() - userRewardPerTokenPaid[account])) /
+            (stakedAmounts[account] * (rewardPerToken() - userRewardPerTokenPaid[account])) /
             1e18 +
             rewards[account];
     }
@@ -85,7 +82,7 @@ contract PIXTStaking is Ownable {
      * @notice emit {Staked} event
      */
     function stake(uint256 amount) public updateReward(msg.sender) {
-        require(amount > 0, "Cannot stake 0");
+        require(amount > 0, "Staking: STAKE_ZERO");
         totalStaked += amount;
         stakedAmounts[msg.sender] += amount;
         pixToken.safeTransferFrom(msg.sender, address(this), amount);
@@ -98,7 +95,7 @@ contract PIXTStaking is Ownable {
      * @notice emit {Unstaked} event
      */
     function unstake(uint256 amount) public updateReward(msg.sender) {
-        require(amount > 0, "Cannot unstake 0");
+        require(amount > 0, "Staking: UNSTAKE_ZERO");
         totalStaked -= amount;
         stakedAmounts[msg.sender] -= amount;
         pixToken.safeTransfer(msg.sender, amount);
@@ -153,10 +150,7 @@ contract PIXTStaking is Ownable {
      * @param distributor new distributor address
      */
     function setRewardDistributor(address distributor) external onlyOwner {
-        require(
-            distributor != address(0),
-            "Distributor cannot be zero address"
-        );
+        require(distributor != address(0), "Staking: INVALID_DISTRIBUTOR");
         rewardDistributor = distributor;
     }
 }

@@ -32,10 +32,7 @@ contract Vesting {
     mapping(uint256 => VestInfo) public vestInfos;
 
     constructor(IERC20 pixtToken_) {
-        require(
-            address(pixtToken_) != address(0),
-            "Vesting: token cannot be zero"
-        );
+        require(address(pixtToken_) != address(0), "Vesting: PIXT_ZERO_ADDRESS");
         pixtToken = pixtToken_;
     }
 
@@ -46,9 +43,9 @@ contract Vesting {
         address beneficiary
     ) public {
         // solhint-disable-next-line not-rely-on-time
-        require(startTime > block.timestamp, "Vesting: invalid startTime");
-        require(period > 0, "Vesting: invalid period");
-        require(beneficiary != address(0), "Vesting: invalid beneficiary");
+        require(startTime > block.timestamp, "Vesting: INVALID_START_TIME");
+        require(period > 0, "Vesting: INVALID_PERIOD");
+        require(beneficiary != address(0), "Vesting: INVALID_BENEFICIARY");
 
         pixtToken.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -60,13 +57,7 @@ contract Vesting {
             claimed: 0
         });
 
-        emit VestInitialized(
-            beneficiary,
-            startTime,
-            period,
-            amount,
-            vestLength
-        );
+        emit VestInitialized(beneficiary, startTime, period, amount, vestLength);
 
         vestLength += 1;
     }
@@ -82,26 +73,18 @@ contract Vesting {
                 amounts.length == startTimes.length &&
                 amounts.length == periods.length &&
                 amounts.length == beneficiaries.length,
-            "Vesting: invalid length"
+            "Vesting: INVALID_LENGTH"
         );
 
         uint256 len = amounts.length;
-        for (uint256 i = 0; i < len; i += 1) {
-            initVesting(
-                amounts[i],
-                startTimes[i],
-                periods[i],
-                beneficiaries[i]
-            );
+        for (uint256 i; i < len; i += 1) {
+            initVesting(amounts[i], startTimes[i], periods[i], beneficiaries[i]);
         }
     }
 
     function _claim(uint256 id) internal returns (uint256 claimable) {
         VestInfo storage vestInfo = vestInfos[id];
-        require(
-            vestInfo.beneficiary == msg.sender,
-            "Vesting: invalid beneficiary"
-        );
+        require(vestInfo.beneficiary == msg.sender, "Vesting: INVALID_BENEFICIARY");
         if (vestInfo.amount <= vestInfo.claimed) {
             return 0;
         }
@@ -117,8 +100,7 @@ contract Vesting {
             releaseAmount = vestInfo.amount;
         } else {
             releaseAmount =
-                (vestInfo.amount *
-                    ((timePassed / RELEASE_PERIOD) * RELEASE_PERIOD)) /
+                (vestInfo.amount * ((timePassed / RELEASE_PERIOD) * RELEASE_PERIOD)) /
                 vestInfo.period;
         }
 
@@ -137,7 +119,7 @@ contract Vesting {
 
     function claim(uint256 id) public returns (uint256) {
         uint256 claimed = _claim(id);
-        require(claimed > 0, "Vesting: nothing to claim");
+        require(claimed > 0, "Vesting: EMPTY_BALANCE");
 
         return claimed;
     }
@@ -145,11 +127,11 @@ contract Vesting {
     function claimInBatch(uint256[] calldata ids) external returns (uint256) {
         uint256 len = ids.length;
         uint256 totalClaimed;
-        require(len > 0, "Vesting: invalid length");
-        for (uint256 i = 0; i < len; i += 1) {
+        require(len > 0, "Vesting: INVALID_LENGTH");
+        for (uint256 i; i < len; i += 1) {
             totalClaimed += _claim(ids[i]);
         }
-        require(totalClaimed > 0, "Vesting: nothing to claim");
+        require(totalClaimed > 0, "Vesting: EMPTY_BALANCE");
 
         return totalClaimed;
     }
@@ -172,8 +154,7 @@ contract Vesting {
             releaseAmount = vestInfo.amount;
         } else {
             releaseAmount =
-                (vestInfo.amount *
-                    ((timePassed / RELEASE_PERIOD) * RELEASE_PERIOD)) /
+                (vestInfo.amount * ((timePassed / RELEASE_PERIOD) * RELEASE_PERIOD)) /
                 vestInfo.period;
         }
 
@@ -184,14 +165,10 @@ contract Vesting {
         }
     }
 
-    function getPendingAmounts(uint256[] calldata ids)
-        external
-        view
-        returns (uint256)
-    {
+    function getPendingAmounts(uint256[] calldata ids) external view returns (uint256) {
         uint256 total = 0;
         uint256 len = ids.length;
-        for (uint256 i = 0; i < len; i += 1) {
+        for (uint256 i; i < len; i += 1) {
             total += getPendingAmount(ids[i]);
         }
 

@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../base/PIXBaseSale.sol";
+import "./PIXBaseSale.sol";
 import "../libraries/DecimalMath.sol";
 
 contract PIXFixedSale is PIXBaseSale {
@@ -18,27 +18,21 @@ contract PIXFixedSale is PIXBaseSale {
         uint256[] tokenIds,
         uint256 price
     );
+
     event SaleUpdated(uint256 indexed saleId, uint256 newPrice);
 
     struct FixedSaleInfo {
         address seller; // Seller address
-        address nftToken; // Nft token address
+        address nftToken; // NFT token address
         uint256 price; // Fixed sale price
         uint256[] tokenIds; // List of tokenIds
     }
 
     mapping(uint256 => FixedSaleInfo) public saleInfo;
 
-    constructor(
-        address _treasury,
-        uint256 _tradingFeePct,
-        address _pixt
-    )
-        PIXBaseSale(_treasury, _tradingFeePct, _pixt)
-    // solhint-disable-next-line no-empty-blocks
-    {
-
-    }
+    constructor(address _pixt)
+        PIXBaseSale(_pixt) // solhint-disable-next-line no-empty-blocks
+    {}
 
     /** @notice request sale for fixed price
      *  @param _nftToken NFT token address for sale
@@ -49,16 +43,12 @@ contract PIXFixedSale is PIXBaseSale {
         address _nftToken,
         uint256[] calldata _tokenIds,
         uint256 _price
-    ) external onlyWhitelistedNftToken(_nftToken) {
-        require(_price > 0, ">0");
-        require(_tokenIds.length > 0, "No tokens");
+    ) external onlyWhitelistedNFT(_nftToken) {
+        require(_price > 0, "Sale: PRICE_ZERO");
+        require(_tokenIds.length > 0, "Sale: NO_TOKENS");
 
-        for (uint256 i = 0; i < _tokenIds.length; i += 1) {
-            IERC721(_nftToken).safeTransferFrom(
-                msg.sender,
-                address(this),
-                _tokenIds[i]
-            );
+        for (uint256 i; i < _tokenIds.length; i += 1) {
+            IERC721(_nftToken).safeTransferFrom(msg.sender, address(this), _tokenIds[i]);
         }
 
         lastSaleId += 1;
@@ -69,13 +59,7 @@ contract PIXFixedSale is PIXBaseSale {
             tokenIds: _tokenIds
         });
 
-        emit SaleRequested(
-            msg.sender,
-            lastSaleId,
-            _nftToken,
-            _tokenIds,
-            _price
-        );
+        emit SaleRequested(msg.sender, lastSaleId, _nftToken, _tokenIds, _price);
     }
 
     /** @notice update sale info
@@ -83,8 +67,8 @@ contract PIXFixedSale is PIXBaseSale {
      *  @param _price new price
      */
     function updateSale(uint256 _saleId, uint256 _price) external {
-        require(saleInfo[_saleId].seller == msg.sender, "!seller");
-        require(_price > 0, ">0");
+        require(saleInfo[_saleId].seller == msg.sender, "Sale: NOT_SELLER");
+        require(_price > 0, "Sale: PRICE_ZERO");
 
         saleInfo[_saleId].price = _price;
 
@@ -96,9 +80,9 @@ contract PIXFixedSale is PIXBaseSale {
      */
     function cancelSale(uint256 _saleId) external {
         FixedSaleInfo storage _saleInfo = saleInfo[_saleId];
-        require(_saleInfo.seller == msg.sender, "!seller");
+        require(_saleInfo.seller == msg.sender, "Sale: NOT_SELLER");
 
-        for (uint256 i = 0; i < _saleInfo.tokenIds.length; i += 1) {
+        for (uint256 i; i < _saleInfo.tokenIds.length; i += 1) {
             IERC721(_saleInfo.nftToken).safeTransferFrom(
                 address(this),
                 msg.sender,
@@ -116,19 +100,15 @@ contract PIXFixedSale is PIXBaseSale {
      */
     function purchasePIX(uint256 _saleId) external payable {
         FixedSaleInfo storage _saleInfo = saleInfo[_saleId];
-        require(_saleInfo.price > 0, "!sale");
+        require(_saleInfo.price > 0, "Sale: INVALID_ID");
 
-        uint256 fee = _saleInfo.price.decimalMul(tradingFeePct);
-        pixt.safeTransferFrom(
-            msg.sender,
-            _saleInfo.seller,
-            _saleInfo.price - fee
-        );
+        uint256 fee = _saleInfo.price.decimalMul(landTreasury.fee);
+        pixToken.safeTransferFrom(msg.sender, _saleInfo.seller, _saleInfo.price - fee);
         if (fee > 0) {
-            pixt.safeTransferFrom(msg.sender, treasury, fee);
+            pixToken.safeTransferFrom(msg.sender, landTreasury.treasury, fee);
         }
 
-        for (uint256 i = 0; i < _saleInfo.tokenIds.length; i += 1) {
+        for (uint256 i; i < _saleInfo.tokenIds.length; i += 1) {
             IERC721(_saleInfo.nftToken).safeTransferFrom(
                 address(this),
                 msg.sender,

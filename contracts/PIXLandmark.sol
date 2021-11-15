@@ -5,32 +5,21 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "./interfaces/IPIXLandmark.sol";
 
-contract PIXLandmark is ERC721Enumerable, Ownable {
+contract PIXLandmark is IPIXLandmark, ERC721Enumerable, Ownable {
     using SafeERC20 for IERC20;
-
-    event Requested(address indexed account);
-
-    enum PIXCategory {
-        Legendary,
-        Rare,
-        Uncommon,
-        Common,
-        Outliers
-    }
-
-    struct LandmarkInfo {
-        uint256[] pixTokenIds;
-        PIXCategory category;
-    }
 
     string private _baseURIExtended;
 
     mapping(address => bool) public moderators;
-    mapping(uint256 => LandmarkInfo) public landmarks;
+    mapping(uint256 => LandmarkInfo) public landInfos;
+    mapping(uint256 => bool) public pixesInLandStatus;
+    mapping(uint256 => uint256[]) public pixesInLandType;
+    uint256 public lastTokenId;
 
     modifier onlyMod() {
-        require(moderators[msg.sender], "Caller is not moderator");
+        require(moderators[msg.sender], "Landmark: NON_MODERATOR");
         _;
     }
 
@@ -39,34 +28,51 @@ contract PIXLandmark is ERC721Enumerable, Ownable {
     }
 
     function setModerator(address moderator, bool approved) external onlyOwner {
-        require(moderator != address(0), "Moderator cannot be zero address");
+        require(moderator != address(0), "Landmark: INVALID_MODERATOR");
         moderators[moderator] = approved;
     }
 
-    function safeMint(address to, LandmarkInfo memory info) external onlyMod {
-        _safeMint(to, info);
-    }
-
-    function batchMint(address to, LandmarkInfo[] memory infos)
+    function addLandmarkType(uint256 landmarkType, uint256[] calldata pixTokenIds)
         external
         onlyMod
     {
-        require(
-            infos.length > 0 && infos.length <= 50,
-            "Invalid landmarks length"
-        );
+        require(landmarkType > 0, "Landmark: INVALID_TYPE");
 
-        for (uint256 i = 0; i < infos.length; i += 1) {
-            _safeMint(to, infos[i]);
+        for (uint256 i; i < pixTokenIds.length; i += 1) {
+            pixesInLandStatus[pixTokenIds[i]] = true;
+            pixesInLandType[landmarkType].push(pixTokenIds[i]);
         }
     }
 
-    function _safeMint(address to, LandmarkInfo memory info) internal {
-        require(info.pixTokenIds.length > 0, "Invalid landmark info");
+    function isPIXInLand(uint256 tokenId) external view override returns (bool) {
+        return pixesInLandStatus[tokenId];
+    }
 
-        uint256 tokenId = totalSupply() + 1;
-        _safeMint(to, tokenId);
-        landmarks[tokenId] = info;
+    function pixIdInLandType(uint256 landType, uint256 index)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return pixesInLandType[landType][index];
+    }
+
+    function safeMint(address to, LandmarkInfo memory info) external onlyMod {
+        require(info.landmarkType > 0, "Landmark: INVALID_TYPE");
+
+        lastTokenId += 1;
+        _safeMint(to, lastTokenId);
+        landInfos[lastTokenId] = info;
+        emit LandmarkMinted(to, lastTokenId, info.category, info.landmarkType);
+    }
+
+    function safeBurn(uint256 tokenId) external {
+        address owner = ownerOf(tokenId);
+        require(
+            msg.sender == owner || isApprovedForAll(owner, msg.sender),
+            "Landmark: NON_APPROVED"
+        );
+        _burn(tokenId);
     }
 
     function _baseURI() internal view override returns (string memory) {

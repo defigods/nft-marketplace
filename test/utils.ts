@@ -1,7 +1,7 @@
-import { Wallet, BigNumber } from "ethers";
-import { time } from "@openzeppelin/test-helpers";
+import { Wallet, BigNumber } from 'ethers';
+import { time } from '@openzeppelin/test-helpers';
 
-export const DENOMINATOR = BigNumber.from("10000");
+export const DENOMINATOR = BigNumber.from('10000');
 
 export const generateRandomAddress = () => Wallet.createRandom().address;
 
@@ -26,4 +26,16 @@ export enum PIXSize {
   Sector = 2,
   Zone = 3,
   Domain = 4,
+}
+
+export enum PIXClassification {
+  CapitalCityCenter = 0,
+  CapitalCity = 1,
+  NaturalReserve = 2,
+  CoastalLine = 3,
+  MetropolitanArea = 4,
+  SuburbanArea = 5,
+  ContrysideArea = 6,
+  ArcticMountains = 7,
+  DesertTundra = 8,
 }

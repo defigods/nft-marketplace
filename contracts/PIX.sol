@@ -5,163 +5,197 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "./interfaces/IPIX.sol";
+import "./libraries/DecimalMath.sol";
 
-contract PIX is ERC721Enumerable, Ownable {
+contract PIX is IPIX, ERC721Enumerable, Ownable {
     using SafeERC20 for IERC20;
+    using DecimalMath for uint256;
 
-    event Combined(uint256 indexed tokenId, PIXCategory category, PIXSize size);
-    event Requested(address indexed account);
-
-    enum PIXCategory {
-        Legendary,
-        Rare,
-        Uncommon,
-        Common,
-        Outliers
-    }
-
-    enum PIXSize {
-        Pix,
-        Area,
-        Sector,
-        Zone,
-        Domain
-    }
-
-    struct PIXInfo {
-        uint256 pixId;
-        PIXCategory category;
-        PIXSize size;
-    }
-
-    uint256 public constant PIX_MINT_COUNT = 50;
     IERC20 public immutable pixToken;
     string private _baseURIExtended;
     uint256 public lastTokenId;
 
-    uint256 public mintFee;
-    uint256 public combineFee;
-
+    Treasury public treasury;
+    uint256 public combinePrice;
+    uint256[] public packPrices;
     mapping(address => bool) public moderators;
-    mapping(address => bool) public requested;
+    mapping(address => uint256) public pendingPackType;
     mapping(PIXSize => uint16) public combineCounts;
     mapping(uint256 => PIXInfo) public pixInfos;
+    mapping(address => bool) public paymentTokens;
 
     modifier onlyMod() {
-        require(moderators[msg.sender], "Caller is not moderator");
+        require(moderators[msg.sender], "Pix: NON_MODERATOR");
         _;
     }
 
     constructor(address pixt) ERC721("PlanetIX", "PIX") {
-        require(pixt != address(0), "PIX Token cannot be zero address");
+        require(pixt != address(0), "Pix: INVALID_PIXT");
         pixToken = IERC20(pixt);
         moderators[msg.sender] = true;
-        combineCounts[PIXSize.Pix] = 50;
+        combineCounts[PIXSize.Pix] = 10;
         combineCounts[PIXSize.Area] = 5;
         combineCounts[PIXSize.Sector] = 2;
         combineCounts[PIXSize.Zone] = 2;
+        packPrices.push(5);
+        packPrices.push(50);
+        packPrices.push(100);
+        packPrices.push(250);
+        packPrices.push(500);
+        packPrices.push(1000);
+        paymentTokens[pixt] = true;
     }
 
-    function withdraw() external onlyOwner {
-        if (pixToken.balanceOf(address(this)) > 0) {
-            pixToken.safeTransfer(
-                msg.sender,
-                pixToken.balanceOf(address(this))
-            );
+    function withdraw(address[] calldata tokens) external onlyOwner {
+        for (uint256 i; i < tokens.length; i += 1) {
+            IERC20 token = IERC20(tokens[i]);
+            if (tokens[i] == address(0)) {
+                // solhint-disable-next-line avoid-low-level-calls
+                (bool success, ) = msg.sender.call{value: address(this).balance}("");
+                require(success, "Pix: WITHDRAW_FAILED");
+            } else if ((token).balanceOf(address(this)) > 0) {
+                token.safeTransfer(msg.sender, token.balanceOf(address(this)));
+            }
         }
     }
 
     function setModerator(address moderator, bool approved) external onlyOwner {
-        require(moderator != address(0), "Moderator cannot be zero address");
+        require(moderator != address(0), "Pix: INVALID_MODERATOR");
         moderators[moderator] = approved;
+        emit ModeratorUpdated(moderator, approved);
     }
 
-    function setMintFee(uint256 fee) external onlyOwner {
-        require(fee > 0, "Fee cannot be zero");
-        mintFee = fee;
+    function setPackPrice(uint256 mode, uint256 price) external onlyOwner {
+        require(mode > 0 && mode < 7, "Pix: INVALID_PRICE_MODE");
+        require(price > 0, "Pix: ZERO_PRICE");
+        packPrices[mode - 1] = price;
+        emit PackPriceUpdated(mode, price);
     }
 
-    function setCombineFee(uint256 fee) external onlyOwner {
-        require(fee > 0, "Fee cannot be zero");
-        combineFee = fee;
+    function setCombinePrice(uint256 price) external onlyOwner {
+        require(price > 0, "Pix: ZERO_PRICE");
+        combinePrice = price;
+        emit CombinePriceUpdated(price);
     }
 
-    function requestMint() external {
-        require(mintFee > 0, "Purchase price not set");
-        require(!requested[msg.sender], "Pending mint request exists");
-        pixToken.safeTransferFrom(msg.sender, address(this), mintFee);
-        requested[msg.sender] = true;
-        emit Requested(msg.sender);
+    function setPaymentToken(address token, bool approved) external onlyOwner {
+        paymentTokens[token] = approved;
+        emit PaymentTokenUpdated(token, approved);
+    }
+
+    function setTreasury(address _treasury, uint256 _fee) external onlyOwner {
+        require(_treasury != address(0), "Pix: INVALID_TREASURY");
+        require(_fee.isLessThanAndEqualToDenominator(), "Pix: FEE_OVERFLOW");
+        treasury = Treasury(_treasury, _fee);
+
+        emit TreasuryUpdated(_treasury, _fee);
+    }
+
+    function requestMint(address token, uint256 mode) external payable {
+        require(paymentTokens[token], "Pix: TOKEN_NOT_APPROVED");
+        require(mode > 0 && mode < 7, "Pix: INVALID_PRICE_MODE");
+        require(pendingPackType[msg.sender] == 0, "Pix: PENDING_REQUEST_EXIST");
+        if (token == address(0)) {
+            require(msg.value == packPrices[mode - 1], "Pix: INSUFFICIENT_FUNDS");
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = address(this).call{value: msg.value}("");
+            require(success, "Pix: PURCHASE_FAILED");
+        } else {
+            IERC20(token).safeTransferFrom(msg.sender, address(this), packPrices[mode - 1]);
+        }
+        pendingPackType[msg.sender] = mode;
+        emit Requested(msg.sender, mode);
     }
 
     function mintTo(
         address to,
         uint256[] calldata pixIds,
-        PIXCategory[] calldata categories
+        PIXCategory[] calldata categories,
+        PIXClassification[] calldata classifications,
+        string[] calldata countries
     ) external onlyMod {
-        require(requested[to], "No pending mint request");
+        require(pendingPackType[to] > 0, "Pix: NO_PENDING_REQUEST");
         require(
-            pixIds.length == categories.length,
-            "Invalid length of parameters"
+            pixIds.length == categories.length &&
+                pixIds.length == classifications.length &&
+                pixIds.length == countries.length,
+            "Pix: INVALID_LENGTH"
         );
-        require(
-            categories.length == PIX_MINT_COUNT,
-            "Invalid categories length"
-        );
+        require(pixIds.length <= 50, "Pix: TOO_MANY_ARGUMENTS");
 
-        for (uint256 i = 0; i < PIX_MINT_COUNT; i += 1) {
+        for (uint256 i; i < pixIds.length; i += 1) {
             _safeMint(
                 to,
                 PIXInfo({
                     pixId: pixIds[i],
                     size: PIXSize.Pix,
-                    category: categories[i]
+                    category: categories[i],
+                    classification: classifications[i],
+                    country: countries[i]
                 })
             );
         }
-        requested[to] = false;
+    }
+
+    function completeRequest(address to, uint256 mode) external onlyMod {
+        require(pendingPackType[to] == mode, "Pix: INVALID_REQUEST");
+        pendingPackType[to] = 0;
     }
 
     function combine(uint256[] calldata tokenIds) external {
-        require(combineFee > 0, "Combine price not set");
-        require(tokenIds.length > 0, "No tokens");
+        require(combinePrice > 0, "Pix: PRICE_NOT_SET");
+        require(tokenIds.length > 0, "Pix: NO_TOKENS");
 
         _proceedCombine(msg.sender, tokenIds);
-        pixToken.safeTransferFrom(msg.sender, address(this), combineFee);
+        pixToken.safeTransferFrom(msg.sender, address(this), combinePrice);
     }
 
-    function _proceedCombine(address account, uint256[] calldata tokenIds)
-        private
-    {
+    function _proceedCombine(address account, uint256[] calldata tokenIds) private {
         PIXInfo storage firstPix = pixInfos[tokenIds[0]];
-        require(firstPix.size < PIXSize.Domain, "Cannot combine max size");
-        require(
-            tokenIds.length == combineCounts[firstPix.size],
-            "Invalid combination"
-        );
+        uint256 combineCount = combineCounts[firstPix.size];
+        if (firstPix.size == PIXSize.Pix) {
+            combineCount *= 5 - uint256(firstPix.category);
+        }
+        require(firstPix.size < PIXSize.Domain, "Pix: MAX_NOT_ALLOWED");
+        require(tokenIds.length == combineCount, "Pix: INVALID_ARGUMENTS");
 
-        for (uint256 i = 0; i < tokenIds.length; i += 1) {
+        for (uint256 i; i < tokenIds.length; i += 1) {
             uint256 tokenId = tokenIds[i];
 
-            require(
-                pixInfos[tokenId].size == firstPix.size,
-                "Should combine same sizes"
-            );
-            require(
-                pixInfos[tokenId].category == firstPix.category,
-                "Should combine same categories"
-            );
-            require(ownerOf(tokenId) == account, "Caller is not owner");
+            require(pixInfos[tokenId].size == firstPix.size, "Pix: SAME_SIZE_ONLY");
+            require(pixInfos[tokenId].category == firstPix.category, "Pix: SAME_CATEGORY_ONLY");
+            require(ownerOf(tokenId) == account, "Pix: NON_APPROVED");
             _burn(tokenId);
         }
 
         PIXSize newSize = PIXSize(uint8(firstPix.size) + 1);
         _safeMint(
             account,
-            PIXInfo({pixId: 0, size: newSize, category: firstPix.category})
+            PIXInfo({
+                pixId: 0,
+                size: newSize,
+                category: firstPix.category,
+                classification: PIXClassification.CapitalCityCenter,
+                country: ""
+            })
         );
 
         emit Combined(lastTokenId, firstPix.category, newSize);
+    }
+
+    function updateTerritoryInfo(
+        uint256 tokenId,
+        uint256 pixId,
+        PIXClassification classification,
+        string calldata country
+    ) external onlyMod {
+        PIXInfo storage info = pixInfos[tokenId];
+        require(info.size != PIXSize.Pix, "Pix: TERRITORIES_ONLY");
+        require(info.pixId == 0, "Pix: TERRITORY_ALREADY_SET");
+        info.pixId = pixId;
+        info.classification = classification;
+        info.country = country;
     }
 
     function safeMint(address to, PIXInfo memory info) external onlyMod {
@@ -169,26 +203,39 @@ contract PIX is ERC721Enumerable, Ownable {
     }
 
     function batchMint(address to, PIXInfo[] memory infos) external onlyMod {
-        require(infos.length > 0 && infos.length <= 50, "Invalid pixes length");
+        require(infos.length > 0 && infos.length <= 50, "Pix: INVALID_LENGTH");
 
-        for (uint256 i = 0; i < infos.length; i += 1) {
+        for (uint256 i; i < infos.length; i += 1) {
             _safeMint(to, infos[i]);
         }
     }
 
     function _safeMint(address to, PIXInfo memory info) internal {
-        require(
-            (info.pixId > 0) == (info.size == PIXSize.Pix),
-            "Invalid PIX info"
-        );
+        require((info.pixId > 0) == (info.size == PIXSize.Pix), "Pix: INVALID_ARGUMENTS");
 
         lastTokenId += 1;
         _safeMint(to, lastTokenId);
         pixInfos[lastTokenId] = info;
+        emit PIXMinted(to, info.pixId, info.category, info.size, info.classification, info.country);
     }
 
-    function safeBurn(uint256 tokenId) external onlyMod {
+    function safeBurn(uint256 tokenId) external {
+        address owner = ownerOf(tokenId);
+        require(msg.sender == owner || isApprovedForAll(owner, msg.sender), "Pix: NON_APPROVED");
         _burn(tokenId);
+    }
+
+    function batchBurn(uint256[] memory tokenIds) external {
+        require(tokenIds.length > 0 && tokenIds.length <= 50, "Pix: INVALID_LENGTH");
+
+        for (uint256 i; i < tokenIds.length; i += 1) {
+            address owner = ownerOf(tokenIds[i]);
+            require(
+                msg.sender == owner || isApprovedForAll(owner, msg.sender),
+                "Pix: NON_APPROVED"
+            );
+            _burn(tokenIds[i]);
+        }
     }
 
     function _baseURI() internal view override returns (string memory) {
