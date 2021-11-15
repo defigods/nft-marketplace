@@ -1,13 +1,13 @@
-import { expect } from "chai";
-import { ethers } from "hardhat";
-import { Signer, Contract, BigNumber, constants, utils } from "ethers";
-import { time } from "@openzeppelin/test-helpers";
+import { expect } from 'chai';
+import { ethers } from 'hardhat';
+import { Signer, Contract, BigNumber, constants, utils } from 'ethers';
+import { time } from '@openzeppelin/test-helpers';
 
 const getCurrentTime = async () => {
   return BigNumber.from((await time.latest()).toString());
 };
 
-describe("PIXTStaking", function () {
+describe('PIXTStaking', function () {
   let owner: Signer;
   let distributor: Signer;
   let alice: Signer;
@@ -22,8 +22,7 @@ describe("PIXTStaking", function () {
 
   let periodStart: BigNumber;
 
-  const totalSupply = utils.parseEther("100000");
-  const reward = utils.parseEther("100");
+  const reward = utils.parseEther('100');
   const rewardPeriod = 10 * 86400;
 
   before(async function () {
@@ -31,9 +30,9 @@ describe("PIXTStaking", function () {
     aliceAddress = await alice.getAddress();
     bobAddress = await bob.getAddress();
 
-    const PIXTFactory = await ethers.getContractFactory("PIXT");
-    pixt = await PIXTFactory.deploy(totalSupply);
-    const PIXTStakingFactory = await ethers.getContractFactory("PIXTStaking");
+    const PIXTFactory = await ethers.getContractFactory('PIXT');
+    pixt = await PIXTFactory.deploy();
+    const PIXTStakingFactory = await ethers.getContractFactory('PIXTStaking');
     staking = await PIXTStakingFactory.deploy(pixt.address);
     aliceStaking = staking.connect(alice);
     bobStaking = staking.connect(bob);
@@ -44,186 +43,164 @@ describe("PIXTStaking", function () {
     await pixt.connect(bob).approve(staking.address, reward);
   });
 
-  describe("constructor", () => {
-    it("revert if pixt is zero address", async function () {
-      const PIXTStaking = await ethers.getContractFactory("PIXTStaking");
+  describe('constructor', () => {
+    it('revert if pixt is zero address', async function () {
+      const PIXTStaking = await ethers.getContractFactory('PIXTStaking');
       await expect(PIXTStaking.deploy(constants.AddressZero)).to.revertedWith(
-        "PIX Token cannot be zero address"
+        'Staking: INVALID_PIXT',
       );
     });
 
-    it("check initial values", async function () {
+    it('check initial values', async function () {
       expect(await staking.pixToken()).equal(pixt.address);
     });
   });
 
-  describe("#setRewardDistributor", () => {
-    it("revert if msg.sender is not owner", async () => {
+  describe('#setRewardDistributor', () => {
+    it('revert if msg.sender is not owner', async () => {
       await expect(
-        staking
-          .connect(alice)
-          .setRewardDistributor(await distributor.getAddress())
-      ).to.revertedWith("Ownable: caller is not the owner");
+        staking.connect(alice).setRewardDistributor(await distributor.getAddress()),
+      ).to.revertedWith('Ownable: caller is not the owner');
     });
 
-    it("revert if distributor is zero address", async () => {
-      await expect(
-        staking.setRewardDistributor(constants.AddressZero)
-      ).to.revertedWith("Distributor cannot be zero address");
-    });
-
-    it("should set distributor by owner", async () => {
-      await staking.setRewardDistributor(await distributor.getAddress());
-      expect(await staking.rewardDistributor()).to.equal(
-        await distributor.getAddress()
+    it('revert if distributor is zero address', async () => {
+      await expect(staking.setRewardDistributor(constants.AddressZero)).to.revertedWith(
+        'Staking: INVALID_DISTRIBUTOR',
       );
+    });
+
+    it('should set distributor by owner', async () => {
+      await staking.setRewardDistributor(await distributor.getAddress());
+      expect(await staking.rewardDistributor()).to.equal(await distributor.getAddress());
     });
   });
 
-  describe("#notifyRewardAmount", () => {
+  describe('#notifyRewardAmount', () => {
     before(async () => {
       await pixt.connect(distributor).transfer(staking.address, reward);
     });
 
-    it("revert if msg.sender is not distributor", async () => {
-      await expect(staking.notifyRewardAmount(reward)).to.revertedWith(
-        "Caller is not distributor"
-      );
+    it('revert if msg.sender is not distributor', async () => {
+      await expect(staking.notifyRewardAmount(reward)).to.revertedWith('Staking: NON_DISTRIBUTOR');
     });
 
-    it("should update reward related arguments", async () => {
+    it('should update reward related arguments', async () => {
       const tx = await staking.connect(distributor).notifyRewardAmount(reward);
-      expect(tx).to.emit(staking, "RewardAdded").withArgs(reward);
+      expect(tx).to.emit(staking, 'RewardAdded').withArgs(reward);
       expect(await staking.rewardRate()).to.equal(reward.div(rewardPeriod));
       periodStart = await getCurrentTime();
       expect(await staking.lastUpdateTime()).to.equal(periodStart);
-      expect(await staking.periodFinish()).to.equal(
-        periodStart.add(rewardPeriod)
-      );
+      expect(await staking.periodFinish()).to.equal(periodStart.add(rewardPeriod));
     });
   });
 
-  describe("#stake", () => {
-    it("revert if amount is zero", async () => {
-      await expect(aliceStaking.stake(0)).to.revertedWith("Cannot stake 0");
+  describe('#stake', () => {
+    it('revert if amount is zero', async () => {
+      await expect(aliceStaking.stake(0)).to.revertedWith('Staking: STAKE_ZERO');
     });
 
-    it("alice stakes 10 pixt", async () => {
+    it('alice stakes 10 pixt', async () => {
       const prevBalance = await pixt.balanceOf(aliceAddress);
       const tx = await aliceStaking.stake(10);
-      expect(tx).to.emit(aliceStaking, "Staked").withArgs(aliceAddress, 10);
+      expect(tx).to.emit(aliceStaking, 'Staked').withArgs(aliceAddress, 10);
       expect(await aliceStaking.totalStaked()).to.equal(BigNumber.from(10));
       expect(await pixt.balanceOf(aliceAddress)).to.equal(prevBalance.sub(10));
     });
 
-    it("bob stakes 10 pixt after 1 day", async () => {
+    it('bob stakes 10 pixt after 1 day', async () => {
       await time.increaseTo(periodStart.add(86401).toString());
       await bobStaking.stake(10);
-      expect(
-        (await staking.earned(aliceAddress)).add(
-          await staking.earned(bobAddress)
-        )
-      ).to.equal((await staking.rewardRate()).mul(86400));
+      expect((await staking.earned(aliceAddress)).add(await staking.earned(bobAddress))).to.equal(
+        (await staking.rewardRate()).mul(86400),
+      );
     });
 
-    it("alice stakes 10 pixt after 1 day", async () => {
+    it('alice stakes 10 pixt after 1 day', async () => {
       await time.increaseTo(periodStart.add(86400 * 2 + 1).toString());
       await aliceStaking.stake(10);
-      expect(
-        (await staking.earned(aliceAddress)).add(
-          await staking.earned(bobAddress)
-        )
-      ).to.equal((await staking.rewardRate()).mul(86400 * 2));
+      expect((await staking.earned(aliceAddress)).add(await staking.earned(bobAddress))).to.equal(
+        (await staking.rewardRate()).mul(86400 * 2),
+      );
     });
 
-    it("bob stakes 10 pixt after 1 day", async () => {
+    it('bob stakes 10 pixt after 1 day', async () => {
       await time.increaseTo(periodStart.add(86400 * 3 + 1).toString());
       await bobStaking.stake(10);
-      expect(
-        (await staking.earned(aliceAddress)).add(
-          await staking.earned(bobAddress)
-        )
-      ).to.equal((await staking.rewardRate()).mul(86400 * 3));
+      expect((await staking.earned(aliceAddress)).add(await staking.earned(bobAddress))).to.equal(
+        (await staking.rewardRate()).mul(86400 * 3),
+      );
     });
   });
 
-  describe("#unstake", () => {
-    it("revert if amount is zero", async () => {
-      await expect(aliceStaking.unstake(0)).to.revertedWith("Cannot unstake 0");
+  describe('#unstake', () => {
+    it('revert if amount is zero', async () => {
+      await expect(aliceStaking.unstake(0)).to.revertedWith('Staking: UNSTAKE_ZERO');
     });
 
-    it("alice unstakes 10 pixt", async () => {
+    it('alice unstakes 10 pixt', async () => {
       await time.increaseTo(periodStart.add(86400 * 4 + 1).toString());
       const prevBalance = await pixt.balanceOf(aliceAddress);
       const tx = await aliceStaking.unstake(10);
-      expect(tx).to.emit(aliceStaking, "Unstaked").withArgs(aliceAddress, 10);
+      expect(tx).to.emit(aliceStaking, 'Unstaked').withArgs(aliceAddress, 10);
       expect(await aliceStaking.totalStaked()).to.equal(BigNumber.from(30));
       expect(await pixt.balanceOf(aliceAddress)).to.equal(prevBalance.add(10));
     });
 
-    it("bob unstakes 10 pixt after 1 day", async () => {
+    it('bob unstakes 10 pixt after 1 day', async () => {
       await time.increaseTo(periodStart.add(86400 * 5 + 1).toString());
       await bobStaking.unstake(10);
-      expect(
-        (await staking.earned(aliceAddress)).add(
-          await staking.earned(bobAddress)
-        )
-      ).to.equal((await staking.rewardRate()).mul(86400 * 5));
+      expect((await staking.earned(aliceAddress)).add(await staking.earned(bobAddress))).to.equal(
+        (await staking.rewardRate()).mul(86400 * 5),
+      );
     });
   });
 
-  describe("#claim", () => {
-    it("alice claim reward", async () => {
+  describe('#claim', () => {
+    it('alice claim reward', async () => {
       const rewardPerTokenStored = (await staking.rewardPerTokenStored()).add(
         (await staking.rewardRate())
           .mul(1)
-          .mul(utils.parseEther("1"))
-          .div(await staking.totalStaked())
+          .mul(utils.parseEther('1'))
+          .div(await staking.totalStaked()),
       );
       const reward = (await staking.stakedAmounts(aliceAddress))
         .mul(
           rewardPerTokenStored
             .sub(await staking.userRewardPerTokenPaid(aliceAddress))
-            .div(utils.parseEther("1"))
+            .div(utils.parseEther('1')),
         )
         .add(await staking.rewards(aliceAddress));
       const prevBalance = await pixt.balanceOf(aliceAddress);
       const tx = await aliceStaking.claim();
-      expect(tx)
-        .to.emit(aliceStaking, "RewardPaid")
-        .withArgs(aliceAddress, reward);
-      expect(await pixt.balanceOf(aliceAddress)).to.equal(
-        prevBalance.add(reward)
-      );
+      expect(tx).to.emit(aliceStaking, 'RewardPaid').withArgs(aliceAddress, reward);
+      expect(await pixt.balanceOf(aliceAddress)).to.equal(prevBalance.add(reward));
     });
   });
 
-  describe("#exit", () => {
-    it("bob exit staking", async () => {
+  describe('#exit', () => {
+    it('bob exit staking', async () => {
       const rewardPerTokenStored = (await staking.rewardPerTokenStored()).add(
         (await staking.rewardRate())
           .mul(1)
-          .mul(utils.parseEther("1"))
-          .div(await staking.totalStaked())
+          .mul(utils.parseEther('1'))
+          .div(await staking.totalStaked()),
       );
       const reward = (await staking.stakedAmounts(bobAddress))
         .mul(
           rewardPerTokenStored
             .sub(await staking.userRewardPerTokenPaid(bobAddress))
-            .div(utils.parseEther("1"))
+            .div(utils.parseEther('1')),
         )
         .add(await staking.rewards(bobAddress))
         .add(10);
       const prevBalance = await pixt.balanceOf(bobAddress);
       await bobStaking.exit();
-      expect(await pixt.balanceOf(bobAddress)).to.equal(
-        prevBalance.add(reward)
-      );
+      expect(await pixt.balanceOf(bobAddress)).to.equal(prevBalance.add(reward));
     });
   });
 
-  describe("#notifyRewardAmount", () => {
-    it("should update reward related arguments", async () => {
+  describe('#notifyRewardAmount', () => {
+    it('should update reward related arguments', async () => {
       await pixt.connect(distributor).transfer(staking.address, reward);
 
       const periodFinish = await staking.periodFinish();
@@ -232,13 +209,9 @@ describe("PIXTStaking", function () {
       const currentTime = await getCurrentTime();
       const leftover = periodFinish.sub(currentTime).mul(rewardRate);
 
-      expect(await staking.rewardRate()).to.equal(
-        leftover.add(reward).div(rewardPeriod)
-      );
+      expect(await staking.rewardRate()).to.equal(leftover.add(reward).div(rewardPeriod));
       expect(await staking.lastUpdateTime()).to.equal(currentTime);
-      expect(await staking.periodFinish()).to.equal(
-        currentTime.add(rewardPeriod)
-      );
+      expect(await staking.periodFinish()).to.equal(currentTime.add(rewardPeriod));
     });
   });
 });

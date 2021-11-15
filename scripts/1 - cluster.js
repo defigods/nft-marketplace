@@ -1,9 +1,8 @@
 const hre = require('hardhat');
-const { utils } = require('ethers');
 
 async function main() {
   const PIXT = await hre.ethers.getContractFactory('PIXT');
-  const pixt = await PIXT.deploy(utils.parseEther('140000000'));
+  const pixt = await PIXT.deploy();
   await pixt.deployed();
 
   const PIX = await hre.ethers.getContractFactory('PIX');

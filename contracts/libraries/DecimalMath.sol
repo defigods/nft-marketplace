@@ -8,11 +8,7 @@ library DecimalMath {
         return (x * y) / DENOMINATOR;
     }
 
-    function isLessThanAndEqualToDenominator(uint256 x)
-        internal
-        pure
-        returns (bool)
-    {
+    function isLessThanAndEqualToDenominator(uint256 x) internal pure returns (bool) {
         return x <= DENOMINATOR;
     }
 }
