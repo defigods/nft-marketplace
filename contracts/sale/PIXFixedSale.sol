@@ -1,14 +1,14 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "./PIXBaseSale.sol";
 import "../libraries/DecimalMath.sol";
 
 contract PIXFixedSale is PIXBaseSale {
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     using DecimalMath for uint256;
 
     event SaleRequested(
@@ -30,9 +30,9 @@ contract PIXFixedSale is PIXBaseSale {
 
     mapping(uint256 => FixedSaleInfo) public saleInfo;
 
-    constructor(address _pixt)
-        PIXBaseSale(_pixt) // solhint-disable-next-line no-empty-blocks
-    {}
+    function initialize(address _pixt) public override initializer {
+        PIXBaseSale.initialize(_pixt);
+    }
 
     /** @notice request sale for fixed price
      *  @param _nftToken NFT token address for sale
@@ -48,7 +48,7 @@ contract PIXFixedSale is PIXBaseSale {
         require(_tokenIds.length > 0, "Sale: NO_TOKENS");
 
         for (uint256 i; i < _tokenIds.length; i += 1) {
-            IERC721(_nftToken).safeTransferFrom(msg.sender, address(this), _tokenIds[i]);
+            IERC721Upgradeable(_nftToken).safeTransferFrom(msg.sender, address(this), _tokenIds[i]);
         }
 
         lastSaleId += 1;
@@ -83,7 +83,7 @@ contract PIXFixedSale is PIXBaseSale {
         require(_saleInfo.seller == msg.sender, "Sale: NOT_SELLER");
 
         for (uint256 i; i < _saleInfo.tokenIds.length; i += 1) {
-            IERC721(_saleInfo.nftToken).safeTransferFrom(
+            IERC721Upgradeable(_saleInfo.nftToken).safeTransferFrom(
                 address(this),
                 msg.sender,
                 _saleInfo.tokenIds[i]
@@ -109,7 +109,7 @@ contract PIXFixedSale is PIXBaseSale {
         }
 
         for (uint256 i; i < _saleInfo.tokenIds.length; i += 1) {
-            IERC721(_saleInfo.nftToken).safeTransferFrom(
+            IERC721Upgradeable(_saleInfo.nftToken).safeTransferFrom(
                 address(this),
                 msg.sender,
                 _saleInfo.tokenIds[i]

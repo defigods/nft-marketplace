@@ -1,15 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "./interfaces/IPIXLandmark.sol";
 
-contract PIXLandmark is IPIXLandmark, ERC721Enumerable, Ownable {
-    using SafeERC20 for IERC20;
-
+contract PIXLandmark is IPIXLandmark, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     string private _baseURIExtended;
 
     mapping(address => bool) public moderators;
@@ -23,7 +19,10 @@ contract PIXLandmark is IPIXLandmark, ERC721Enumerable, Ownable {
         _;
     }
 
-    constructor() ERC721("PIX Landmark", "PIXLand") {
+    function initialize() public initializer {
+        __ERC721Enumerable_init();
+        __ERC721_init("PIX Landmark", "PIXLand");
+        __Ownable_init();
         moderators[msg.sender] = true;
     }
 

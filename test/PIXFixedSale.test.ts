@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
+import { ethers, upgrades } from 'hardhat';
 import { Signer, Contract, BigNumber, utils, constants } from 'ethers';
 import {
   DENOMINATOR,
@@ -19,19 +19,16 @@ describe('PIXFixedSale', function () {
   let pixtToken: Contract;
 
   beforeEach(async function () {
-    const signers = await ethers.getSigners();
-    owner = signers[0];
-    alice = signers[1];
-    bob = signers[2];
+    [owner, alice, bob] = await ethers.getSigners();
 
     const PIXTFactory = await ethers.getContractFactory('PIXT');
     pixtToken = await PIXTFactory.connect(bob).deploy();
 
     const PIXFactory = await ethers.getContractFactory('PIX');
-    pixNFT = await PIXFactory.deploy(pixtToken.address);
+    pixNFT = await upgrades.deployProxy(PIXFactory, [pixtToken.address]);
 
     const PIXFixedSaleFactory = await ethers.getContractFactory('PIXFixedSale');
-    fixedSale = await PIXFixedSaleFactory.deploy(pixtToken.address);
+    fixedSale = await upgrades.deployProxy(PIXFixedSaleFactory, [pixtToken.address]);
 
     await fixedSale.setWhitelistedNFTs(pixNFT.address, true);
   });

@@ -1,43 +1,34 @@
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
+import { ethers, upgrades } from 'hardhat';
 import { Signer, Contract, BigNumber, ContractFactory, constants, utils } from 'ethers';
 import { DENOMINATOR, generateRandomAddress } from './utils';
 
 describe('PIXBaseSale', function () {
   let owner: Signer;
   let alice: Signer;
-  let treasury: string = generateRandomAddress();
   let fixedSale: Contract;
   let pixtToken: Contract;
-  const tradingFeePct = BigNumber.from('100');
 
   beforeEach(async function () {
-    const signers = await ethers.getSigners();
-    owner = signers[0];
-    alice = signers[1];
+    [owner, alice] = await ethers.getSigners();
 
     const PIXTFactory = await ethers.getContractFactory('PIXT');
     pixtToken = await PIXTFactory.deploy();
 
     const PIXFixedSaleFactory = await ethers.getContractFactory('PIXFixedSale');
-    fixedSale = await PIXFixedSaleFactory.deploy(pixtToken.address);
+    fixedSale = await upgrades.deployProxy(PIXFixedSaleFactory, [pixtToken.address]);
   });
 
-  describe('constructor', () => {
-    let PIXFixedSaleFactory: ContractFactory;
-
-    beforeEach(async () => {
-      PIXFixedSaleFactory = await ethers.getContractFactory('PIXFixedSale');
+  describe('#initialize', () => {
+    it('revert if pixtToken is zero', async () => {
+      const PIXFixedSaleFactory = await ethers.getContractFactory('PIXFixedSale');
+      await expect(
+        upgrades.deployProxy(PIXFixedSaleFactory, [constants.AddressZero]),
+      ).to.revertedWith('Sale: INVALID_PIXT');
     });
 
     it('check initial values', async () => {
       expect(await fixedSale.pixToken()).to.be.equal(pixtToken.address);
-    });
-
-    it('revert if pixtToken is zero', async () => {
-      await expect(PIXFixedSaleFactory.deploy(constants.AddressZero)).to.revertedWith(
-        'Sale: INVALID_PIXT',
-      );
     });
   });
 

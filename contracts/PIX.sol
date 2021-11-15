@@ -1,18 +1,18 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "./interfaces/IPIX.sol";
 import "./libraries/DecimalMath.sol";
 
-contract PIX is IPIX, ERC721Enumerable, Ownable {
-    using SafeERC20 for IERC20;
+contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     using DecimalMath for uint256;
 
-    IERC20 public immutable pixToken;
+    IERC20Upgradeable public pixToken;
     string private _baseURIExtended;
     uint256 public lastTokenId;
 
@@ -30,9 +30,12 @@ contract PIX is IPIX, ERC721Enumerable, Ownable {
         _;
     }
 
-    constructor(address pixt) ERC721("PlanetIX", "PIX") {
+    function initialize(address pixt) public initializer {
         require(pixt != address(0), "Pix: INVALID_PIXT");
-        pixToken = IERC20(pixt);
+        __ERC721Enumerable_init();
+        __ERC721_init("PlanetIX", "PIX");
+        __Ownable_init();
+        pixToken = IERC20Upgradeable(pixt);
         moderators[msg.sender] = true;
         combineCounts[PIXSize.Pix] = 10;
         combineCounts[PIXSize.Area] = 5;
@@ -49,12 +52,12 @@ contract PIX is IPIX, ERC721Enumerable, Ownable {
 
     function withdraw(address[] calldata tokens) external onlyOwner {
         for (uint256 i; i < tokens.length; i += 1) {
-            IERC20 token = IERC20(tokens[i]);
+            IERC20Upgradeable token = IERC20Upgradeable(tokens[i]);
             if (tokens[i] == address(0)) {
                 // solhint-disable-next-line avoid-low-level-calls
                 (bool success, ) = msg.sender.call{value: address(this).balance}("");
                 require(success, "Pix: WITHDRAW_FAILED");
-            } else if ((token).balanceOf(address(this)) > 0) {
+            } else if (token.balanceOf(address(this)) > 0) {
                 token.safeTransfer(msg.sender, token.balanceOf(address(this)));
             }
         }
@@ -67,7 +70,7 @@ contract PIX is IPIX, ERC721Enumerable, Ownable {
     }
 
     function setPackPrice(uint256 mode, uint256 price) external onlyOwner {
-        require(mode > 0 && mode < 7, "Pix: INVALID_PRICE_MODE");
+        require(mode > 0 && mode < packPrices.length, "Pix: INVALID_PRICE_MODE");
         require(price > 0, "Pix: ZERO_PRICE");
         packPrices[mode - 1] = price;
         emit PackPriceUpdated(mode, price);
@@ -94,15 +97,16 @@ contract PIX is IPIX, ERC721Enumerable, Ownable {
 
     function requestMint(address token, uint256 mode) external payable {
         require(paymentTokens[token], "Pix: TOKEN_NOT_APPROVED");
-        require(mode > 0 && mode < 7, "Pix: INVALID_PRICE_MODE");
+        require(mode > 0 && mode < packPrices.length, "Pix: INVALID_PRICE_MODE");
         require(pendingPackType[msg.sender] == 0, "Pix: PENDING_REQUEST_EXIST");
         if (token == address(0)) {
             require(msg.value == packPrices[mode - 1], "Pix: INSUFFICIENT_FUNDS");
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = address(this).call{value: msg.value}("");
-            require(success, "Pix: PURCHASE_FAILED");
         } else {
-            IERC20(token).safeTransferFrom(msg.sender, address(this), packPrices[mode - 1]);
+            IERC20Upgradeable(token).safeTransferFrom(
+                msg.sender,
+                address(this),
+                packPrices[mode - 1]
+            );
         }
         pendingPackType[msg.sender] = mode;
         emit Requested(msg.sender, mode);
@@ -122,7 +126,6 @@ contract PIX is IPIX, ERC721Enumerable, Ownable {
                 pixIds.length == countries.length,
             "Pix: INVALID_LENGTH"
         );
-        require(pixIds.length <= 50, "Pix: TOO_MANY_ARGUMENTS");
 
         for (uint256 i; i < pixIds.length; i += 1) {
             _safeMint(
@@ -203,8 +206,6 @@ contract PIX is IPIX, ERC721Enumerable, Ownable {
     }
 
     function batchMint(address to, PIXInfo[] memory infos) external onlyMod {
-        require(infos.length > 0 && infos.length <= 50, "Pix: INVALID_LENGTH");
-
         for (uint256 i; i < infos.length; i += 1) {
             _safeMint(to, infos[i]);
         }
@@ -226,8 +227,6 @@ contract PIX is IPIX, ERC721Enumerable, Ownable {
     }
 
     function batchBurn(uint256[] memory tokenIds) external {
-        require(tokenIds.length > 0 && tokenIds.length <= 50, "Pix: INVALID_LENGTH");
-
         for (uint256 i; i < tokenIds.length; i += 1) {
             address owner = ownerOf(tokenIds[i]);
             require(

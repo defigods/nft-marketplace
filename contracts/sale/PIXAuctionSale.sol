@@ -1,14 +1,14 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./PIXBaseSale.sol";
 import "../libraries/DecimalMath.sol";
 
-contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
-    using SafeERC20 for IERC20;
+contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     using DecimalMath for uint256;
 
     event SaleRequested(
@@ -39,9 +39,10 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
     mapping(uint256 => AuctionSaleInfo) public saleInfo;
     mapping(uint256 => AuctionSaleState) public saleState;
 
-    constructor(address _pixt)
-        PIXBaseSale(_pixt) // solhint-disable-next-line no-empty-blocks
-    {}
+    function initialize(address _pixt) public override initializer {
+        PIXBaseSale.initialize(_pixt);
+        __ReentrancyGuard_init();
+    }
 
     /** @notice request sale for fixed price
      *  @param _nftToken NFT token address for sale
@@ -61,7 +62,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
         require(_endTime > block.timestamp, "Sale: INVALID_TIME");
 
         for (uint256 i; i < _tokenIds.length; i += 1) {
-            IERC721(_nftToken).safeTransferFrom(msg.sender, address(this), _tokenIds[i]);
+            IERC721Upgradeable(_nftToken).safeTransferFrom(msg.sender, address(this), _tokenIds[i]);
         }
 
         lastSaleId += 1;
@@ -109,7 +110,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
         require(saleState[_saleId].bidder == address(0), "Sale: BID_EXIST");
 
         for (uint256 i; i < _saleInfo.tokenIds.length; i += 1) {
-            IERC721(_saleInfo.nftToken).safeTransferFrom(
+            IERC721Upgradeable(_saleInfo.nftToken).safeTransferFrom(
                 address(this),
                 msg.sender,
                 _saleInfo.tokenIds[i]
@@ -180,7 +181,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuard {
         }
 
         for (uint256 i; i < _saleInfo.tokenIds.length; i += 1) {
-            IERC721(_saleInfo.nftToken).safeTransferFrom(
+            IERC721Upgradeable(_saleInfo.nftToken).safeTransferFrom(
                 address(this),
                 _saleState.bidder,
                 _saleInfo.tokenIds[i]

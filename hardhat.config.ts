@@ -1,10 +1,11 @@
-import "@nomiclabs/hardhat-etherscan";
-import "@nomiclabs/hardhat-waffle";
-import "@nomiclabs/hardhat-web3";
-import "@typechain/hardhat";
-import "hardhat-gas-reporter";
-import "solidity-coverage";
-import "dotenv/config";
+import '@nomiclabs/hardhat-etherscan';
+import '@nomiclabs/hardhat-waffle';
+import '@nomiclabs/hardhat-web3';
+import '@typechain/hardhat';
+import 'hardhat-gas-reporter';
+import 'solidity-coverage';
+import 'dotenv/config';
+import '@openzeppelin/hardhat-upgrades';
 
 export default {
   networks: {
@@ -25,17 +26,17 @@ export default {
     },
   },
   typechain: {
-    outDir: "src/types",
-    target: "ethers-v5",
+    outDir: 'src/types',
+    target: 'ethers-v5',
   },
   gasReporter: {
-    currency: "ETH",
+    currency: 'ETH',
   },
   etherscan: {
     apiKey: process.env.API_KEY,
   },
   solidity: {
-    version: "0.8.4",
+    version: '0.8.4',
     settings: {
       optimizer: {
         enabled: true,

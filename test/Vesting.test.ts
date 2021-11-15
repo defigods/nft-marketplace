@@ -12,8 +12,7 @@ describe('Vesting', function () {
   const RELEASE_PERIOD = BigNumber.from((3600 * 24 * 7).toString());
 
   beforeEach(async function () {
-    const signers = await ethers.getSigners();
-    [alice, bob, carol] = signers;
+    [alice, bob, carol] = await ethers.getSigners();
 
     const PIXTFactory = await ethers.getContractFactory('PIXT');
     pixtToken = await PIXTFactory.deploy();
