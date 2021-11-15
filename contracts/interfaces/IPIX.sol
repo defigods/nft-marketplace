@@ -14,6 +14,7 @@ interface IPIX {
 
     event PIXMinted(
         address indexed account,
+        uint256 indexed tokenId,
         uint256 indexed pixId,
         PIXCategory category,
         PIXSize size,

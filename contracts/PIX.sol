@@ -217,7 +217,15 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         lastTokenId += 1;
         _safeMint(to, lastTokenId);
         pixInfos[lastTokenId] = info;
-        emit PIXMinted(to, info.pixId, info.category, info.size, info.classification, info.country);
+        emit PIXMinted(
+            to,
+            lastTokenId,
+            info.pixId,
+            info.category,
+            info.size,
+            info.classification,
+            info.country
+        );
     }
 
     function safeBurn(uint256 tokenId) external {

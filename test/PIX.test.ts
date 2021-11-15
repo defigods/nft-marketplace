@@ -303,6 +303,7 @@ describe('PIX', function () {
         .to.emit(pixNFT, 'PIXMinted')
         .withArgs(
           await alice.getAddress(),
+          2,
           1,
           PIXCategory.Common,
           PIXSize.Pix,
