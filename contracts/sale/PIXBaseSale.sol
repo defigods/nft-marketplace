@@ -43,7 +43,7 @@ abstract contract PIXBaseSale is OwnableUpgradeable, ERC721HolderUpgradeable {
         _;
     }
 
-    function initialize(address pixt) public virtual initializer {
+    function __PIXBaseSale_init(address pixt) internal initializer {
         require(pixt != address(0), "Sale: INVALID_PIXT");
         pixToken = IERC20Upgradeable(pixt);
         __Ownable_init();

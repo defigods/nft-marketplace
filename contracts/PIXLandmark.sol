@@ -19,7 +19,7 @@ contract PIXLandmark is IPIXLandmark, ERC721EnumerableUpgradeable, OwnableUpgrad
         _;
     }
 
-    function initialize() public initializer {
+    function initialize() external initializer {
         __ERC721Enumerable_init();
         __ERC721_init("PIX Landmark", "PIXLand");
         __Ownable_init();

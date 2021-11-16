@@ -30,7 +30,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         _;
     }
 
-    function initialize(address pixt) public initializer {
+    function initialize(address pixt) external initializer {
         require(pixt != address(0), "Pix: INVALID_PIXT");
         __ERC721Enumerable_init();
         __ERC721_init("PlanetIX", "PIX");
