@@ -66,4 +66,8 @@ interface IPIX {
         PIXClassification classification;
         string country;
     }
+
+    function pixesInLand(uint256[] calldata tokenIds) external view returns (bool);
+
+    function setPIXInLandStatus(uint256[] calldata pixIds, bool inside) external;
 }

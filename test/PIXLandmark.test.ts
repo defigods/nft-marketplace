@@ -51,7 +51,7 @@ describe('PIXLandmark', function () {
     it('should add type', async () => {
       await pixLandmark.addLandmarkType(1, [1, 2]);
       expect(await pixLandmark.pixIdInLandType(1, 0)).to.equal(1);
-      expect(await pixLandmark.isPIXInLand(1)).to.equal(true);
+      expect(await pixLandmark.pixesInLand(1)).to.equal(true);
     });
   });
 

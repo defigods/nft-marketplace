@@ -22,7 +22,7 @@ interface IPIXLandmark {
         uint256 landmarkType;
     }
 
-    function isPIXInLand(uint256 tokenId) external view returns (bool);
+    function pixesInLand(uint256 tokenId) external view returns (bool);
 
     function pixIdInLandType(uint256 landType, uint256 index) external view returns (uint256);
 }

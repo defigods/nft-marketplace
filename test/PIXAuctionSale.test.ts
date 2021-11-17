@@ -31,7 +31,10 @@ describe('PIXAuctionSale', function () {
     pixNFT = await upgrades.deployProxy(PIXFactory, [pixtToken.address]);
 
     const PIXAuctionSaleFactory = await ethers.getContractFactory('PIXAuctionSale');
-    auctionSale = await upgrades.deployProxy(PIXAuctionSaleFactory, [pixtToken.address]);
+    auctionSale = await upgrades.deployProxy(PIXAuctionSaleFactory, [
+      pixtToken.address,
+      pixNFT.address,
+    ]);
 
     await auctionSale.setWhitelistedNFTs(pixNFT.address, true);
 
@@ -155,7 +158,7 @@ describe('PIXAuctionSale', function () {
     });
 
     it('revert if there is bidder', async () => {
-      await auctionSale.connect(bob).bid(tokenId, minPrice, { value: minPrice });
+      await auctionSale.connect(bob).bid(tokenId, minPrice);
       await expect(
         auctionSale.connect(alice).updateSale(tokenId, endTime, minPrice),
       ).to.revertedWith('Sale: BID_EXIST');
@@ -245,9 +248,9 @@ describe('PIXAuctionSale', function () {
     });
 
     it('revert if NFT is not for sale', async () => {
-      await expect(
-        auctionSale.connect(bob).bid(tokenId, minPrice, { value: minPrice }),
-      ).to.revertedWith('Sale: INVALID_ID');
+      await expect(auctionSale.connect(bob).bid(tokenId, minPrice)).to.revertedWith(
+        'Sale: INVALID_ID',
+      );
     });
 
     it('revert if send less than minPrice', async () => {
@@ -349,7 +352,7 @@ describe('PIXAuctionSale', function () {
       const bidAmount = minPrice.add(utils.parseEther('0.5'));
 
       await auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, minPrice);
-      await auctionSale.connect(bob).bid(tokenId, bidAmount, { value: bidAmount });
+      await auctionSale.connect(bob).bid(tokenId, bidAmount);
 
       const bobBalanceBefore = await pixtToken.balanceOf(await bob.getAddress());
       const tx = await auctionSale.connect(bob).cancelBid(tokenId);
@@ -398,7 +401,7 @@ describe('PIXAuctionSale', function () {
     });
 
     it('should end auction and send PIX to top bidder and send PIXT to seller and treasury', async () => {
-      await auctionSale.setTreasury(treasury, 100, true);
+      await auctionSale.setTreasury(treasury, 50, 50, false);
       const bidAmount = minPrice.add(utils.parseEther('0.5'));
 
       await auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, minPrice);
@@ -413,7 +416,9 @@ describe('PIXAuctionSale', function () {
       expect(await pixtToken.balanceOf(await alice.getAddress())).to.be.equal(
         aliceBalanceBefore.add(bidAmount).sub(fee),
       );
-      expect(await pixtToken.balanceOf(treasury)).to.be.equal(treasuryBalanceBefore.add(fee));
+      expect(await pixtToken.balanceOf(treasury)).to.be.equal(
+        treasuryBalanceBefore.add(fee.div(2)),
+      );
       expect(tx)
         .to.emit(auctionSale, 'Purchased')
         .withArgs(await alice.getAddress(), await bob.getAddress(), tokenId, bidAmount);
@@ -429,7 +434,7 @@ describe('PIXAuctionSale', function () {
       expect(saleState.bidAmount).to.be.equal(0);
     });
 
-    it('should not send PIXT fee if tradingFeePct is zero', async () => {
+    it('should not send fee if zero', async () => {
       const bidAmount = minPrice.add(utils.parseEther('0.5'));
 
       await auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, minPrice);

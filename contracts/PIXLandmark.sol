@@ -43,7 +43,7 @@ contract PIXLandmark is IPIXLandmark, ERC721EnumerableUpgradeable, OwnableUpgrad
         }
     }
 
-    function isPIXInLand(uint256 tokenId) external view override returns (bool) {
+    function pixesInLand(uint256 tokenId) external view override returns (bool) {
         return pixesInLandStatus[tokenId];
     }
 

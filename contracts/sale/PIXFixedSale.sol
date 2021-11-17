@@ -4,11 +4,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "./PIXBaseSale.sol";
 import "../libraries/DecimalMath.sol";
+import "./PIXBaseSale.sol";
 
 contract PIXFixedSale is PIXBaseSale {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20Upgradeable for ERC20BurnableUpgradeable;
     using DecimalMath for uint256;
 
     event SaleRequested(
@@ -30,8 +30,8 @@ contract PIXFixedSale is PIXBaseSale {
 
     mapping(uint256 => FixedSaleInfo) public saleInfo;
 
-    function initialize(address _pixt) public override initializer {
-        PIXBaseSale.initialize(_pixt);
+    function initialize(address _pixt, address _pix) public override initializer {
+        PIXBaseSale.initialize(_pixt, _pix);
     }
 
     /** @notice request sale for fixed price
@@ -95,17 +95,28 @@ contract PIXFixedSale is PIXBaseSale {
         delete saleInfo[_saleId];
     }
 
-    /** @notice purchase PIX in fixed price
+    /** @notice purchase NFT in fixed price
      *  @param _saleId Sale ID
      */
-    function purchasePIX(uint256 _saleId) external payable {
+    function purchaseNFT(uint256 _saleId) external {
         FixedSaleInfo storage _saleInfo = saleInfo[_saleId];
         require(_saleInfo.price > 0, "Sale: INVALID_ID");
 
-        uint256 fee = _saleInfo.price.decimalMul(landTreasury.fee);
-        pixToken.safeTransferFrom(msg.sender, _saleInfo.seller, _saleInfo.price - fee);
+        Treasury memory treasury;
+        if (_saleInfo.nftToken == address(pixNFT) && pixNFT.pixesInLand(_saleInfo.tokenIds)) {
+            treasury = landTreasury;
+        } else {
+            treasury = pixtTreasury;
+        }
+
+        uint256 fee = _saleInfo.price.decimalMul(treasury.fee);
+        uint256 burnFee = _saleInfo.price.decimalMul(treasury.burnFee);
+        pixToken.safeTransferFrom(msg.sender, _saleInfo.seller, _saleInfo.price - fee - burnFee);
         if (fee > 0) {
-            pixToken.safeTransferFrom(msg.sender, landTreasury.treasury, fee);
+            pixToken.safeTransferFrom(msg.sender, treasury.treasury, fee);
+        }
+        if (burnFee > 0) {
+            pixToken.burnFrom(msg.sender, burnFee);
         }
 
         for (uint256 i; i < _saleInfo.tokenIds.length; i += 1) {

@@ -24,6 +24,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     mapping(PIXSize => uint16) public combineCounts;
     mapping(uint256 => PIXInfo) public pixInfos;
     mapping(address => bool) public paymentTokens;
+    mapping(uint256 => bool) public pixInLand;
 
     modifier onlyMod() {
         require(moderators[msg.sender], "Pix: NON_MODERATOR");
@@ -163,6 +164,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         require(firstPix.size < PIXSize.Domain, "Pix: MAX_NOT_ALLOWED");
         require(tokenIds.length == combineCount, "Pix: INVALID_ARGUMENTS");
 
+        bool inside = this.pixesInLand(tokenIds); // TODO: set inside for combined token
         for (uint256 i; i < tokenIds.length; i += 1) {
             uint256 tokenId = tokenIds[i];
 
@@ -251,5 +253,14 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
 
     function setBaseURI(string memory baseURI_) external onlyOwner {
         _baseURIExtended = baseURI_;
+    }
+
+    function pixesInLand(uint256[] calldata tokenIds) external view override returns (bool inside) {
+        for (uint256 i; i < tokenIds.length; i += 1)
+            inside = inside || pixInLand[pixInfos[tokenIds[i]].pixId];
+    }
+
+    function setPIXInLandStatus(uint256[] calldata pixIds, bool inside) external override onlyMod {
+        for (uint256 i; i < pixIds.length; i += 1) pixInLand[pixIds[i]] = inside;
     }
 }

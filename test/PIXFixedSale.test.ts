@@ -28,7 +28,10 @@ describe('PIXFixedSale', function () {
     pixNFT = await upgrades.deployProxy(PIXFactory, [pixtToken.address]);
 
     const PIXFixedSaleFactory = await ethers.getContractFactory('PIXFixedSale');
-    fixedSale = await upgrades.deployProxy(PIXFixedSaleFactory, [pixtToken.address]);
+    fixedSale = await upgrades.deployProxy(PIXFixedSaleFactory, [
+      pixtToken.address,
+      pixNFT.address,
+    ]);
 
     await fixedSale.setWhitelistedNFTs(pixNFT.address, true);
   });
@@ -171,7 +174,7 @@ describe('PIXFixedSale', function () {
     });
   });
 
-  describe('#purchasePIX function', () => {
+  describe('#purchaseNFT function', () => {
     const tokenId = 1;
     const price = utils.parseEther('1');
     const lastTokenId = 1;
@@ -189,19 +192,19 @@ describe('PIXFixedSale', function () {
     });
 
     it('revert if NFT is not for sale', async () => {
-      await expect(fixedSale.connect(bob).purchasePIX(lastTokenId)).to.revertedWith(
+      await expect(fixedSale.connect(bob).purchaseNFT(lastTokenId)).to.revertedWith(
         'Sale: INVALID_ID',
       );
     });
 
     it('should purchase PIX and send to seller and treasury', async () => {
-      await fixedSale.setTreasury(treasury, 100, true);
+      await fixedSale.setTreasury(treasury, 100, 0, false);
       await pixtToken.connect(bob).approve(fixedSale.address, price);
 
       await fixedSale.connect(alice).requestSale(pixNFT.address, [tokenId], price);
       const aliceBalanceBefore = await pixtToken.balanceOf(await alice.getAddress());
       const treasuryBalanceBefore = await pixtToken.balanceOf(treasury);
-      const tx = await fixedSale.connect(bob).purchasePIX(lastTokenId);
+      const tx = await fixedSale.connect(bob).purchaseNFT(lastTokenId);
       expect(await pixNFT.ownerOf(tokenId)).to.be.equal(await bob.getAddress());
       const fee = price.mul(BigNumber.from('100')).div(DENOMINATOR);
       expect(await pixtToken.balanceOf(await alice.getAddress())).to.be.equal(
@@ -216,13 +219,13 @@ describe('PIXFixedSale', function () {
       expect(saleInfo.price).to.be.equal(0);
     });
 
-    it('should not send fee if fee is zero', async () => {
+    it('should not send fee if zero', async () => {
       await pixtToken.connect(bob).approve(fixedSale.address, price);
 
       await fixedSale.connect(alice).requestSale(pixNFT.address, [tokenId], price);
       const aliceBalanceBefore = await pixtToken.balanceOf(await alice.getAddress());
       const treasuryBalanceBefore = await pixtToken.balanceOf(treasury);
-      const tx = await fixedSale.connect(bob).purchasePIX(tokenId);
+      const tx = await fixedSale.connect(bob).purchaseNFT(tokenId);
       expect(await pixNFT.ownerOf(tokenId)).to.be.equal(await bob.getAddress());
       expect(await pixtToken.balanceOf(await alice.getAddress())).to.be.equal(
         aliceBalanceBefore.add(price),
