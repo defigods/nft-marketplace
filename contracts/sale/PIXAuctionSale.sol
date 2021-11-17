@@ -42,7 +42,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
     mapping(uint256 => AuctionSaleState) public saleState;
 
     function initialize(address _pixt, address _pix) external initializer {
-        PIXBaseSale.initialize(_pixt, _pix);
+        __PIXBaseSale_init(_pixt, _pix);
         __ReentrancyGuard_init();
     }
 
