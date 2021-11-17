@@ -3,10 +3,31 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
-import "./interfaces/IPIXLandmark.sol";
+import "./interfaces/IPIX.sol";
 
-contract PIXLandmark is IPIXLandmark, ERC721EnumerableUpgradeable, OwnableUpgradeable {
+contract PIXLandmark is ERC721EnumerableUpgradeable, OwnableUpgradeable {
+    event LandmarkMinted(
+        address indexed account,
+        uint256 indexed tokenId,
+        PIXCategory category,
+        uint256 indexed landmarkType
+    );
+
+    enum PIXCategory {
+        Legendary,
+        Rare,
+        Uncommon,
+        Common,
+        Outliers
+    }
+
+    struct LandmarkInfo {
+        PIXCategory category;
+        uint256 landmarkType;
+    }
+
     string private _baseURIExtended;
+    IPIX public pixNFT;
 
     mapping(address => bool) public moderators;
     mapping(uint256 => LandmarkInfo) public landInfos;
@@ -19,10 +40,12 @@ contract PIXLandmark is IPIXLandmark, ERC721EnumerableUpgradeable, OwnableUpgrad
         _;
     }
 
-    function initialize() public initializer {
+    function initialize(address pix) public initializer {
+        require(pix != address(0), "Landmark: INVALID_PIX");
         __ERC721Enumerable_init();
         __ERC721_init("PIX Landmark", "PIXLand");
         __Ownable_init();
+        pixNFT = IPIX(pix);
         moderators[msg.sender] = true;
     }
 
@@ -31,29 +54,14 @@ contract PIXLandmark is IPIXLandmark, ERC721EnumerableUpgradeable, OwnableUpgrad
         moderators[moderator] = approved;
     }
 
-    function addLandmarkType(uint256 landmarkType, uint256[] calldata pixTokenIds)
-        external
-        onlyMod
-    {
+    function addLandmarkType(uint256 landmarkType, uint256[] calldata pixIds) external onlyMod {
         require(landmarkType > 0, "Landmark: INVALID_TYPE");
 
-        for (uint256 i; i < pixTokenIds.length; i += 1) {
-            pixesInLandStatus[pixTokenIds[i]] = true;
-            pixesInLandType[landmarkType].push(pixTokenIds[i]);
+        for (uint256 i; i < pixIds.length; i += 1) {
+            pixesInLandStatus[pixIds[i]] = true;
+            pixesInLandType[landmarkType].push(pixIds[i]);
+            pixNFT.setPIXInLandStatus(pixIds);
         }
-    }
-
-    function pixesInLand(uint256 tokenId) external view override returns (bool) {
-        return pixesInLandStatus[tokenId];
-    }
-
-    function pixIdInLandType(uint256 landType, uint256 index)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        return pixesInLandType[landType][index];
     }
 
     function safeMint(address to, LandmarkInfo memory info) external onlyMod {

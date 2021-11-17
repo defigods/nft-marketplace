@@ -69,5 +69,5 @@ interface IPIX {
 
     function pixesInLand(uint256[] calldata tokenIds) external view returns (bool);
 
-    function setPIXInLandStatus(uint256[] calldata pixIds, bool inside) external;
+    function setPIXInLandStatus(uint256[] calldata pixIds) external;
 }
