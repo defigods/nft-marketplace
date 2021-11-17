@@ -30,8 +30,8 @@ contract PIXFixedSale is PIXBaseSale {
 
     mapping(uint256 => FixedSaleInfo) public saleInfo;
 
-    function initialize(address _pixt, address _pix) public override initializer {
-        PIXBaseSale.initialize(_pixt, _pix);
+    function initialize(address _pixt, address _pix) external initializer {
+        __PIXBaseSale_init(_pixt, _pix);
     }
 
     /** @notice request sale for fixed price

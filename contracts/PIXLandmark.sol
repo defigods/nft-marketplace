@@ -40,7 +40,7 @@ contract PIXLandmark is ERC721EnumerableUpgradeable, OwnableUpgradeable {
         _;
     }
 
-    function initialize(address pix) public initializer {
+    function initialize(address pix) external initializer {
         require(pix != address(0), "Landmark: INVALID_PIX");
         __ERC721Enumerable_init();
         __ERC721_init("PIX Landmark", "PIXLand");
