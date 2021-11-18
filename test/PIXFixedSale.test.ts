@@ -246,7 +246,7 @@ describe('PIXFixedSale', function () {
     });
   });
 
-  describe('#purchaseNFTWithSignature function', () => {
+  describe('#sellNFTWithSignature function', () => {
     const tokenId = 1;
     const price = utils.parseEther('1');
 
@@ -263,65 +263,65 @@ describe('PIXFixedSale', function () {
     });
 
     it('revert if signature invalid', async () => {
-      const data = await getDigest(fixedSale, alice, bob, pixNFT, [BigNumber.from(tokenId)], price);
+      const data = await getDigest(
+        pixtToken,
+        fixedSale,
+        bob,
+        pixNFT,
+        BigNumber.from(tokenId),
+        price,
+      );
       const { v, r, s } = ecsign(
         Buffer.from(data.slice(2), 'hex'),
         Buffer.from(process.env.PRIVATE_KEY.slice(2), 'hex'),
       );
       await expect(
         fixedSale
-          .connect(bob)
-          .purchaseNFTWithSignature(
-            await alice.getAddress(),
-            pixNFT.address,
-            price,
-            [tokenId],
-            v,
-            r,
-            s,
-          ),
-      ).to.revertedWith('Sale: INVALID_SIGNATURE');
+          .connect(alice)
+          .sellNFTWithSignature(await bob.getAddress(), price, pixNFT.address, tokenId, v, r, s),
+      ).to.revertedWith('PIXT: INVALID_SIGNATURE');
     });
 
     it('should purchase PIX and send to seller and treasury', async () => {
       await fixedSale.setTreasury(treasury, 100, 0, false);
       await pixtToken.connect(bob).approve(fixedSale.address, price);
 
-      await fixedSale.connect(alice).requestSale(pixNFT.address, [tokenId], price);
       const aliceBalanceBefore = await pixtToken.balanceOf(await alice.getAddress());
       const treasuryBalanceBefore = await pixtToken.balanceOf(treasury);
-      const data = await getDigest(fixedSale, alice, bob, pixNFT, [BigNumber.from(tokenId)], price);
+      const data = await getDigest(
+        pixtToken,
+        fixedSale,
+        bob,
+        pixNFT,
+        BigNumber.from(tokenId),
+        price,
+      );
       const { v, r, s } = ecsign(
         Buffer.from(data.slice(2), 'hex'),
         Buffer.from(bob.privateKey.slice(2), 'hex'),
       );
       const tx = await fixedSale
-        .connect(bob)
-        .purchaseNFTWithSignature(
-          await alice.getAddress(),
-          pixNFT.address,
-          price,
-          [tokenId],
-          v,
-          r,
-          s,
-        );
+        .connect(alice)
+        .sellNFTWithSignature(await bob.getAddress(), price, pixNFT.address, tokenId, v, r, s);
       expect(await pixNFT.ownerOf(tokenId)).to.be.equal(await bob.getAddress());
       const fee = price.mul(BigNumber.from('100')).div(DENOMINATOR);
       expect(await pixtToken.balanceOf(await alice.getAddress())).to.be.equal(
         aliceBalanceBefore.add(price).sub(fee),
       );
       expect(await pixtToken.balanceOf(treasury)).to.be.equal(treasuryBalanceBefore.add(fee));
+      expect(tx)
+        .to.emit(fixedSale, 'PurchasedWithSignature')
+        .withArgs(await alice.getAddress(), await bob.getAddress(), pixNFT.address, tokenId, price);
     });
   });
 });
 
 const getDigest = async (
+  pixToken: Contract,
   sale: Contract,
-  seller: Signer,
   buyer: Wallet,
-  token: Contract,
-  tokenIds: [BigNumber],
+  nftToken: Contract,
+  tokenId: BigNumber,
   price: BigNumber,
 ) => {
   const separator = keccak256(
@@ -333,19 +333,19 @@ const getDigest = async (
             'EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)',
           ),
         ),
-        keccak256(toUtf8Bytes('PIXFixedSale')),
-        keccak256(toUtf8Bytes('1.0')),
+        keccak256(toUtf8Bytes('PlanetIX')),
+        keccak256(toUtf8Bytes('1')),
         (await ethers.provider.getNetwork()).chainId,
-        sale.address,
+        pixToken.address,
       ],
     ),
   );
   const hash = keccak256(
     toUtf8Bytes(
-      'Purchased(address seller,address buyer,address nftToken,uint256[] tokenIds,uint256 price,uint256 nonce)',
+      'PermitForBid(address owner,address spender,uint256 amount,address nftToken,uint256 tokenId,uint256 nonce)',
     ),
   );
-  const nonce = await sale.nonces(await buyer.getAddress());
+  const nonce = await pixToken.nonces(await buyer.getAddress());
   return keccak256(
     solidityPack(
       ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
@@ -355,16 +355,8 @@ const getDigest = async (
         separator,
         keccak256(
           defaultAbiCoder.encode(
-            ['bytes32', 'address', 'address', 'address', 'uint256[]', 'uint256', 'uint256'],
-            [
-              hash,
-              await seller.getAddress(),
-              await buyer.getAddress(),
-              token.address,
-              tokenIds,
-              price,
-              nonce,
-            ],
+            ['bytes32', 'address', 'address', 'uint256', 'address', 'uint256', 'uint256'],
+            [hash, await buyer.getAddress(), sale.address, price, nftToken.address, tokenId, nonce],
           ),
         ),
       ],

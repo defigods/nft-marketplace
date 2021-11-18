@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import "../libraries/DecimalMath.sol";
 import "../interfaces/IPIX.sol";
+import "../PIXT.sol";
 
 abstract contract PIXBaseSale is OwnableUpgradeable, ERC721HolderUpgradeable {
     using DecimalMath for uint256;
@@ -32,8 +32,8 @@ abstract contract PIXBaseSale is OwnableUpgradeable, ERC721HolderUpgradeable {
     Treasury public pixtTreasury;
 
     // PIXT token
-    ERC20BurnableUpgradeable public pixToken;
-    IPIX public pixNFT;
+    address public pixToken;
+    address public pixNFT;
 
     // Whitelisted NFT tokens
     mapping(address => bool) public whitelistedNFTs;
@@ -49,8 +49,8 @@ abstract contract PIXBaseSale is OwnableUpgradeable, ERC721HolderUpgradeable {
     function __PIXBaseSale_init(address pixt, address pix) internal initializer {
         require(pixt != address(0), "Sale: INVALID_PIXT");
         require(pix != address(0), "Sale: INVALID_PIX");
-        pixToken = ERC20BurnableUpgradeable(pixt);
-        pixNFT = IPIX(pix);
+        pixToken = pixt;
+        pixNFT = pix;
         __Ownable_init();
         __ERC721Holder_init();
     }
