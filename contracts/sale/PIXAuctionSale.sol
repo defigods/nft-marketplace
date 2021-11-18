@@ -7,7 +7,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "../libraries/DecimalMath.sol";
 import "./PIXBaseSale.sol";
-import "hardhat/console.sol";
 
 contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for ERC20BurnableUpgradeable;

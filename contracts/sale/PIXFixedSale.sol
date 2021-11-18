@@ -4,10 +4,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "../libraries/DecimalMath.sol";
 import "./PIXBaseSale.sol";
 
-contract PIXFixedSale is PIXBaseSale {
+contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
     using SafeERC20Upgradeable for ERC20BurnableUpgradeable;
     using DecimalMath for uint256;
 
@@ -28,10 +29,17 @@ contract PIXFixedSale is PIXBaseSale {
         uint256[] tokenIds; // List of tokenIds
     }
 
+    bytes32 private constant PURCHASE_SIGNATURE_TYPE_HASH =
+        keccak256(
+            "Purchased(address seller,address buyer,address nftToken,uint256[] tokenIds,uint256 price,uint256 nonce)"
+        );
+
     mapping(uint256 => FixedSaleInfo) public saleInfo;
+    mapping(address => uint256) public nonces;
 
     function initialize(address _pixt, address _pix) external initializer {
         __PIXBaseSale_init(_pixt, _pix);
+        __EIP712_init("PIXFixedSale", "1.0");
     }
 
     /** @notice request sale for fixed price
@@ -130,5 +138,61 @@ contract PIXFixedSale is PIXBaseSale {
         emit Purchased(_saleInfo.seller, msg.sender, _saleId, _saleInfo.price);
 
         delete saleInfo[_saleId];
+    }
+
+    /** @notice purchase not-on-sale NFT in fixed price
+     *
+     */
+    function purchaseNFTWithSignature(
+        address seller,
+        address nftToken,
+        uint256 price,
+        uint256[] calldata tokenIds,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                _domainSeparatorV4(),
+                keccak256(
+                    abi.encode(
+                        PURCHASE_SIGNATURE_TYPE_HASH,
+                        seller,
+                        msg.sender,
+                        nftToken,
+                        tokenIds,
+                        price,
+                        nonces[msg.sender]++
+                    )
+                )
+            )
+        );
+        address buyer = ecrecover(digest, v, r, s);
+        require(msg.sender == buyer, "Sale: INVALID_SIGNATURE");
+
+        require(price > 0, "Sale: INVALID_ID");
+
+        Treasury memory treasury;
+        if (nftToken == address(pixNFT) && pixNFT.pixesInLand(tokenIds)) {
+            treasury = landTreasury;
+        } else {
+            treasury = pixtTreasury;
+        }
+
+        uint256 fee = price.decimalMul(treasury.fee);
+        uint256 burnFee = price.decimalMul(treasury.burnFee);
+        pixToken.safeTransferFrom(msg.sender, seller, price - fee - burnFee);
+        if (fee > 0) {
+            pixToken.safeTransferFrom(msg.sender, treasury.treasury, fee);
+        }
+        if (burnFee > 0) {
+            pixToken.burnFrom(msg.sender, burnFee);
+        }
+
+        for (uint256 i; i < tokenIds.length; i += 1) {
+            IERC721Upgradeable(nftToken).safeTransferFrom(address(this), msg.sender, tokenIds[i]);
+        }
     }
 }
