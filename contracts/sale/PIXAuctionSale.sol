@@ -3,14 +3,14 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "../libraries/DecimalMath.sol";
 import "./PIXBaseSale.sol";
-import "hardhat/console.sol";
 
 contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
-    using SafeERC20Upgradeable for ERC20BurnableUpgradeable;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     using DecimalMath for uint256;
 
     event SaleRequested(
@@ -138,9 +138,9 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
         );
 
         if (_saleState.bidder != address(0)) {
-            pixToken.safeTransfer(_saleState.bidder, _saleState.bidAmount);
+            IERC20Upgradeable(pixToken).safeTransfer(_saleState.bidder, _saleState.bidAmount);
         }
-        pixToken.safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20Upgradeable(pixToken).safeTransferFrom(msg.sender, address(this), _amount);
 
         _saleState.bidder = msg.sender;
         _saleState.bidAmount = _amount;
@@ -155,7 +155,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
         AuctionSaleState storage _saleState = saleState[_saleId];
         require(_saleState.bidder == msg.sender, "Sale: NOT_BIDDER");
 
-        pixToken.safeTransfer(msg.sender, _saleState.bidAmount);
+        IERC20Upgradeable(pixToken).safeTransfer(msg.sender, _saleState.bidAmount);
 
         emit BidCancelled(msg.sender, _saleId, _saleState.bidAmount);
 
@@ -173,7 +173,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
         require(_saleInfo.endTime <= block.timestamp, "!Sale: ALREADY_ENDED");
 
         Treasury memory treasury;
-        if (_saleInfo.nftToken == address(pixNFT) && pixNFT.pixesInLand(_saleInfo.tokenIds)) {
+        if (_saleInfo.nftToken == pixNFT && IPIX(pixNFT).pixesInLand(_saleInfo.tokenIds)) {
             treasury = landTreasury;
         } else {
             treasury = pixtTreasury;
@@ -181,12 +181,15 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
 
         uint256 fee = _saleState.bidAmount.decimalMul(treasury.fee);
         uint256 burnFee = _saleState.bidAmount.decimalMul(treasury.burnFee);
-        pixToken.safeTransfer(_saleInfo.seller, _saleState.bidAmount - fee - burnFee);
+        IERC20Upgradeable(pixToken).safeTransfer(
+            _saleInfo.seller,
+            _saleState.bidAmount - fee - burnFee
+        );
         if (fee > 0) {
-            pixToken.safeTransfer(treasury.treasury, fee);
+            IERC20Upgradeable(pixToken).safeTransfer(treasury.treasury, fee);
         }
         if (burnFee > 0) {
-            pixToken.burn(burnFee);
+            ERC20BurnableUpgradeable(pixToken).burn(burnFee);
         }
 
         for (uint256 i; i < _saleInfo.tokenIds.length; i += 1) {
