@@ -16,8 +16,11 @@ describe('PIXLandmark', function () {
     const PIXTFactory = await ethers.getContractFactory('PIXT');
     pixToken = await PIXTFactory.deploy();
 
+    const MockTokenFactory = await ethers.getContractFactory('MockToken');
+    const usdc = await MockTokenFactory.deploy('Mock USDC', 'USDC', 6);
+
     const PIXFactory = await ethers.getContractFactory('PIX');
-    pixNFT = await upgrades.deployProxy(PIXFactory, [pixToken.address]);
+    pixNFT = await upgrades.deployProxy(PIXFactory, [pixToken.address, usdc.address]);
 
     const PIXLandmarkFactory = await ethers.getContractFactory('PIXLandmark');
     pixLandmark = await upgrades.deployProxy(PIXLandmarkFactory, [pixNFT.address]);

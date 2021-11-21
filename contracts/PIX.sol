@@ -6,6 +6,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "./interfaces/IPIX.sol";
+import "./interfaces/IOracleManager.sol";
+import "./interfaces/ISwapManager.sol";
 import "./libraries/DecimalMath.sol";
 
 contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
@@ -24,6 +26,10 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     mapping(PIXSize => uint16) public combineCounts;
     mapping(uint256 => PIXInfo) public pixInfos;
     mapping(address => bool) public paymentTokens;
+    IOracleManager public oracleManager;
+    ISwapManager public swapManager;
+    address public tokenForPrice;
+
     /** @notice isTerritory => id => isInside
      * if is territory => tokenId
      * unless territory => pixId
@@ -35,24 +41,39 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         _;
     }
 
-    function initialize(address pixt) external initializer {
+    function initialize(address pixt, address _tokenForPrice) public initializer {
         require(pixt != address(0), "Pix: INVALID_PIXT");
         __ERC721Enumerable_init();
         __ERC721_init("PlanetIX", "PIX");
         __Ownable_init();
         pixToken = IERC20Upgradeable(pixt);
+        tokenForPrice = _tokenForPrice;
+
         moderators[msg.sender] = true;
+
         combineCounts[PIXSize.Pix] = 10;
         combineCounts[PIXSize.Area] = 5;
         combineCounts[PIXSize.Sector] = 2;
         combineCounts[PIXSize.Zone] = 2;
-        packPrices.push(5);
-        packPrices.push(50);
-        packPrices.push(100);
-        packPrices.push(250);
-        packPrices.push(500);
-        packPrices.push(1000);
+
+        packPrices.push(5 * 1e6);
+        packPrices.push(50 * 1e6);
+        packPrices.push(100 * 1e6);
+        packPrices.push(250 * 1e6);
+        packPrices.push(500 * 1e6);
+        packPrices.push(1000 * 1e6);
         paymentTokens[pixt] = true;
+        paymentTokens[_tokenForPrice] = true;
+    }
+
+    function setOracleManager(address _oracleManager) external onlyOwner {
+        require(_oracleManager != address(0), "Pix: INVALID_ORACLE_MANAGER");
+        oracleManager = IOracleManager(_oracleManager);
+    }
+
+    function setSwapManager(address _swapManager) external onlyOwner {
+        require(_swapManager != address(0), "Pix: INVALID_SWAP_MANAGER");
+        swapManager = ISwapManager(_swapManager);
     }
 
     function withdraw(address[] calldata tokens) external onlyOwner {
@@ -102,16 +123,33 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
 
     function requestMint(address token, uint256 mode) external payable {
         require(paymentTokens[token], "Pix: TOKEN_NOT_APPROVED");
-        require(mode > 0 && mode < packPrices.length, "Pix: INVALID_PRICE_MODE");
+        require(mode > 0 && mode <= packPrices.length, "Pix: INVALID_PRICE_MODE");
         require(pendingPackType[msg.sender] == 0, "Pix: PENDING_REQUEST_EXIST");
+
+        if (address(oracleManager) == address(0)) {
+            require(token == tokenForPrice, "Pix: Unsupported");
+        }
+        uint256 price = token == tokenForPrice
+            ? packPrices[mode - 1]
+            : oracleManager.getAmountOut(tokenForPrice, token, packPrices[mode - 1]);
+
+        require(price > 0, "Pix: invalid price");
+
         if (token == address(0)) {
-            require(msg.value == packPrices[mode - 1], "Pix: INSUFFICIENT_FUNDS");
+            require(msg.value == price, "Pix: INSUFFICIENT_FUNDS");
         } else {
-            IERC20Upgradeable(token).safeTransferFrom(
-                msg.sender,
-                address(this),
-                packPrices[mode - 1]
-            );
+            IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), price);
+        }
+        if (treasury.treasury != address(0)) {
+            uint256 treasuryFee = price.decimalMul(treasury.fee);
+            if (treasuryFee > 0) {
+                if (token == address(pixToken)) {
+                    pixToken.safeTransfer(treasury.treasury, treasuryFee);
+                } else {
+                    pixToken.approve(address(swapManager), treasuryFee);
+                    swapManager.swap(token, address(pixToken), treasuryFee, treasury.treasury);
+                }
+            }
         }
         pendingPackType[msg.sender] = mode;
         emit Requested(msg.sender, mode);
@@ -156,6 +194,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         require(tokenIds.length > 0, "Pix: NO_TOKENS");
 
         _proceedCombine(msg.sender, tokenIds);
+
         pixToken.safeTransferFrom(msg.sender, address(this), combinePrice);
     }
 

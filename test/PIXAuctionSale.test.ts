@@ -27,8 +27,11 @@ describe('PIXAuctionSale', function () {
     const PIXTFactory = await ethers.getContractFactory('PIXT');
     pixtToken = await PIXTFactory.connect(bob).deploy();
 
+    const MockTokenFactory = await ethers.getContractFactory('MockToken');
+    const usdc = await MockTokenFactory.deploy('Mock USDC', 'USDC', 6);
+
     const PIXFactory = await ethers.getContractFactory('PIX');
-    pixNFT = await upgrades.deployProxy(PIXFactory, [pixtToken.address]);
+    pixNFT = await upgrades.deployProxy(PIXFactory, [pixtToken.address, usdc.address]);
 
     const PIXAuctionSaleFactory = await ethers.getContractFactory('PIXAuctionSale');
     auctionSale = await upgrades.deployProxy(PIXAuctionSaleFactory, [
