@@ -1,9 +1,9 @@
+// solhint-disable not-rely-on-time
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "hardhat/console.sol";
 
 contract Vesting {
     using SafeERC20 for IERC20;
@@ -42,7 +42,6 @@ contract Vesting {
         uint64 period,
         address beneficiary
     ) public {
-        // solhint-disable-next-line not-rely-on-time
         require(startTime > block.timestamp, "Vesting: INVALID_START_TIME");
         require(period > 0, "Vesting: INVALID_PERIOD");
         require(beneficiary != address(0), "Vesting: INVALID_BENEFICIARY");
@@ -88,12 +87,10 @@ contract Vesting {
         if (vestInfo.amount <= vestInfo.claimed) {
             return 0;
         }
-        // solhint-disable-next-line not-rely-on-time
         if (vestInfo.startTime >= block.timestamp) {
             return 0;
         }
 
-        // solhint-disable-next-line not-rely-on-time
         uint64 timePassed = uint64(block.timestamp) - vestInfo.startTime;
         uint256 releaseAmount;
         if (timePassed >= vestInfo.period) {
@@ -139,15 +136,10 @@ contract Vesting {
     function getPendingAmount(uint256 id) public view returns (uint256) {
         VestInfo memory vestInfo = vestInfos[id];
 
-        if (
-            vestInfo.amount <= vestInfo.claimed ||
-            // solhint-disable-next-line not-rely-on-time
-            vestInfo.startTime >= block.timestamp
-        ) {
+        if (vestInfo.amount <= vestInfo.claimed || vestInfo.startTime >= block.timestamp) {
             return 0;
         }
 
-        // solhint-disable-next-line not-rely-on-time
         uint64 timePassed = uint64(block.timestamp) - vestInfo.startTime;
         uint256 releaseAmount;
         if (timePassed >= vestInfo.period) {

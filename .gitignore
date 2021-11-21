@@ -12,12 +12,11 @@ artifacts
 
 # Coverage
 coverage/
+src
+coverage.json
 
 # Settings
 .vscode/
 
-src
-
-coverage.json
-
-.openzeppelin
+# Openzeppelin
+.openzeppelin/

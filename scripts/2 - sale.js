@@ -1,14 +1,12 @@
-const hre = require('hardhat');
+const { ethers, upgrades } = require('hardhat');
 
 async function main() {
-  const [deployer] = await hre.ethers.getSigners();
-  const treasury = await deployer.getAddress();
-  const pixtAddress = '0x56a2406752DF391FFF98b69112399eCBCa640C9e';
+  const pixtAddress = '0xaA8aF7853c6E449197a1369dE255A92264F65A6a';
 
-  const PIXFixedSale = await hre.ethers.getContractFactory('PIXFixedSale');
-  const fixedSale = await PIXFixedSale.deploy(treasury, 5, pixtAddress);
-  const PIXAuctionSale = await hre.ethers.getContractFactory('PIXAuctionSale');
-  const auctionSale = await PIXAuctionSale.deploy(treasury, 5, pixtAddress);
+  const PIXFixedSale = await ethers.getContractFactory('PIXFixedSale');
+  const fixedSale = await upgrades.deployProxy(PIXFixedSale, [pixtAddress]);
+  const PIXAuctionSale = await ethers.getContractFactory('PIXAuctionSale');
+  const auctionSale = await upgrades.deployProxy(PIXAuctionSale, [pixtAddress]);
 
   await fixedSale.deployed();
   await auctionSale.deployed();

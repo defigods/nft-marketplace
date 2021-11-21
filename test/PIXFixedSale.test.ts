@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
-import { Signer, Contract, BigNumber, utils, constants } from 'ethers';
+import { Signer, Wallet, Contract, BigNumber, utils, constants } from 'ethers';
+import { ecsign } from 'ethereumjs-util';
 import {
   DENOMINATOR,
   generateRandomAddress,
@@ -8,18 +9,22 @@ import {
   PIXClassification,
   PIXSize,
 } from './utils';
+const { keccak256, defaultAbiCoder, toUtf8Bytes, solidityPack } = utils;
 
 describe('PIXFixedSale', function () {
   let owner: Signer;
   let alice: Signer;
-  let bob: Signer;
+  let bob: Wallet;
   let treasury: string = generateRandomAddress();
   let pixNFT: Contract;
   let fixedSale: Contract;
   let pixtToken: Contract;
 
   beforeEach(async function () {
-    [owner, alice, bob] = await ethers.getSigners();
+    [owner, alice] = await ethers.getSigners();
+    bob = Wallet.fromMnemonic(
+      'test test test test test test test test test test test junk',
+    ).connect(owner.provider);
 
     const PIXTFactory = await ethers.getContractFactory('PIXT');
     pixtToken = await PIXTFactory.connect(bob).deploy();
@@ -28,7 +33,10 @@ describe('PIXFixedSale', function () {
     pixNFT = await upgrades.deployProxy(PIXFactory, [pixtToken.address]);
 
     const PIXFixedSaleFactory = await ethers.getContractFactory('PIXFixedSale');
-    fixedSale = await upgrades.deployProxy(PIXFixedSaleFactory, [pixtToken.address]);
+    fixedSale = await upgrades.deployProxy(PIXFixedSaleFactory, [
+      pixtToken.address,
+      pixNFT.address,
+    ]);
 
     await fixedSale.setWhitelistedNFTs(pixNFT.address, true);
   });
@@ -171,7 +179,7 @@ describe('PIXFixedSale', function () {
     });
   });
 
-  describe('#purchasePIX function', () => {
+  describe('#purchaseNFT function', () => {
     const tokenId = 1;
     const price = utils.parseEther('1');
     const lastTokenId = 1;
@@ -189,19 +197,19 @@ describe('PIXFixedSale', function () {
     });
 
     it('revert if NFT is not for sale', async () => {
-      await expect(fixedSale.connect(bob).purchasePIX(lastTokenId)).to.revertedWith(
+      await expect(fixedSale.connect(bob).purchaseNFT(lastTokenId)).to.revertedWith(
         'Sale: INVALID_ID',
       );
     });
 
     it('should purchase PIX and send to seller and treasury', async () => {
-      await fixedSale.setTreasury(treasury, 100, true);
+      await fixedSale.setTreasury(treasury, 100, 0, false);
       await pixtToken.connect(bob).approve(fixedSale.address, price);
 
       await fixedSale.connect(alice).requestSale(pixNFT.address, [tokenId], price);
       const aliceBalanceBefore = await pixtToken.balanceOf(await alice.getAddress());
       const treasuryBalanceBefore = await pixtToken.balanceOf(treasury);
-      const tx = await fixedSale.connect(bob).purchasePIX(lastTokenId);
+      const tx = await fixedSale.connect(bob).purchaseNFT(lastTokenId);
       expect(await pixNFT.ownerOf(tokenId)).to.be.equal(await bob.getAddress());
       const fee = price.mul(BigNumber.from('100')).div(DENOMINATOR);
       expect(await pixtToken.balanceOf(await alice.getAddress())).to.be.equal(
@@ -216,13 +224,13 @@ describe('PIXFixedSale', function () {
       expect(saleInfo.price).to.be.equal(0);
     });
 
-    it('should not send fee if fee is zero', async () => {
+    it('should not send fee if zero', async () => {
       await pixtToken.connect(bob).approve(fixedSale.address, price);
 
       await fixedSale.connect(alice).requestSale(pixNFT.address, [tokenId], price);
       const aliceBalanceBefore = await pixtToken.balanceOf(await alice.getAddress());
       const treasuryBalanceBefore = await pixtToken.balanceOf(treasury);
-      const tx = await fixedSale.connect(bob).purchasePIX(tokenId);
+      const tx = await fixedSale.connect(bob).purchaseNFT(tokenId);
       expect(await pixNFT.ownerOf(tokenId)).to.be.equal(await bob.getAddress());
       expect(await pixtToken.balanceOf(await alice.getAddress())).to.be.equal(
         aliceBalanceBefore.add(price),
@@ -237,4 +245,121 @@ describe('PIXFixedSale', function () {
       expect(saleInfo.price).to.be.equal(0);
     });
   });
+
+  describe('#sellNFTWithSignature function', () => {
+    const tokenId = 1;
+    const price = utils.parseEther('1');
+
+    beforeEach(async () => {
+      await pixNFT.safeMint(await alice.getAddress(), [
+        0,
+        PIXCategory.Rare,
+        PIXSize.Sector,
+        PIXClassification.CapitalCity,
+        'US',
+      ]);
+
+      await pixNFT.connect(alice).approve(fixedSale.address, tokenId);
+    });
+
+    it('revert if signature invalid', async () => {
+      const data = await getDigest(
+        pixtToken,
+        fixedSale,
+        bob,
+        pixNFT,
+        BigNumber.from(tokenId),
+        price,
+      );
+      const { v, r, s } = ecsign(
+        Buffer.from(data.slice(2), 'hex'),
+        Buffer.from(process.env.PRIVATE_KEY.slice(2), 'hex'),
+      );
+      await expect(
+        fixedSale
+          .connect(alice)
+          .sellNFTWithSignature(await bob.getAddress(), price, pixNFT.address, tokenId, v, r, s),
+      ).to.revertedWith('PIXT: INVALID_SIGNATURE');
+    });
+
+    it('should purchase PIX and send to seller and treasury', async () => {
+      await fixedSale.setTreasury(treasury, 100, 0, false);
+      await pixtToken.connect(bob).approve(fixedSale.address, price);
+
+      const aliceBalanceBefore = await pixtToken.balanceOf(await alice.getAddress());
+      const treasuryBalanceBefore = await pixtToken.balanceOf(treasury);
+      const data = await getDigest(
+        pixtToken,
+        fixedSale,
+        bob,
+        pixNFT,
+        BigNumber.from(tokenId),
+        price,
+      );
+      const { v, r, s } = ecsign(
+        Buffer.from(data.slice(2), 'hex'),
+        Buffer.from(bob.privateKey.slice(2), 'hex'),
+      );
+      const tx = await fixedSale
+        .connect(alice)
+        .sellNFTWithSignature(await bob.getAddress(), price, pixNFT.address, tokenId, v, r, s);
+      expect(await pixNFT.ownerOf(tokenId)).to.be.equal(await bob.getAddress());
+      const fee = price.mul(BigNumber.from('100')).div(DENOMINATOR);
+      expect(await pixtToken.balanceOf(await alice.getAddress())).to.be.equal(
+        aliceBalanceBefore.add(price).sub(fee),
+      );
+      expect(await pixtToken.balanceOf(treasury)).to.be.equal(treasuryBalanceBefore.add(fee));
+      expect(tx)
+        .to.emit(fixedSale, 'PurchasedWithSignature')
+        .withArgs(await alice.getAddress(), await bob.getAddress(), pixNFT.address, tokenId, price);
+    });
+  });
 });
+
+const getDigest = async (
+  pixToken: Contract,
+  sale: Contract,
+  buyer: Wallet,
+  nftToken: Contract,
+  tokenId: BigNumber,
+  price: BigNumber,
+) => {
+  const separator = keccak256(
+    defaultAbiCoder.encode(
+      ['bytes32', 'bytes32', 'bytes32', 'uint256', 'address'],
+      [
+        keccak256(
+          toUtf8Bytes(
+            'EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)',
+          ),
+        ),
+        keccak256(toUtf8Bytes('PlanetIX')),
+        keccak256(toUtf8Bytes('1')),
+        (await ethers.provider.getNetwork()).chainId,
+        pixToken.address,
+      ],
+    ),
+  );
+  const hash = keccak256(
+    toUtf8Bytes(
+      'PermitForBid(address owner,address spender,uint256 amount,address nftToken,uint256 tokenId,uint256 nonce)',
+    ),
+  );
+  const nonce = await pixToken.nonces(await buyer.getAddress());
+  return keccak256(
+    solidityPack(
+      ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
+      [
+        '0x19',
+        '0x01',
+        separator,
+        keccak256(
+          defaultAbiCoder.encode(
+            ['bytes32', 'address', 'address', 'uint256', 'address', 'uint256', 'uint256'],
+            [hash, await buyer.getAddress(), sale.address, price, nftToken.address, tokenId, nonce],
+          ),
+        ),
+      ],
+    ),
+  );
+};

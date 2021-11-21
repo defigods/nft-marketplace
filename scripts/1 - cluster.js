@@ -1,13 +1,12 @@
-const hre = require('hardhat');
+const { ethers, upgrades } = require('hardhat');
 
 async function main() {
-  const PIXT = await hre.ethers.getContractFactory('PIXT');
+  const PIXT = await ethers.getContractFactory('PIXT');
   const pixt = await PIXT.deploy();
   await pixt.deployed();
 
-  const PIX = await hre.ethers.getContractFactory('PIX');
-  const pix = await PIX.deploy(pixt.address);
-
+  const PIX = await ethers.getContractFactory('PIX');
+  const pix = await upgrades.deployProxy(PIX, [pixt.address]);
   await pix.deployed();
 
   console.log('PIX NFT at ', pix.address);

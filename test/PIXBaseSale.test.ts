@@ -1,13 +1,14 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
-import { Signer, Contract, BigNumber, ContractFactory, constants, utils } from 'ethers';
+import { Signer, Contract, BigNumber, constants } from 'ethers';
 import { DENOMINATOR, generateRandomAddress } from './utils';
 
 describe('PIXBaseSale', function () {
   let owner: Signer;
   let alice: Signer;
-  let fixedSale: Contract;
   let pixtToken: Contract;
+  let pixNFT: Contract;
+  let fixedSale: Contract;
 
   beforeEach(async function () {
     [owner, alice] = await ethers.getSigners();
@@ -15,16 +16,29 @@ describe('PIXBaseSale', function () {
     const PIXTFactory = await ethers.getContractFactory('PIXT');
     pixtToken = await PIXTFactory.deploy();
 
+    const PIXFactory = await ethers.getContractFactory('PIX');
+    pixNFT = await upgrades.deployProxy(PIXFactory, [pixtToken.address]);
+
     const PIXFixedSaleFactory = await ethers.getContractFactory('PIXFixedSale');
-    fixedSale = await upgrades.deployProxy(PIXFixedSaleFactory, [pixtToken.address]);
+    fixedSale = await upgrades.deployProxy(PIXFixedSaleFactory, [
+      pixtToken.address,
+      pixNFT.address,
+    ]);
   });
 
   describe('#initialize', () => {
     it('revert if pixtToken is zero', async () => {
       const PIXFixedSaleFactory = await ethers.getContractFactory('PIXFixedSale');
       await expect(
-        upgrades.deployProxy(PIXFixedSaleFactory, [constants.AddressZero]),
+        upgrades.deployProxy(PIXFixedSaleFactory, [constants.AddressZero, constants.AddressZero]),
       ).to.revertedWith('Sale: INVALID_PIXT');
+    });
+
+    it('revert if pixtToken is zero', async () => {
+      const PIXFixedSaleFactory = await ethers.getContractFactory('PIXFixedSale');
+      await expect(
+        upgrades.deployProxy(PIXFixedSaleFactory, [pixtToken.address, constants.AddressZero]),
+      ).to.revertedWith('Sale: INVALID_PIX');
     });
 
     it('check initial values', async () => {
@@ -36,29 +50,30 @@ describe('PIXBaseSale', function () {
     const newTreasury = generateRandomAddress();
 
     it('revert if msg.sender is not owner', async () => {
-      await expect(fixedSale.connect(alice).setTreasury(newTreasury, 0, false)).to.revertedWith(
+      await expect(fixedSale.connect(alice).setTreasury(newTreasury, 0, 0, false)).to.revertedWith(
         'Ownable: caller is not the owner',
       );
     });
 
     it('revert if new treasury is 0x0', async () => {
-      await expect(fixedSale.setTreasury(constants.AddressZero, 0, false)).to.revertedWith(
+      await expect(fixedSale.setTreasury(constants.AddressZero, 0, 0, false)).to.revertedWith(
         'Sale: INVALID_TREASURY',
       );
     });
 
     it('revert if fee is overflown', async () => {
       await expect(
-        fixedSale.setTreasury(newTreasury, DENOMINATOR.add(BigNumber.from(1)), false),
+        fixedSale.setTreasury(newTreasury, DENOMINATOR.add(BigNumber.from(1)), 0, false),
       ).to.revertedWith('Sale: FEE_OVERFLOWN');
     });
 
     it('should update new treasury and emit TreasuryUpdated event', async () => {
-      const tx = await fixedSale.setTreasury(newTreasury, 10, false);
+      const tx = await fixedSale.setTreasury(newTreasury, 10, 0, false);
       const treasury = await fixedSale.pixtTreasury();
       expect(treasury[0]).to.be.equal(newTreasury);
       expect(treasury[1]).to.be.equal(10);
-      expect(tx).to.emit(fixedSale, 'TreasuryUpdated').withArgs(newTreasury, 10, false);
+      expect(treasury[2]).to.be.equal(0);
+      expect(tx).to.emit(fixedSale, 'TreasuryUpdated').withArgs(newTreasury, 10, 0, false);
     });
   });
 

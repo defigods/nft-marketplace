@@ -1,11 +1,13 @@
+// solhint-disable not-rely-on-time
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "./PIXBaseSale.sol";
 import "../libraries/DecimalMath.sol";
+import "./PIXBaseSale.sol";
 
 contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -39,8 +41,8 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
     mapping(uint256 => AuctionSaleInfo) public saleInfo;
     mapping(uint256 => AuctionSaleState) public saleState;
 
-    function initialize(address _pixt) public override initializer {
-        PIXBaseSale.initialize(_pixt);
+    function initialize(address _pixt, address _pix) external initializer {
+        __PIXBaseSale_init(_pixt, _pix);
         __ReentrancyGuard_init();
     }
 
@@ -58,7 +60,6 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
     ) external onlyWhitelistedNFT(_nftToken) {
         require(_minPrice > 0, "Sale: PRICE_ZERO");
         require(_tokenIds.length > 0, "Sale: NO_TOKENS");
-        // solhint-disable-next-line not-rely-on-time
         require(_endTime > block.timestamp, "Sale: INVALID_TIME");
 
         for (uint256 i; i < _tokenIds.length; i += 1) {
@@ -91,7 +92,6 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
         require(_minPrice > 0, "Sale: PRICE_ZERO");
         require(saleInfo[_saleId].seller == msg.sender, "Sale: NOT_SELLER");
         require(saleState[_saleId].bidder == address(0), "Sale: BID_EXIST");
-        // solhint-disable-next-line not-rely-on-time
         require(_endTime > block.timestamp, "Sale: INVALID_TIME");
 
         saleInfo[_saleId].endTime = _endTime;
@@ -126,11 +126,10 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
      *  @param _saleId Sale ID
      *  @param _amount Amount to bid
      */
-    function bid(uint256 _saleId, uint256 _amount) external payable nonReentrant {
+    function bid(uint256 _saleId, uint256 _amount) external nonReentrant {
         AuctionSaleInfo storage _saleInfo = saleInfo[_saleId];
         AuctionSaleState storage _saleState = saleState[_saleId];
         require(_saleInfo.minPrice > 0, "Sale: INVALID_ID");
-        // solhint-disable-next-line not-rely-on-time
         require(_saleInfo.endTime >= block.timestamp, "Sale: ALREADY_ENDED");
         require(
             (_saleState.bidAmount == 0 && _amount >= _saleInfo.minPrice) ||
@@ -139,9 +138,9 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
         );
 
         if (_saleState.bidder != address(0)) {
-            pixToken.safeTransfer(_saleState.bidder, _saleState.bidAmount);
+            IERC20Upgradeable(pixToken).safeTransfer(_saleState.bidder, _saleState.bidAmount);
         }
-        pixToken.safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20Upgradeable(pixToken).safeTransferFrom(msg.sender, address(this), _amount);
 
         _saleState.bidder = msg.sender;
         _saleState.bidAmount = _amount;
@@ -156,7 +155,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
         AuctionSaleState storage _saleState = saleState[_saleId];
         require(_saleState.bidder == msg.sender, "Sale: NOT_BIDDER");
 
-        pixToken.safeTransfer(msg.sender, _saleState.bidAmount);
+        IERC20Upgradeable(pixToken).safeTransfer(msg.sender, _saleState.bidAmount);
 
         emit BidCancelled(msg.sender, _saleId, _saleState.bidAmount);
 
@@ -171,13 +170,26 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable {
         AuctionSaleState storage _saleState = saleState[_saleId];
 
         require(_saleState.bidder != address(0), "Sale: NO_BIDS");
-        // solhint-disable-next-line not-rely-on-time
         require(_saleInfo.endTime <= block.timestamp, "!Sale: ALREADY_ENDED");
 
-        uint256 fee = _saleState.bidAmount.decimalMul(landTreasury.fee);
-        pixToken.safeTransfer(_saleInfo.seller, _saleState.bidAmount - fee);
+        Treasury memory treasury;
+        if (_saleInfo.nftToken == pixNFT && IPIX(pixNFT).pixesInLand(_saleInfo.tokenIds)) {
+            treasury = landTreasury;
+        } else {
+            treasury = pixtTreasury;
+        }
+
+        uint256 fee = _saleState.bidAmount.decimalMul(treasury.fee);
+        uint256 burnFee = _saleState.bidAmount.decimalMul(treasury.burnFee);
+        IERC20Upgradeable(pixToken).safeTransfer(
+            _saleInfo.seller,
+            _saleState.bidAmount - fee - burnFee
+        );
         if (fee > 0) {
-            pixToken.safeTransfer(landTreasury.treasury, fee);
+            IERC20Upgradeable(pixToken).safeTransfer(treasury.treasury, fee);
+        }
+        if (burnFee > 0) {
+            ERC20BurnableUpgradeable(pixToken).burn(burnFee);
         }
 
         for (uint256 i; i < _saleInfo.tokenIds.length; i += 1) {

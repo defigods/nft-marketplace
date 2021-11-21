@@ -1,21 +1,36 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
 import { Signer, Contract, constants } from 'ethers';
-import { PIXCategory } from './utils';
+import { PIXCategory, PIXClassification, PIXSize } from './utils';
 
 describe('PIXLandmark', function () {
   let owner: Signer;
   let alice: Signer;
+  let pixToken: Contract;
+  let pixNFT: Contract;
   let pixLandmark: Contract;
 
   beforeEach(async function () {
     [owner, alice] = await ethers.getSigners();
 
+    const PIXTFactory = await ethers.getContractFactory('PIXT');
+    pixToken = await PIXTFactory.deploy();
+
+    const PIXFactory = await ethers.getContractFactory('PIX');
+    pixNFT = await upgrades.deployProxy(PIXFactory, [pixToken.address]);
+
     const PIXLandmarkFactory = await ethers.getContractFactory('PIXLandmark');
-    pixLandmark = await upgrades.deployProxy(PIXLandmarkFactory);
+    pixLandmark = await upgrades.deployProxy(PIXLandmarkFactory, [pixNFT.address]);
   });
 
   describe('#initialize', () => {
+    it('revert if pixNFT is zero address', async function () {
+      const PIXLandmark = await ethers.getContractFactory('PIXLandmark');
+      await expect(upgrades.deployProxy(PIXLandmark, [constants.AddressZero])).to.revertedWith(
+        'Landmark: INVALID_PIX',
+      );
+    });
+
     it('check initial values', async function () {
       expect(await pixLandmark.moderators(await owner.getAddress())).equal(true);
     });
@@ -48,10 +63,21 @@ describe('PIXLandmark', function () {
       await expect(pixLandmark.addLandmarkType(0, [])).to.revertedWith('Landmark: INVALID_TYPE');
     });
 
+    it('revert if sender is not moderator', async () => {
+      await expect(pixLandmark.addLandmarkType(1, [1, 2])).to.revertedWith('Pix: NON_MODERATOR');
+    });
+
     it('should add type', async () => {
+      await pixNFT.setModerator(pixLandmark.address, true);
+      await pixNFT.safeMint(await alice.getAddress(), [
+        1,
+        PIXCategory.Legendary,
+        PIXSize.Pix,
+        PIXClassification.CapitalCity,
+        'US',
+      ]);
       await pixLandmark.addLandmarkType(1, [1, 2]);
-      expect(await pixLandmark.pixIdInLandType(1, 0)).to.equal(1);
-      expect(await pixLandmark.isPIXInLand(1)).to.equal(true);
+      expect(await pixNFT.pixesInLand([1])).to.equal(true);
     });
   });
 
