@@ -63,6 +63,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         packPrices.push(500 * 1e6);
         packPrices.push(1000 * 1e6);
         paymentTokens[pixt] = true;
+        paymentTokens[_tokenForPrice] = true;
     }
 
     function setOracleManager(address _oracleManager) external onlyOwner {
@@ -122,9 +123,12 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
 
     function requestMint(address token, uint256 mode) external payable {
         require(paymentTokens[token], "Pix: TOKEN_NOT_APPROVED");
-        require(mode > 0 && mode < packPrices.length, "Pix: INVALID_PRICE_MODE");
+        require(mode > 0 && mode <= packPrices.length, "Pix: INVALID_PRICE_MODE");
         require(pendingPackType[msg.sender] == 0, "Pix: PENDING_REQUEST_EXIST");
 
+        if (address(oracleManager) == address(0)) {
+            require(token == tokenForPrice, "Pix: Unsupported");
+        }
         uint256 price = token == tokenForPrice
             ? packPrices[mode - 1]
             : oracleManager.getAmountOut(tokenForPrice, token, packPrices[mode - 1]);
@@ -136,9 +140,16 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         } else {
             IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), price);
         }
-        uint256 treasuryFee = price.decimalMul(treasury.fee);
-        if (treasuryFee > 0) {
-            swapManager.swap(token, address(pixToken), treasuryFee, treasury.treasury);
+        if (treasury.treasury != address(0)) {
+            uint256 treasuryFee = price.decimalMul(treasury.fee);
+            if (treasuryFee > 0) {
+                if (token == address(pixToken)) {
+                    pixToken.safeTransfer(treasury.treasury, treasuryFee);
+                } else {
+                    pixToken.approve(address(swapManager), treasuryFee);
+                    swapManager.swap(token, address(pixToken), treasuryFee, treasury.treasury);
+                }
+            }
         }
         pendingPackType[msg.sender] = mode;
         emit Requested(msg.sender, mode);
@@ -183,6 +194,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         require(tokenIds.length > 0, "Pix: NO_TOKENS");
 
         _proceedCombine(msg.sender, tokenIds);
+
         pixToken.safeTransferFrom(msg.sender, address(this), combinePrice);
     }
 
