@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "./interfaces/IPIX.sol";
 import "./interfaces/IOracleManager.sol";
+import "./interfaces/ISwapManager.sol";
 import "./libraries/DecimalMath.sol";
 
 contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
@@ -26,6 +27,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     mapping(uint256 => PIXInfo) public pixInfos;
     mapping(address => bool) public paymentTokens;
     IOracleManager public oracleManager;
+    ISwapManager public swapManager;
     address public tokenForPrice;
 
     /** @notice isTerritory => id => isInside
@@ -39,18 +41,12 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         _;
     }
 
-    function initialize(
-        address pixt,
-        address _oracleManager,
-        address _tokenForPrice
-    ) public initializer {
+    function initialize(address pixt, address _tokenForPrice) public initializer {
         require(pixt != address(0), "Pix: INVALID_PIXT");
-        require(_oracleManager != address(0), "Pix: INVALID_ORACLE_MANAGER");
         __ERC721Enumerable_init();
         __ERC721_init("PlanetIX", "PIX");
         __Ownable_init();
         pixToken = IERC20Upgradeable(pixt);
-        oracleManager = IOracleManager(_oracleManager);
         tokenForPrice = _tokenForPrice;
 
         moderators[msg.sender] = true;
@@ -67,6 +63,16 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         packPrices.push(500 * 1e6);
         packPrices.push(1000 * 1e6);
         paymentTokens[pixt] = true;
+    }
+
+    function setOracleManager(address _oracleManager) external onlyOwner {
+        require(_oracleManager != address(0), "Pix: INVALID_ORACLE_MANAGER");
+        oracleManager = IOracleManager(_oracleManager);
+    }
+
+    function setSwapManager(address _swapManager) external onlyOwner {
+        require(_swapManager != address(0), "Pix: INVALID_SWAP_MANAGER");
+        swapManager = ISwapManager(_swapManager);
     }
 
     function withdraw(address[] calldata tokens) external onlyOwner {
@@ -129,6 +135,10 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             require(msg.value == price, "Pix: INSUFFICIENT_FUNDS");
         } else {
             IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), price);
+        }
+        uint256 treasuryFee = price.decimalMul(treasury.fee);
+        if (treasuryFee > 0) {
+            swapManager.swap(token, address(pixToken), treasuryFee, treasury.treasury);
         }
         pendingPackType[msg.sender] = mode;
         emit Requested(msg.sender, mode);
