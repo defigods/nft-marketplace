@@ -17,7 +17,7 @@ export default {
     mainnet: {
       url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
       chainId: 137,
-      accounts: [process.env.PRIVATE_KEY],
+      accounts: [process.env.MAINNET_KEY],
     },
     testnet: {
       url: `https://polygon-mumbai.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,

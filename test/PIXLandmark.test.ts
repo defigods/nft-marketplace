@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
 import { Signer, Contract, constants } from 'ethers';
-import { PIXCategory, PIXClassification, PIXSize } from './utils';
+import { PIXCategory, PIXSize } from './utils';
 
 describe('PIXLandmark', function () {
   let owner: Signer;
@@ -72,13 +72,7 @@ describe('PIXLandmark', function () {
 
     it('should add type', async () => {
       await pixNFT.setModerator(pixLandmark.address, true);
-      await pixNFT.safeMint(await alice.getAddress(), [
-        1,
-        PIXCategory.Legendary,
-        PIXSize.Pix,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [1, PIXCategory.Legendary, PIXSize.Pix]);
       await pixLandmark.addLandmarkType(1, [1, 2]);
       expect(await pixNFT.pixesInLand([1])).to.equal(true);
     });

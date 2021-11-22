@@ -2,13 +2,7 @@ import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
 import { Signer, Wallet, Contract, BigNumber, utils, constants } from 'ethers';
 import { ecsign } from 'ethereumjs-util';
-import {
-  DENOMINATOR,
-  generateRandomAddress,
-  PIXCategory,
-  PIXClassification,
-  PIXSize,
-} from './utils';
+import { DENOMINATOR, generateRandomAddress, PIXCategory, PIXSize } from './utils';
 const { keccak256, defaultAbiCoder, toUtf8Bytes, solidityPack } = utils;
 
 describe('PIXFixedSale', function () {
@@ -49,13 +43,7 @@ describe('PIXFixedSale', function () {
     const price = utils.parseEther('1');
 
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
     });
 
     it('revert if nft token is not whitelisted', async () => {
@@ -109,13 +97,7 @@ describe('PIXFixedSale', function () {
     const lastSaleId = 1;
 
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
       await pixNFT.connect(alice).approve(fixedSale.address, tokenId);
       await fixedSale.connect(alice).requestSale(pixNFT.address, [tokenId], price);
     });
@@ -151,13 +133,7 @@ describe('PIXFixedSale', function () {
     const lastSaleId = 1;
 
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
       await pixNFT.connect(alice).approve(fixedSale.address, tokenId);
       await fixedSale.connect(alice).requestSale(pixNFT.address, [tokenId], price);
     });
@@ -188,13 +164,7 @@ describe('PIXFixedSale', function () {
     const lastTokenId = 1;
 
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
 
       await pixNFT.connect(alice).approve(fixedSale.address, tokenId);
     });
@@ -254,13 +224,7 @@ describe('PIXFixedSale', function () {
     const price = utils.parseEther('1');
 
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
 
       await pixNFT.connect(alice).approve(fixedSale.address, tokenId);
     });

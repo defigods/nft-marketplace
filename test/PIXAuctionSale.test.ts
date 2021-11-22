@@ -7,7 +7,6 @@ import {
   getCurrentTime,
   increaseTime,
   PIXCategory,
-  PIXClassification,
   PIXSize,
 } from './utils';
 
@@ -41,7 +40,7 @@ describe('PIXAuctionSale', function () {
 
     await auctionSale.setWhitelistedNFTs(pixNFT.address, true);
 
-    await pixtToken.connect(bob).approve(auctionSale.address, utils.parseEther('140000000'));
+    await pixtToken.connect(bob).approve(auctionSale.address, utils.parseEther('153258228'));
   });
 
   describe('#requestSale function', () => {
@@ -51,13 +50,7 @@ describe('PIXAuctionSale', function () {
     let endTime: BigNumber;
 
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
       endTime = (await getCurrentTime()).add(auctionPeriod);
     });
 
@@ -128,13 +121,7 @@ describe('PIXAuctionSale', function () {
     let endTime: BigNumber;
 
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
       await pixNFT.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
 
@@ -190,13 +177,7 @@ describe('PIXAuctionSale', function () {
     let endTime: BigNumber;
 
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
       await pixNFT.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
 
@@ -239,13 +220,7 @@ describe('PIXAuctionSale', function () {
     let endTime: BigNumber;
 
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
       await pixNFT.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
     });
@@ -330,13 +305,7 @@ describe('PIXAuctionSale', function () {
     let endTime: BigNumber;
 
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
       await pixNFT.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
     });
@@ -380,13 +349,7 @@ describe('PIXAuctionSale', function () {
     let endTime: BigNumber;
 
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
       await pixNFT.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
     });

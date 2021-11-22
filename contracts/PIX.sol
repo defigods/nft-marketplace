@@ -158,29 +158,13 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     function mintTo(
         address to,
         uint256[] calldata pixIds,
-        PIXCategory[] calldata categories,
-        PIXClassification[] calldata classifications,
-        string[] calldata countries
+        PIXCategory[] calldata categories
     ) external onlyMod {
         require(pendingPackType[to] > 0, "Pix: NO_PENDING_REQUEST");
-        require(
-            pixIds.length == categories.length &&
-                pixIds.length == classifications.length &&
-                pixIds.length == countries.length,
-            "Pix: INVALID_LENGTH"
-        );
+        require(pixIds.length == categories.length, "Pix: INVALID_LENGTH");
 
         for (uint256 i; i < pixIds.length; i += 1) {
-            _safeMint(
-                to,
-                PIXInfo({
-                    pixId: pixIds[i],
-                    size: PIXSize.Pix,
-                    category: categories[i],
-                    classification: classifications[i],
-                    country: countries[i]
-                })
-            );
+            _safeMint(to, PIXInfo({pixId: pixIds[i], size: PIXSize.Pix, category: categories[i]}));
         }
     }
 
@@ -190,7 +174,6 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     }
 
     function combine(uint256[] calldata tokenIds) external {
-        require(combinePrice > 0, "Pix: PRICE_NOT_SET");
         require(tokenIds.length > 0, "Pix: NO_TOKENS");
 
         _proceedCombine(msg.sender, tokenIds);
@@ -218,33 +201,17 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         }
 
         PIXSize newSize = PIXSize(uint8(firstPix.size) + 1);
-        _safeMint(
-            account,
-            PIXInfo({
-                pixId: 0,
-                size: newSize,
-                category: firstPix.category,
-                classification: PIXClassification.CapitalCityCenter,
-                country: ""
-            })
-        );
+        _safeMint(account, PIXInfo({pixId: 0, size: newSize, category: firstPix.category}));
         pixInLand[true][lastTokenId] = inside;
 
         emit Combined(lastTokenId, firstPix.category, newSize);
     }
 
-    function updateTerritoryInfo(
-        uint256 tokenId,
-        uint256 pixId,
-        PIXClassification classification,
-        string calldata country
-    ) external onlyMod {
+    function updateTerritoryInfo(uint256 tokenId, uint256 pixId) external onlyMod {
         PIXInfo storage info = pixInfos[tokenId];
         require(info.size != PIXSize.Pix, "Pix: TERRITORIES_ONLY");
         require(info.pixId == 0, "Pix: TERRITORY_ALREADY_SET");
         info.pixId = pixId;
-        info.classification = classification;
-        info.country = country;
     }
 
     function safeMint(address to, PIXInfo memory info) external onlyMod {
@@ -263,15 +230,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         lastTokenId += 1;
         _safeMint(to, lastTokenId);
         pixInfos[lastTokenId] = info;
-        emit PIXMinted(
-            to,
-            lastTokenId,
-            info.pixId,
-            info.category,
-            info.size,
-            info.classification,
-            info.country
-        );
+        emit PIXMinted(to, lastTokenId, info.pixId, info.category, info.size);
     }
 
     function safeBurn(uint256 tokenId) external {
