@@ -25,7 +25,7 @@ describe('PIXT', function () {
     });
 
     it('check totalSupply', async () => {
-      const balance = utils.parseEther('140000000');
+      const balance = utils.parseEther('153258228');
       expect(await pixtToken.balanceOf(await owner.getAddress())).to.equal(balance);
       expect(await pixtToken.totalSupply()).to.equal(balance);
     });

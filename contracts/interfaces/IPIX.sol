@@ -17,9 +17,7 @@ interface IPIX {
         uint256 indexed tokenId,
         uint256 indexed pixId,
         PIXCategory category,
-        PIXSize size,
-        PIXClassification classification,
-        string country
+        PIXSize size
     );
 
     event Combined(uint256 indexed tokenId, PIXCategory category, PIXSize size);
@@ -42,18 +40,6 @@ interface IPIX {
         Domain
     }
 
-    enum PIXClassification {
-        CapitalCityCenter,
-        CapitalCity,
-        NaturalReserve,
-        CoastalLine,
-        MetropolitanArea,
-        SuburbanArea,
-        ContrysideArea,
-        ArcticMountains,
-        DesertTundra
-    }
-
     struct Treasury {
         address treasury;
         uint256 fee;
@@ -63,8 +49,6 @@ interface IPIX {
         uint256 pixId;
         PIXCategory category;
         PIXSize size;
-        PIXClassification classification;
-        string country;
     }
 
     function pixesInLand(uint256[] calldata tokenIds) external view returns (bool);

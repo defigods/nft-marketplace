@@ -27,15 +27,3 @@ export enum PIXSize {
   Zone = 3,
   Domain = 4,
 }
-
-export enum PIXClassification {
-  CapitalCityCenter = 0,
-  CapitalCity = 1,
-  NaturalReserve = 2,
-  CoastalLine = 3,
-  MetropolitanArea = 4,
-  SuburbanArea = 5,
-  ContrysideArea = 6,
-  ArcticMountains = 7,
-  DesertTundra = 8,
-}

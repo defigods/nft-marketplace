@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 
-contract PIXT is ERC20PresetMinterPauser("PlanetIX", "IXT"), EIP712("PlanetIX", "1") {
+contract PIXT is ERC20Burnable, EIP712("PlanetIX", "1") {
     bytes32 private constant PERMIT_FOR_BID_HASH =
         keccak256(
             "PermitForBid(address owner,address spender,uint256 amount,address nftToken,uint256 tokenId,uint256 nonce)"
@@ -12,9 +12,9 @@ contract PIXT is ERC20PresetMinterPauser("PlanetIX", "IXT"), EIP712("PlanetIX", 
 
     mapping(address => uint256) public nonces;
 
-    constructor() {
-        // initial supply : 140,000,000
-        _mint(msg.sender, 140 * 1e24);
+    constructor() ERC20("PlanetIX", "IXT") {
+        // initial supply : 153,258,228
+        _mint(msg.sender, 153258228 * 1e18);
     }
 
     function permitForBid(

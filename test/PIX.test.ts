@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
 import { Signer, Contract, BigNumber, constants, utils } from 'ethers';
-import { PIXCategory, PIXSize, PIXClassification, DENOMINATOR } from './utils';
+import { PIXCategory, PIXSize, DENOMINATOR } from './utils';
 
 describe('PIX', function () {
   let owner: Signer;
@@ -241,20 +241,20 @@ describe('PIX', function () {
 
   describe('#mintTo', () => {
     it('revert if msg.sender is not moderator', async function () {
-      await expect(
-        pixNFT.connect(alice).mintTo(await alice.getAddress(), [], [], [], []),
-      ).to.revertedWith('Pix: NON_MODERATOR');
+      await expect(pixNFT.connect(alice).mintTo(await alice.getAddress(), [], [])).to.revertedWith(
+        'Pix: NON_MODERATOR',
+      );
     });
 
     it('revert if no pending request exists', async function () {
-      await expect(pixNFT.mintTo(await alice.getAddress(), [], [], [], [])).to.revertedWith(
+      await expect(pixNFT.mintTo(await alice.getAddress(), [], [])).to.revertedWith(
         'Pix: NO_PENDING_REQUEST',
       );
     });
 
     it('revert if invalid parameters', async function () {
       await pixNFT.connect(alice).requestMint(usdc.address, 1);
-      await expect(pixNFT.mintTo(await alice.getAddress(), [1], [], [], [])).to.revertedWith(
+      await expect(pixNFT.mintTo(await alice.getAddress(), [1], [])).to.revertedWith(
         'Pix: INVALID_LENGTH',
       );
     });
@@ -264,15 +264,11 @@ describe('PIX', function () {
 
       const pixIds = [];
       const categories = [];
-      const classifications = [];
-      const countries = [];
       for (let i = 0; i < 50; i++) {
         pixIds.push(i + 1);
         categories.push(PIXCategory.Legendary);
-        classifications.push(PIXClassification.CapitalCity);
-        countries.push('US');
       }
-      await pixNFT.mintTo(await alice.getAddress(), pixIds, categories, classifications, countries);
+      await pixNFT.mintTo(await alice.getAddress(), pixIds, categories);
       expect(await pixNFT.balanceOf(await alice.getAddress())).to.equal(50);
     });
   });
@@ -301,51 +297,23 @@ describe('PIX', function () {
   describe('#safeMint', () => {
     it('revert if pix info is invalid', async () => {
       await expect(
-        pixNFT.safeMint(await alice.getAddress(), [
-          0,
-          PIXCategory.Common,
-          PIXSize.Pix,
-          PIXClassification.CapitalCity,
-          'US',
-        ]),
+        pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Pix]),
       ).to.revertedWith('Pix: INVALID_ARGUMENTS');
       await expect(
-        pixNFT.safeMint(await alice.getAddress(), [
-          1,
-          PIXCategory.Common,
-          PIXSize.Zone,
-          PIXClassification.CapitalCity,
-          'US',
-        ]),
+        pixNFT.safeMint(await alice.getAddress(), [1, PIXCategory.Common, PIXSize.Zone]),
       ).to.revertedWith('Pix: INVALID_ARGUMENTS');
     });
 
     it('should safe mint', async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Common,
-        PIXSize.Zone,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Zone]);
       const tx = await pixNFT.safeMint(await alice.getAddress(), [
         1,
         PIXCategory.Common,
         PIXSize.Pix,
-        PIXClassification.CapitalCity,
-        'US',
       ]);
       expect(tx)
         .to.emit(pixNFT, 'PIXMinted')
-        .withArgs(
-          await alice.getAddress(),
-          2,
-          1,
-          PIXCategory.Common,
-          PIXSize.Pix,
-          PIXClassification.CapitalCity,
-          'US',
-        );
+        .withArgs(await alice.getAddress(), 2, 1, PIXCategory.Common, PIXSize.Pix);
       expect(await pixNFT.totalSupply()).to.equal(2);
     });
   });
@@ -354,7 +322,7 @@ describe('PIX', function () {
     it('should batch mint', async () => {
       const infos = [];
       for (let i = 0; i < 10; i++) {
-        infos.push([0, PIXCategory.Common, PIXSize.Zone, PIXClassification.CapitalCity, 'US']);
+        infos.push([0, PIXCategory.Common, PIXSize.Zone]);
       }
       await pixNFT.batchMint(await alice.getAddress(), infos);
       expect(await pixNFT.totalSupply()).to.equal(10);
@@ -363,20 +331,8 @@ describe('PIX', function () {
 
   describe('#safeBurn', () => {
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Common,
-        PIXSize.Zone,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
-      await pixNFT.safeMint(await alice.getAddress(), [
-        1,
-        PIXCategory.Common,
-        PIXSize.Pix,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Zone]);
+      await pixNFT.safeMint(await alice.getAddress(), [1, PIXCategory.Common, PIXSize.Pix]);
     });
 
     it('revert if msg.sender is not approved', async () => {
@@ -391,20 +347,8 @@ describe('PIX', function () {
 
   describe('#batchBurn', () => {
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Common,
-        PIXSize.Zone,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
-      await pixNFT.safeMint(await alice.getAddress(), [
-        1,
-        PIXCategory.Common,
-        PIXSize.Pix,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Zone]);
+      await pixNFT.safeMint(await alice.getAddress(), [1, PIXCategory.Common, PIXSize.Pix]);
     });
 
     it('revert if msg.sender is not approved', async () => {
@@ -419,42 +363,22 @@ describe('PIX', function () {
 
   describe('#updateTerritoryInfo', () => {
     beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [
-        1,
-        PIXCategory.Common,
-        PIXSize.Pix,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Common,
-        PIXSize.Area,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [1, PIXCategory.Common, PIXSize.Pix]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Area]);
     });
 
     it('revert if update non-territory info', async () => {
-      await expect(
-        pixNFT.updateTerritoryInfo(1, 1, PIXClassification.CapitalCity, 'US'),
-      ).to.revertedWith('Pix: TERRITORIES_ONLY');
+      await expect(pixNFT.updateTerritoryInfo(1, 1)).to.revertedWith('Pix: TERRITORIES_ONLY');
     });
 
     it('should update territory info', async () => {
-      await pixNFT.updateTerritoryInfo(2, 1, PIXClassification.CapitalCity, 'USA');
-      expect((await pixNFT.pixInfos(2))[4]).to.equal('USA');
-      await expect(
-        pixNFT.updateTerritoryInfo(2, 1, PIXClassification.CapitalCity, 'US'),
-      ).to.revertedWith('Pix: TERRITORY_ALREADY_SET');
+      await pixNFT.updateTerritoryInfo(2, 1);
+      expect((await pixNFT.pixInfos(2))[0]).to.equal(1);
+      await expect(pixNFT.updateTerritoryInfo(2, 1)).to.revertedWith('Pix: TERRITORY_ALREADY_SET');
     });
   });
 
   describe('#combine', () => {
-    it('revert if price not set', async () => {
-      await expect(pixNFT.connect(alice).combine([])).to.revertedWith('Pix: PRICE_NOT_SET');
-    });
-
     it('revert if no tokens', async () => {
       await pixNFT.setCombinePrice(price);
       await expect(pixNFT.connect(alice).combine([])).to.revertedWith('Pix: NO_TOKENS');
@@ -462,77 +386,29 @@ describe('PIX', function () {
 
     it('revert if size is domain', async () => {
       await pixNFT.setCombinePrice(price);
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Domain,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Domain,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Domain]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Domain]);
       await expect(pixNFT.connect(alice).combine([1, 2])).to.revertedWith('Pix: MAX_NOT_ALLOWED');
     });
 
     it('revert if combine length is invalid', async () => {
       await pixNFT.setCombinePrice(price);
-      await pixNFT.safeMint(await alice.getAddress(), [
-        1,
-        PIXCategory.Rare,
-        PIXSize.Pix,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
-      await pixNFT.safeMint(await alice.getAddress(), [
-        1,
-        PIXCategory.Rare,
-        PIXSize.Pix,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [1, PIXCategory.Rare, PIXSize.Pix]);
+      await pixNFT.safeMint(await alice.getAddress(), [1, PIXCategory.Rare, PIXSize.Pix]);
       await expect(pixNFT.connect(alice).combine([1, 2])).to.revertedWith('Pix: INVALID_ARGUMENTS');
     });
 
     it('revert if to combine different size', async () => {
       await pixNFT.setCombinePrice(price);
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Zone,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Zone]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
       await expect(pixNFT.connect(alice).combine([1, 2])).to.revertedWith('Pix: SAME_SIZE_ONLY');
     });
 
     it('revert if to combine different categories', async () => {
       await pixNFT.setCombinePrice(price);
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Common,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Sector]);
       await expect(pixNFT.connect(alice).combine([1, 2])).to.revertedWith(
         'Pix: SAME_CATEGORY_ONLY',
       );
@@ -542,13 +418,7 @@ describe('PIX', function () {
       await pixNFT.setCombinePrice(price);
       const tokenIds = [];
       for (let i = 0; i < 2; i++) {
-        await pixNFT.safeMint(await alice.getAddress(), [
-          0,
-          PIXCategory.Rare,
-          PIXSize.Zone,
-          PIXClassification.CapitalCity,
-          'US',
-        ]);
+        await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Zone]);
         tokenIds.push(i + 1);
       }
       await expect(pixNFT.combine(tokenIds)).to.revertedWith('Pix: NON_APPROVED');
@@ -562,8 +432,6 @@ describe('PIX', function () {
           i + 1,
           PIXCategory.Legendary,
           PIXSize.Pix,
-          PIXClassification.CapitalCity,
-          'US',
         ]);
         tokenIds.push(i + 1);
       }
@@ -577,13 +445,7 @@ describe('PIX', function () {
       await pixNFT.setCombinePrice(price);
       const tokenIds = [];
       for (let i = 0; i < 5; i++) {
-        await pixNFT.safeMint(await alice.getAddress(), [
-          0,
-          PIXCategory.Common,
-          PIXSize.Area,
-          PIXClassification.CapitalCity,
-          'US',
-        ]);
+        await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Area]);
         tokenIds.push(i + 1);
       }
       const tx = await pixNFT.connect(alice).combine(tokenIds);
@@ -596,13 +458,7 @@ describe('PIX', function () {
       await pixNFT.setCombinePrice(price);
       const tokenIds = [];
       for (let i = 0; i < 2; i++) {
-        await pixNFT.safeMint(await alice.getAddress(), [
-          0,
-          PIXCategory.Common,
-          PIXSize.Sector,
-          PIXClassification.CapitalCity,
-          'US',
-        ]);
+        await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Sector]);
         tokenIds.push(i + 1);
       }
       const tx = await pixNFT.connect(alice).combine(tokenIds);
@@ -615,13 +471,7 @@ describe('PIX', function () {
       await pixNFT.setCombinePrice(price);
       const tokenIds = [];
       for (let i = 0; i < 2; i++) {
-        await pixNFT.safeMint(await alice.getAddress(), [
-          0,
-          PIXCategory.Common,
-          PIXSize.Zone,
-          PIXClassification.CapitalCity,
-          'US',
-        ]);
+        await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Zone]);
         tokenIds.push(i + 1);
       }
       const tx = await pixNFT.connect(alice).combine(tokenIds);
@@ -642,13 +492,7 @@ describe('PIX', function () {
 
     it('should set base uri by owner', async () => {
       await pixNFT.setBaseURI(uri);
-      await pixNFT.safeMint(await alice.getAddress(), [
-        0,
-        PIXCategory.Rare,
-        PIXSize.Sector,
-        PIXClassification.CapitalCity,
-        'US',
-      ]);
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
       expect(await pixNFT.tokenURI(1)).to.equal(uri + '1');
     });
   });
