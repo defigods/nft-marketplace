@@ -35,6 +35,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
      * unless territory => pixId
      */
     mapping(bool => mapping(uint256 => bool)) public pixInLand;
+    mapping(address => bool) public traders;
 
     modifier onlyMod() {
         require(moderators[msg.sender], "Pix: NON_MODERATOR");
@@ -89,6 +90,12 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         }
     }
 
+    function setTrader(address trader, bool approved) external onlyOwner {
+        require(trader != address(0), "Pix: INVALID_TRADER");
+        traders[trader] = approved;
+        emit TraderUpdated(trader, approved);
+    }
+
     function setModerator(address moderator, bool approved) external onlyOwner {
         require(moderator != address(0), "Pix: INVALID_MODERATOR");
         moderators[moderator] = approved;
@@ -127,13 +134,13 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         require(pendingPackType[msg.sender] == 0, "Pix: PENDING_REQUEST_EXIST");
 
         if (address(oracleManager) == address(0)) {
-            require(token == tokenForPrice, "Pix: Unsupported");
+            require(token == tokenForPrice, "Pix: UNSUPPORTED_ORACLE");
         }
         uint256 price = token == tokenForPrice
             ? packPrices[mode - 1]
             : oracleManager.getAmountOut(tokenForPrice, token, packPrices[mode - 1]);
 
-        require(price > 0, "Pix: invalid price");
+        require(price > 0, "Pix: INVALID_PRICE");
 
         if (token == address(0)) {
             require(msg.value == price, "Pix: INSUFFICIENT_FUNDS");
@@ -269,5 +276,24 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
 
     function setPIXInLandStatus(uint256[] calldata pixIds) external override onlyMod {
         for (uint256 i; i < pixIds.length; i += 1) pixInLand[false][pixIds[i]] = true;
+    }
+
+    function approve(address to, uint256 tokenId) public virtual override {
+        address owner = ERC721Upgradeable.ownerOf(tokenId);
+        require(to != owner, "ERC721: approval to current owner");
+        require(
+            msg.sender == owner || isApprovedForAll(owner, msg.sender),
+            "ERC721: approve caller is not the owner nor approved for all"
+        );
+        require(traders[to], "Pix: NON_WHITELISTED_TRADER");
+
+        _approve(to, tokenId);
+    }
+
+    function setApprovalForAll(address operator, bool approved) public virtual override {
+        if (approved) {
+            require(traders[operator], "Pix: NON_WHITELISTED_TRADER");
+        }
+        _setApprovalForAll(msg.sender, operator, approved);
     }
 }

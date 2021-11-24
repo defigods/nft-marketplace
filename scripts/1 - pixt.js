@@ -9,8 +9,8 @@ async function main() {
   const vesting = await Vesting.deploy(pixt.address);
   await vesting.deployed();
 
-  console.log('PIX Token at ', pixt.address);
-  console.log('Vesting at ', vesting.address);
+  console.log('PIX Token at', pixt.address);
+  console.log('Vesting at', vesting.address);
 }
 
 main()

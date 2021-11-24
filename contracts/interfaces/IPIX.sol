@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 interface IPIX {
+    event TraderUpdated(address indexed trader, bool approved);
+
     event ModeratorUpdated(address indexed moderator, bool approved);
 
     event PackPriceUpdated(uint256 indexed mode, uint256 price);

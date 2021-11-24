@@ -38,8 +38,8 @@ describe('PIXAuctionSale', function () {
       pixNFT.address,
     ]);
 
+    await pixNFT.setTrader(auctionSale.address, true);
     await auctionSale.setWhitelistedNFTs(pixNFT.address, true);
-
     await pixtToken.connect(bob).approve(auctionSale.address, utils.parseEther('153258228'));
   });
 

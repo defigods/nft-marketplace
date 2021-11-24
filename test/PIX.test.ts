@@ -496,4 +496,56 @@ describe('PIX', function () {
       expect(await pixNFT.tokenURI(1)).to.equal(uri + '1');
     });
   });
+
+  describe('#approve', () => {
+    beforeEach(async () => {
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
+    });
+
+    it('revert if current owner', async () => {
+      await expect(pixNFT.approve(await alice.getAddress(), 1)).to.revertedWith(
+        'ERC721: approval to current owner',
+      );
+    });
+
+    it('revert if non owner calls', async () => {
+      await expect(pixNFT.approve(await owner.getAddress(), 1)).to.revertedWith(
+        'ERC721: approve caller is not the owner nor approved for all',
+      );
+    });
+
+    it('revert if caller is not trader', async () => {
+      await expect(pixNFT.connect(alice).approve(await owner.getAddress(), 1)).to.revertedWith(
+        'Pix: NON_WHITELISTED_TRADER',
+      );
+    });
+
+    it('should approve new trader', async () => {
+      await pixNFT.setTrader(await owner.getAddress(), true);
+      await pixNFT.connect(alice).approve(await owner.getAddress(), 1);
+      expect(await pixNFT.getApproved(1)).to.equal(await owner.getAddress());
+    });
+  });
+
+  describe('#setApprovalForAll', () => {
+    it('revert if owner = operator', async () => {
+      await expect(pixNFT.setApprovalForAll(await owner.getAddress(), false)).to.revertedWith(
+        'ERC721: approve to caller',
+      );
+    });
+
+    it('revert if caller is not trader', async () => {
+      await expect(pixNFT.setApprovalForAll(await owner.getAddress(), true)).to.revertedWith(
+        'Pix: NON_WHITELISTED_TRADER',
+      );
+    });
+
+    it('should approve new trader', async () => {
+      await pixNFT.setTrader(await owner.getAddress(), true);
+      await pixNFT.connect(alice).setApprovalForAll(await owner.getAddress(), true);
+      expect(
+        await pixNFT.isApprovedForAll(await alice.getAddress(), await owner.getAddress()),
+      ).to.equal(true);
+    });
+  });
 });

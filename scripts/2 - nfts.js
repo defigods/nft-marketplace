@@ -12,8 +12,8 @@ async function main() {
   const landmark = await upgrades.deployProxy(PIXLandmark, [pix.address]);
   await landmark.deployed();
 
-  console.log('PIX at ', pix.address);
-  console.log('PIX Landmark at ', landmark.address);
+  console.log('PIX at', pix.address);
+  console.log('PIX Landmark at', landmark.address);
 }
 
 main()
