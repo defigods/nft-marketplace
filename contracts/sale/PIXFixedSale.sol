@@ -4,10 +4,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "../libraries/DecimalMath.sol";
 import "./PIXBaseSale.sol";
 
-contract PIXFixedSale is PIXBaseSale {
+contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using DecimalMath for uint256;
 
@@ -39,8 +40,14 @@ contract PIXFixedSale is PIXBaseSale {
     mapping(uint256 => FixedSaleInfo) public saleInfo;
     mapping(address => uint256) public nonces;
 
+    bytes32 private constant BID_MESSAGE =
+        keccak256(
+            "BidMessage(address bidder,uint256 price,address nftToken,uint256 tokenId,uint256 nonce)"
+        );
+
     function initialize(address _pixt, address _pix) external initializer {
         __PIXBaseSale_init(_pixt, _pix);
+        __EIP712_init("PlanetIX", "1");
     }
 
     /** @notice request sale for fixed price
@@ -157,30 +164,42 @@ contract PIXFixedSale is PIXBaseSale {
         bytes32 r,
         bytes32 s
     ) external {
-        PIXT(pixToken).permitForBid(buyer, address(this), price, nftToken, tokenId, v, r, s);
+        uint256 nonce = nonces[buyer]++;
+        bytes32 structHash = keccak256(
+            abi.encode(BID_MESSAGE, buyer, price, nftToken, tokenId, nonce)
+        );
+        bytes32 hash = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(hash, v, r, s);
+        require(signer == buyer, "Sale: INVALID_SIGNATURE");
+
+        address _buyer = buyer;
+        uint256 _price = price;
+        address _nftToken = nftToken;
+        uint256 _tokenId = tokenId;
 
         uint256[] memory tokenIds = new uint256[](1);
-        tokenIds[0] = tokenId;
+        tokenIds[0] = _tokenId;
 
         Treasury memory treasury;
-        if (nftToken == pixNFT && IPIX(pixNFT).pixesInLand(tokenIds)) {
+        if (_nftToken == pixNFT && IPIX(pixNFT).pixesInLand(tokenIds)) {
             treasury = landTreasury;
         } else {
             treasury = pixtTreasury;
         }
 
-        uint256 fee = price.decimalMul(treasury.fee);
-        uint256 burnFee = price.decimalMul(treasury.burnFee);
-        IERC20Upgradeable(pixToken).safeTransferFrom(buyer, msg.sender, price - fee - burnFee);
+        uint256 fee = _price.decimalMul(treasury.fee);
+        uint256 burnFee = _price.decimalMul(treasury.burnFee);
+        uint256 tradeAmount = _price - fee - burnFee;
+        IERC20Upgradeable(pixToken).safeTransferFrom(_buyer, msg.sender, tradeAmount);
         if (fee > 0) {
-            IERC20Upgradeable(pixToken).safeTransferFrom(buyer, treasury.treasury, fee);
+            IERC20Upgradeable(pixToken).safeTransferFrom(_buyer, treasury.treasury, fee);
         }
         if (burnFee > 0) {
-            ERC20Burnable(pixToken).burnFrom(buyer, burnFee);
+            ERC20Burnable(pixToken).burnFrom(_buyer, burnFee);
         }
 
-        IERC721Upgradeable(nftToken).safeTransferFrom(msg.sender, buyer, tokenId);
+        IERC721Upgradeable(_nftToken).safeTransferFrom(msg.sender, _buyer, _tokenId);
 
-        emit PurchasedWithSignature(msg.sender, buyer, nftToken, tokenId, price);
+        emit PurchasedWithSignature(msg.sender, _buyer, _nftToken, _tokenId, _price);
     }
 }
