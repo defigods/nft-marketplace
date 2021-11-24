@@ -231,10 +231,10 @@ describe('PIXFixedSale', function () {
     });
 
     it('revert if signature invalid', async () => {
-      const data = await getDigest(fixedSale, bob, pixNFT, BigNumber.from(tokenId));
+      const data = await getDigest(fixedSale, bob, price, pixNFT, BigNumber.from(tokenId));
       const { v, r, s } = ecsign(
         Buffer.from(data.slice(2), 'hex'),
-        Buffer.from(process.env.PRIVATE_KEY.slice(2), 'hex'),
+        Buffer.from(process.env.PRIVATE_KEY, 'hex'),
       );
       await expect(
         fixedSale
@@ -249,7 +249,7 @@ describe('PIXFixedSale', function () {
 
       const aliceBalanceBefore = await pixtToken.balanceOf(await alice.getAddress());
       const treasuryBalanceBefore = await pixtToken.balanceOf(treasury);
-      const data = await getDigest(fixedSale, bob, pixNFT, BigNumber.from(tokenId));
+      const data = await getDigest(fixedSale, bob, price, pixNFT, BigNumber.from(tokenId));
       const { v, r, s } = ecsign(
         Buffer.from(data.slice(2), 'hex'),
         Buffer.from(bob.privateKey.slice(2), 'hex'),
@@ -270,7 +270,13 @@ describe('PIXFixedSale', function () {
   });
 });
 
-const getDigest = async (sale: Contract, buyer: Wallet, nftToken: Contract, tokenId: BigNumber) => {
+const getDigest = async (
+  sale: Contract,
+  buyer: Wallet,
+  price: BigNumber,
+  nftToken: Contract,
+  tokenId: BigNumber,
+) => {
   const separator = keccak256(
     defaultAbiCoder.encode(
       ['bytes32', 'bytes32', 'bytes32', 'uint256', 'address'],
@@ -288,7 +294,9 @@ const getDigest = async (sale: Contract, buyer: Wallet, nftToken: Contract, toke
     ),
   );
   const hash = keccak256(
-    toUtf8Bytes('BidMessage(address bidder,address nftToken,uint256 tokenId,uint256 nonce)'),
+    toUtf8Bytes(
+      'BidMessage(address bidder,uint256 price,address nftToken,uint256 tokenId,uint256 nonce)',
+    ),
   );
   const nonce = await sale.nonces(await buyer.getAddress());
   return keccak256(
@@ -300,8 +308,8 @@ const getDigest = async (sale: Contract, buyer: Wallet, nftToken: Contract, toke
         separator,
         keccak256(
           defaultAbiCoder.encode(
-            ['bytes32', 'address', 'address', 'uint256', 'uint256'],
-            [hash, await buyer.getAddress(), nftToken.address, tokenId, nonce],
+            ['bytes32', 'address', 'uint256', 'address', 'uint256', 'uint256'],
+            [hash, await buyer.getAddress(), price, nftToken.address, tokenId, nonce],
           ),
         ),
       ],
