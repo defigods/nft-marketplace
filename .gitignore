@@ -17,6 +17,3 @@ coverage.json
 
 # Settings
 .vscode/
-
-# Openzeppelin
-.openzeppelin/

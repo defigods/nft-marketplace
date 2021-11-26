@@ -1,15 +1,19 @@
 const { ethers, upgrades } = require('hardhat');
 
 async function main() {
-  const PIXFixedSaleFactory = await ethers.getContractFactory('PIXFixedSale');
-  const fixedSale = await PIXFixedSaleFactory.deploy();
-  await fixedSale.deployed();
-  //   const fixedSale = await upgrades.upgradeProxy(
-  //     '0x303935084B9e0a7129801bbDa1B409e2573eD58f',
-  //     PIXFixedSale,
-  //   );
+  const PIX = await ethers.getContractFactory('PIX');
+  const pix = await PIX.deploy();
+  await pix.deployed();
 
-  console.log('Fixed sale at', fixedSale.address);
+  console.log('PIX at', pix.address);
+
+  // const PIXFixedSale = await ethers.getContractFactory('PIXFixedSale');
+  // const fixedSale = await upgrades.deployProxy(PIXFixedSale, [
+  //   '0xae5039fc6D8360008419E169d54F1C81c665c55D',
+  //   '0x4BDcFa73220358b2072D58BD30ac565Ed1111B0c',
+  // ]);
+
+  // console.log('PIX at', fixedSale.address);
 }
 
 main()
