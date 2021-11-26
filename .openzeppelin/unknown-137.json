@@ -39,6 +39,11 @@
       "address": "0x3DA8782d68f7783f316288d1Be308123087951Ea",
       "txHash": "0xfc45404720483699dd29f7cda37f3c5f7128670da5cb042299664e2948877d0a",
       "kind": "transparent"
+    },
+    {
+      "address": "0x5A98E7cE0F72995fdc13D91255443F374c1299A6",
+      "txHash": "0xb67ffa6cc8544e3b8c11cdf82cd063e73519e3c5e00e1f4bb7b637800bddd8bd",
+      "kind": "transparent"
     }
   ],
   "impls": {
@@ -186,6 +191,192 @@
           },
           "t_mapping(t_address,t_uint256)": {
             "label": "mapping(address => uint256)"
+          },
+          "t_bytes32": {
+            "label": "bytes32"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          },
+          "t_struct(Treasury)11237_storage": {
+            "label": "struct PIXBaseSale.Treasury",
+            "members": [
+              {
+                "label": "treasury",
+                "type": "t_address"
+              },
+              {
+                "label": "fee",
+                "type": "t_uint256"
+              },
+              {
+                "label": "burnFee",
+                "type": "t_uint256"
+              }
+            ]
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          }
+        }
+      }
+    },
+    "582d1b7d49e82576afa6f283d241f4d66cbf720f17c6eee031053f08601bc844": {
+      "address": "0xA9b7063a2444d207e93B7D7e1841249c8B41a917",
+      "txHash": "0x936f2b7062766d1828f38ea7d6ff79495aacbb3fe5c14adf2ff4e5fa13ac3991",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:37"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:42"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "ERC721HolderUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol:35"
+          },
+          {
+            "contract": "PIXBaseSale",
+            "label": "landTreasury",
+            "type": "t_struct(Treasury)11237_storage",
+            "src": "contracts/sale/PIXBaseSale.sol:31"
+          },
+          {
+            "contract": "PIXBaseSale",
+            "label": "pixtTreasury",
+            "type": "t_struct(Treasury)11237_storage",
+            "src": "contracts/sale/PIXBaseSale.sol:32"
+          },
+          {
+            "contract": "PIXBaseSale",
+            "label": "pixToken",
+            "type": "t_address",
+            "src": "contracts/sale/PIXBaseSale.sol:35"
+          },
+          {
+            "contract": "PIXBaseSale",
+            "label": "pixNFT",
+            "type": "t_address",
+            "src": "contracts/sale/PIXBaseSale.sol:36"
+          },
+          {
+            "contract": "PIXBaseSale",
+            "label": "whitelistedNFTs",
+            "type": "t_mapping(t_address,t_bool)",
+            "src": "contracts/sale/PIXBaseSale.sol:39"
+          },
+          {
+            "contract": "PIXBaseSale",
+            "label": "lastSaleId",
+            "type": "t_uint256",
+            "src": "contracts/sale/PIXBaseSale.sol:42"
+          },
+          {
+            "contract": "EIP712Upgradeable",
+            "label": "_HASHED_NAME",
+            "type": "t_bytes32",
+            "src": "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol:30"
+          },
+          {
+            "contract": "EIP712Upgradeable",
+            "label": "_HASHED_VERSION",
+            "type": "t_bytes32",
+            "src": "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol:31"
+          },
+          {
+            "contract": "EIP712Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol:112"
+          },
+          {
+            "contract": "PIXFixedSale",
+            "label": "saleInfo",
+            "type": "t_mapping(t_uint256,t_struct(FixedSaleInfo)11449_storage)",
+            "src": "contracts/sale/PIXFixedSale.sol:40"
+          },
+          {
+            "contract": "PIXFixedSale",
+            "label": "nonces",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_mapping(t_uint256,t_uint256)))",
+            "src": "contracts/sale/PIXFixedSale.sol:41"
+          }
+        ],
+        "types": {
+          "t_mapping(t_uint256,t_struct(FixedSaleInfo)11449_storage)": {
+            "label": "mapping(uint256 => struct PIXFixedSale.FixedSaleInfo)"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_struct(FixedSaleInfo)11449_storage": {
+            "label": "struct PIXFixedSale.FixedSaleInfo",
+            "members": [
+              {
+                "label": "seller",
+                "type": "t_address"
+              },
+              {
+                "label": "nftToken",
+                "type": "t_address"
+              },
+              {
+                "label": "price",
+                "type": "t_uint256"
+              },
+              {
+                "label": "tokenIds",
+                "type": "t_array(t_uint256)dyn_storage"
+              }
+            ]
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_mapping(t_uint256,t_uint256)))": {
+            "label": "mapping(address => mapping(address => mapping(uint256 => uint256)))"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_uint256))": {
+            "label": "mapping(address => mapping(uint256 => uint256))"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)"
           },
           "t_bytes32": {
             "label": "bytes32"

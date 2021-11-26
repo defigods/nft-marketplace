@@ -298,7 +298,7 @@ const getDigest = async (
       'BidMessage(address bidder,uint256 price,address nftToken,uint256 tokenId,uint256 nonce)',
     ),
   );
-  const nonce = await sale.nonces(await buyer.getAddress());
+  const nonce = await sale.nonces(await buyer.getAddress(), nftToken.address, tokenId);
   return keccak256(
     solidityPack(
       ['bytes1', 'bytes1', 'bytes32', 'bytes32'],

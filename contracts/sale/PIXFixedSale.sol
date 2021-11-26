@@ -38,7 +38,7 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
     }
 
     mapping(uint256 => FixedSaleInfo) public saleInfo;
-    mapping(address => uint256) public nonces;
+    mapping(address => mapping(address => mapping(uint256 => uint256))) public nonces;
 
     bytes32 private constant BID_MESSAGE =
         keccak256(
@@ -164,7 +164,7 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
         bytes32 r,
         bytes32 s
     ) external {
-        uint256 nonce = nonces[buyer]++;
+        uint256 nonce = nonces[buyer][nftToken][tokenId]++;
         bytes32 structHash = keccak256(
             abi.encode(BID_MESSAGE, buyer, price, nftToken, tokenId, nonce)
         );
