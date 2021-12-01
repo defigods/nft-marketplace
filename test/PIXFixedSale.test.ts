@@ -226,7 +226,6 @@ describe('PIXFixedSale', function () {
 
     beforeEach(async () => {
       await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
-
       await pixNFT.connect(alice).approve(fixedSale.address, tokenId);
     });
 
@@ -234,7 +233,7 @@ describe('PIXFixedSale', function () {
       const data = await getDigest(fixedSale, bob, price, pixNFT, BigNumber.from(tokenId));
       const { v, r, s } = ecsign(
         Buffer.from(data.slice(2), 'hex'),
-        Buffer.from(process.env.PRIVATE_KEY, 'hex'),
+        Buffer.from(process.env.PRIVATE_KEY.slice(2), 'hex'),
       );
       await expect(
         fixedSale
