@@ -45,6 +45,8 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
             "BidMessage(address bidder,uint256 price,address nftToken,uint256 tokenId,uint256 nonce)"
         );
 
+    address public burnHolder;
+
     function initialize(address _pixt, address _pix) external initializer {
         __PIXBaseSale_init(_pixt, _pix);
         __EIP712_init("PlanetIX", "1");
@@ -153,7 +155,10 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
     }
 
     /** @notice purchase not-on-sale NFT in fixed price
-     *
+     *  @param buyer buyer address
+     *  @param price bid amount
+     *  @param nftToken nft token address
+     *  @param tokenId nft token id
      */
     function sellNFTWithSignature(
         address buyer,
@@ -195,11 +200,16 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
             IERC20Upgradeable(pixToken).safeTransferFrom(_buyer, treasury.treasury, fee);
         }
         if (burnFee > 0) {
-            ERC20Burnable(pixToken).burnFrom(_buyer, burnFee);
+            if (burnHolder == address(0)) ERC20Burnable(pixToken).burnFrom(_buyer, burnFee);
+            else IERC20Upgradeable(pixToken).safeTransferFrom(_buyer, burnHolder, burnFee);
         }
 
         IERC721Upgradeable(_nftToken).safeTransferFrom(msg.sender, _buyer, _tokenId);
 
         emit PurchasedWithSignature(msg.sender, _buyer, _nftToken, _tokenId, _price);
+    }
+
+    function setBurnHolder(address holder) external onlyOwner {
+        burnHolder = holder;
     }
 }
