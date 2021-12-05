@@ -110,24 +110,30 @@ describe('PIXTStaking', function () {
     it('bob stakes 10 pixt after 1 day', async () => {
       await time.increaseTo(periodStart.add(86401).toString());
       await bobStaking.stake(10);
-      expect((await staking.earned(aliceAddress)).add(await staking.earned(bobAddress))).to.equal(
+      expect((await staking.earned(aliceAddress)).add(await staking.earned(bobAddress))).to.closeTo(
         (await staking.rewardRate()).mul(86400),
+        10,
+        '',
       );
     });
 
     it('alice stakes 10 pixt after 1 day', async () => {
       await time.increaseTo(periodStart.add(86400 * 2 + 1).toString());
       await aliceStaking.stake(10);
-      expect((await staking.earned(aliceAddress)).add(await staking.earned(bobAddress))).to.equal(
+      expect((await staking.earned(aliceAddress)).add(await staking.earned(bobAddress))).to.closeTo(
         (await staking.rewardRate()).mul(86400 * 2),
+        10,
+        '',
       );
     });
 
     it('bob stakes 10 pixt after 1 day', async () => {
       await time.increaseTo(periodStart.add(86400 * 3 + 1).toString());
       await bobStaking.stake(10);
-      expect((await staking.earned(aliceAddress)).add(await staking.earned(bobAddress))).to.equal(
+      expect((await staking.earned(aliceAddress)).add(await staking.earned(bobAddress))).to.closeTo(
         (await staking.rewardRate()).mul(86400 * 3),
+        10,
+        '',
       );
     });
   });
@@ -149,8 +155,10 @@ describe('PIXTStaking', function () {
     it('bob unstakes 10 pixt after 1 day', async () => {
       await time.increaseTo(periodStart.add(86400 * 5 + 1).toString());
       await bobStaking.unstake(10);
-      expect((await staking.earned(aliceAddress)).add(await staking.earned(bobAddress))).to.equal(
+      expect((await staking.earned(aliceAddress)).add(await staking.earned(bobAddress))).to.closeTo(
         (await staking.rewardRate()).mul(86400 * 5),
+        10,
+        '',
       );
     });
   });
@@ -173,7 +181,7 @@ describe('PIXTStaking', function () {
       const prevBalance = await pixt.balanceOf(aliceAddress);
       const tx = await aliceStaking.claim();
       expect(tx).to.emit(aliceStaking, 'RewardPaid').withArgs(aliceAddress, reward);
-      expect(await pixt.balanceOf(aliceAddress)).to.equal(prevBalance.add(reward));
+      expect(await pixt.balanceOf(aliceAddress)).to.closeTo(prevBalance.add(reward), 10, '');
     });
   });
 
@@ -195,7 +203,7 @@ describe('PIXTStaking', function () {
         .add(10);
       const prevBalance = await pixt.balanceOf(bobAddress);
       await bobStaking.exit();
-      expect(await pixt.balanceOf(bobAddress)).to.equal(prevBalance.add(reward));
+      expect(await pixt.balanceOf(bobAddress)).to.closeTo(prevBalance.add(reward), 10, '');
     });
   });
 

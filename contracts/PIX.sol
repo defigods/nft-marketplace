@@ -265,6 +265,10 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         _baseURIExtended = baseURI_;
     }
 
+    function isTerritory(uint256 tokenId) external view override returns (bool) {
+        return pixInfos[tokenId].size != PIXSize.Pix;
+    }
+
     function pixesInLand(uint256[] calldata tokenIds) external view override returns (bool inside) {
         for (uint256 i; i < tokenIds.length; i += 1) {
             PIXInfo memory info = pixInfos[tokenIds[i]];
