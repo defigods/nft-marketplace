@@ -1,19 +1,17 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "../interfaces/IPIX.sol";
 
-contract PIXStaking is Ownable {
-    using SafeMath for uint256;
+contract PIXStaking is OwnableUpgradeable {
+    using SafeMathUpgradeable for uint256;
 
     event StakedPixNFT(uint256 tokenId, address indexed recipient);
-
     event WithdrawnPixNFT(uint256 tokenId, address indexed recipient);
-
     event ClaimPixNFT(uint256 pending, address indexed recipient);
 
     struct UserInfo {
@@ -25,7 +23,7 @@ contract PIXStaking is Ownable {
     mapping(address => UserInfo) public userInfo;
     mapping(uint256 => uint256) public tierInfo;
 
-    IERC20 public rewardToken;
+    IERC20Upgradeable public rewardToken;
 
     address public pixNFT;
     uint256 public lastUpdateBlock;
@@ -45,14 +43,17 @@ contract PIXStaking is Ownable {
         _;
     }
 
-    constructor(
+    function initialize(
         address _pixt,
         address _pixNFT,
         uint256 _rewardPerBlock
-    ) {
-        rewardToken = IERC20(_pixt);
+    ) external initializer {
+        require(_pixt != address(0), "Staking: INVALID_PIXT");
+        require(_pixNFT != address(0), "Staking: INVALID_PIX");
+        rewardToken = IERC20Upgradeable(_pixt);
         pixNFT = _pixNFT;
         rewardPerBlock = _rewardPerBlock;
+        __Ownable_init();
     }
 
     function stake(uint256 _tokenId) external updateRewardPool {
@@ -71,7 +72,7 @@ contract PIXStaking is Ownable {
             rewardToken.transfer(msg.sender, pending);
         }
 
-        IERC721(pixNFT).transferFrom(msg.sender, address(this), _tokenId);
+        IERC721Upgradeable(pixNFT).transferFrom(msg.sender, address(this), _tokenId);
         totalTiers = totalTiers.add(tiers);
 
         // Update User Info
@@ -93,7 +94,7 @@ contract PIXStaking is Ownable {
         );
         rewardToken.transfer(msg.sender, pending);
 
-        IERC721(pixNFT).transferFrom(address(this), msg.sender, _tokenId);
+        IERC721Upgradeable(pixNFT).transferFrom(address(this), msg.sender, _tokenId);
         totalTiers = totalTiers.sub(tierInfo[_tokenId]);
         // Update UserInfo
         user.tiers = user.tiers.sub(tierInfo[_tokenId]);

@@ -7,7 +7,7 @@
       "hash": "0x116742742f3b8cce3bf63ac8bd215bdc90fede6ebb3d8a1ca5fbe3433afb78be",
       "type": 2,
       "accessList": [],
-      "blockHash": "0xcf30df7c488b3c35286effa9a02576db3278ba9e177e6611cbecc20fc37e16aa",
+      "blockHash": "0x257dbef92e51ca18baeabfdb11eaa99c6853296eb0c94426b46066ca776c0a5b",
       "blockNumber": 5,
       "transactionIndex": 0,
       "confirmations": 1,
@@ -854,16 +854,6 @@
       "kind": "transparent"
     },
     {
-      "address": "0x8729c0238b265BaCF6fE397E8309897BB5c40473",
-      "txHash": "0x038e220344700ca3e5bf11499e425845e6629b151703fa7b15ce98f35a463f94",
-      "kind": "transparent"
-    },
-    {
-      "address": "0xC6A09F78CfB85275e5261200442b0B9AA9D4D0ce",
-      "txHash": "0x2d1a325dfcb82ca0b531f045adc5b07ec5b8bebf2462f73bde7443e473874b51",
-      "kind": "transparent"
-    },
-    {
       "address": "0x91c8C745fd156d8624677aa924Cdc1Ef8173C69C",
       "txHash": "0x96f3deb5eaa5aa95872ee4bbc456fadade32bac8bfec4552b104bd19e4e16bc6",
       "kind": "transparent"
@@ -881,6 +871,46 @@
     {
       "address": "0x240A60DC5e0B9013Cb8CF39aa6f9dDd8f25E40D2",
       "txHash": "0x7b2d80be86463fc906d075464e3f213b28ce772de19183236df73e59826006ba",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x8797847c9d63D8Ed9C30B058F408d4257A33B76C",
+      "txHash": "0x0c5be92d97b9b5bfe9ab5eda04f4a1208a6b976eb885ff309e0412690fdbdd1e",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x886a2A3ABF5B79AA5dFF1C73016BD07CFc817e04",
+      "txHash": "0xf0fe865873ea48604dba7b786bbf91d44f847f06cbfb88c0ae7496d5aff168e8",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xe3e4631D734e4b3F900AfcC396440641Ed0df339",
+      "txHash": "0x0315cef7a317de382dca3fdaba3fcf486659cc875deaf1dd9b8dad2debb7e970",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xa86582Ad5E80abc19F95f8A9Fb3905Cda0dAbd59",
+      "txHash": "0xc8af2046194e58d10ed7e25c2f8825d4d6414b3ed015163c2db9cb3b6628ebdf",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xeA2e668d430e5AA15babA2f5c5edfd4F9Ef6EB73",
+      "txHash": "0x82bd2a5e8a25dceb2bc7b5bdbf6736f57b1223b509e2bd95ae9b0e364376d6f5",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x294c69bD8415219b41B68a2f065DeABB950dd489",
+      "txHash": "0x73b8cf60a2f4c343b36a10668c817aad5a7fea3b9ed3fedbf8972784bd9f5523",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x831C6C334f8DDeE62246a5c81B82c8e18008b38f",
+      "txHash": "0x5fbcf0beb48088dce108fa1c5daad61a75ff9fa40b279f8f18687cec8784fae4",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xf4c5C29b14f0237131F7510A51684c8191f98E06",
+      "txHash": "0x545e3663f1372e84ac3111d52ba325805eedb0e8f7edf1757db6e5ec9756974a",
       "kind": "transparent"
     },
     {
@@ -1754,43 +1784,93 @@
       "kind": "transparent"
     },
     {
-      "address": "0x8797847c9d63D8Ed9C30B058F408d4257A33B76C",
-      "txHash": "0x0c5be92d97b9b5bfe9ab5eda04f4a1208a6b976eb885ff309e0412690fdbdd1e",
+      "address": "0x633a7eB9b8912b22f3616013F3153de687F96074",
+      "txHash": "0x4d5ac89a4b622c3a2d12ee7ed33f5d92b5e62b0b2af76f2431e018a996284723",
       "kind": "transparent"
     },
     {
-      "address": "0x886a2A3ABF5B79AA5dFF1C73016BD07CFc817e04",
-      "txHash": "0xf0fe865873ea48604dba7b786bbf91d44f847f06cbfb88c0ae7496d5aff168e8",
+      "address": "0xF816b7FfDa4a8aB6B68540D1993fCa98E462b3bc",
+      "txHash": "0x43d872d701d7be5cc60bc4d03b965cc81de11de354eaaf9d203135188b274cb2",
       "kind": "transparent"
     },
     {
-      "address": "0xe3e4631D734e4b3F900AfcC396440641Ed0df339",
-      "txHash": "0x0315cef7a317de382dca3fdaba3fcf486659cc875deaf1dd9b8dad2debb7e970",
+      "address": "0xa9Ea7F91E63896d852c4FCA6124c974adC68Af3B",
+      "txHash": "0x947294dc923c9b2f2b8beb0df960c7fd35a51683cda5b44f376986e22ee4b70d",
       "kind": "transparent"
     },
     {
-      "address": "0xa86582Ad5E80abc19F95f8A9Fb3905Cda0dAbd59",
-      "txHash": "0xc8af2046194e58d10ed7e25c2f8825d4d6414b3ed015163c2db9cb3b6628ebdf",
+      "address": "0x449C286Ab90639fd9F6604F4f15Ec86bce2b8A61",
+      "txHash": "0xa66ab80ba2cb52ac743c56196dea3e6a4109cc4a87391b6a07a57c4a69980e94",
       "kind": "transparent"
     },
     {
-      "address": "0xeA2e668d430e5AA15babA2f5c5edfd4F9Ef6EB73",
-      "txHash": "0x82bd2a5e8a25dceb2bc7b5bdbf6736f57b1223b509e2bd95ae9b0e364376d6f5",
+      "address": "0x5E0399B4C3c4C31036DcA08d53c0c5b5c29C113e",
+      "txHash": "0x65eb51defc535b532cda29439379639893175f451e274351ebe40d9a1c91c39a",
       "kind": "transparent"
     },
     {
-      "address": "0x294c69bD8415219b41B68a2f065DeABB950dd489",
-      "txHash": "0x73b8cf60a2f4c343b36a10668c817aad5a7fea3b9ed3fedbf8972784bd9f5523",
+      "address": "0x8729c0238b265BaCF6fE397E8309897BB5c40473",
+      "txHash": "0x038e220344700ca3e5bf11499e425845e6629b151703fa7b15ce98f35a463f94",
       "kind": "transparent"
     },
     {
-      "address": "0x831C6C334f8DDeE62246a5c81B82c8e18008b38f",
-      "txHash": "0x5fbcf0beb48088dce108fa1c5daad61a75ff9fa40b279f8f18687cec8784fae4",
+      "address": "0xDf795df2e0ad240a82d773DA01a812B96345F9C5",
+      "txHash": "0x9a6d81dc970cf49de3062a09b6a4e31d7c9511dcbe59cfb0a7afbd05f10077fa",
       "kind": "transparent"
     },
     {
-      "address": "0xf4c5C29b14f0237131F7510A51684c8191f98E06",
-      "txHash": "0x545e3663f1372e84ac3111d52ba325805eedb0e8f7edf1757db6e5ec9756974a",
+      "address": "0x97915c43511f8cB4Fbe7Ea03B96EEe940eC4AF12",
+      "txHash": "0xdc4a51b778930e66944eb0aebe1385d9bd0d9794039a98d88064005f12f8ac22",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xC6A09F78CfB85275e5261200442b0B9AA9D4D0ce",
+      "txHash": "0x24b23cbf2d562122764c984e88ab32c58fde188ae89a1b0d16929b7c1076a74f",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xA7240bcff60Eef40F31B8eD5d921BaD6DB13B199",
+      "txHash": "0x35fe532ed36d96469f0bf4869aefa5ab04601bad8fcc2520cb564c3fc8fe88dc",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xc565EB7363769f8ffAe0005285ccD854c631A0a0",
+      "txHash": "0x095e10a527f7b92f2c738f7943fa373bc646be29b3460ba9769b93c95cc15dd2",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x48288D0e3079A03f6EC1846554CFc58C2696Aaee",
+      "txHash": "0x8fade5414f79427b5b0e75e8edea7ed41312a020729f2606d4916c4f7a3b6ddd",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x74Ce26A2e4c1368C48A0157CE762944d282896Db",
+      "txHash": "0x6c99754a7b2a4b24cf29a0d1749bb6eedd17010ae2ae7d94db2b7098464e3de7",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xF47e3B0A1952A81F1afc41172762CB7CE8700133",
+      "txHash": "0x6e049b1828f93d67a0c3cf3b60dc3630bb3b6fe24b820ee5649f91989a52ffa6",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xC63db9682Ff11707CADbD72bf1A0354a7feF143B",
+      "txHash": "0x7defed3fb35df92ac34c5d9cfd3e30242f581b87abf11b94c71fc3bece0ce946",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x934A389CaBFB84cdB3f0260B2a4FD575b8B345A3",
+      "txHash": "0x21b6090d14c08b0d9da9589b71305942b9721dddd275407eb6844d794b31e9bb",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xc91B651f770ed996a223a16dA9CCD6f7Df56C987",
+      "txHash": "0xce88f8725909eb8cbb34a24532414d937a45038543537aa62e4cf1e20d451413",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x9118EA4a52C6c7873729c8d8702cCd85E573f9E9",
+      "txHash": "0xbcf6cb30d7a21765705a798415daa1c82f036db69236b1355c1be4d5f2e03300",
       "kind": "transparent"
     }
   ],
@@ -1917,7 +1997,7 @@
           {
             "contract": "PIXLandmark",
             "label": "pixNFT",
-            "type": "t_contract(IPIX)9841",
+            "type": "t_contract(IPIX)9713",
             "src": "contracts/PIXLandmark.sol:30"
           },
           {
@@ -1929,7 +2009,7 @@
           {
             "contract": "PIXLandmark",
             "label": "landInfos",
-            "type": "t_mapping(t_uint256,t_struct(LandmarkInfo)8626_storage)",
+            "type": "t_mapping(t_uint256,t_struct(LandmarkInfo)8498_storage)",
             "src": "contracts/PIXLandmark.sol:33"
           },
           {
@@ -1955,7 +2035,7 @@
           "t_string_storage": {
             "label": "string"
           },
-          "t_contract(IPIX)9841": {
+          "t_contract(IPIX)9713": {
             "label": "contract IPIX"
           },
           "t_mapping(t_address,t_bool)": {
@@ -1967,18 +2047,18 @@
           "t_bool": {
             "label": "bool"
           },
-          "t_mapping(t_uint256,t_struct(LandmarkInfo)8626_storage)": {
+          "t_mapping(t_uint256,t_struct(LandmarkInfo)8498_storage)": {
             "label": "mapping(uint256 => struct PIXLandmark.LandmarkInfo)"
           },
           "t_uint256": {
             "label": "uint256"
           },
-          "t_struct(LandmarkInfo)8626_storage": {
+          "t_struct(LandmarkInfo)8498_storage": {
             "label": "struct PIXLandmark.LandmarkInfo",
             "members": [
               {
                 "label": "category",
-                "type": "t_enum(PIXCategory)8620"
+                "type": "t_enum(PIXCategory)8492"
               },
               {
                 "label": "landmarkType",
@@ -1986,7 +2066,7 @@
               }
             ]
           },
-          "t_enum(PIXCategory)8620": {
+          "t_enum(PIXCategory)8492": {
             "label": "enum PIXLandmark.PIXCategory",
             "members": [
               "Legendary",
@@ -2281,13 +2361,13 @@
           {
             "contract": "PIXBaseSale",
             "label": "landTreasury",
-            "type": "t_struct(Treasury)11822_storage",
+            "type": "t_struct(Treasury)11694_storage",
             "src": "contracts/sale/PIXBaseSale.sol:31"
           },
           {
             "contract": "PIXBaseSale",
             "label": "pixtTreasury",
-            "type": "t_struct(Treasury)11822_storage",
+            "type": "t_struct(Treasury)11694_storage",
             "src": "contracts/sale/PIXBaseSale.sol:32"
           },
           {
@@ -2347,13 +2427,13 @@
           {
             "contract": "PIXAuctionSale",
             "label": "saleInfo",
-            "type": "t_mapping(t_uint256,t_struct(AuctionSaleInfo)11279_storage)",
+            "type": "t_mapping(t_uint256,t_struct(AuctionSaleInfo)11151_storage)",
             "src": "contracts/sale/PIXAuctionSale.sol:42"
           },
           {
             "contract": "PIXAuctionSale",
             "label": "saleState",
-            "type": "t_mapping(t_uint256,t_struct(AuctionSaleState)11284_storage)",
+            "type": "t_mapping(t_uint256,t_struct(AuctionSaleState)11156_storage)",
             "src": "contracts/sale/PIXAuctionSale.sol:43"
           },
           {
@@ -2370,13 +2450,13 @@
           }
         ],
         "types": {
-          "t_mapping(t_uint256,t_struct(AuctionSaleInfo)11279_storage)": {
+          "t_mapping(t_uint256,t_struct(AuctionSaleInfo)11151_storage)": {
             "label": "mapping(uint256 => struct PIXAuctionSale.AuctionSaleInfo)"
           },
           "t_uint256": {
             "label": "uint256"
           },
-          "t_struct(AuctionSaleInfo)11279_storage": {
+          "t_struct(AuctionSaleInfo)11151_storage": {
             "label": "struct PIXAuctionSale.AuctionSaleInfo",
             "members": [
               {
@@ -2410,10 +2490,10 @@
           "t_array(t_uint256)dyn_storage": {
             "label": "uint256[]"
           },
-          "t_mapping(t_uint256,t_struct(AuctionSaleState)11284_storage)": {
+          "t_mapping(t_uint256,t_struct(AuctionSaleState)11156_storage)": {
             "label": "mapping(uint256 => struct PIXAuctionSale.AuctionSaleState)"
           },
-          "t_struct(AuctionSaleState)11284_storage": {
+          "t_struct(AuctionSaleState)11156_storage": {
             "label": "struct PIXAuctionSale.AuctionSaleState",
             "members": [
               {
@@ -2441,7 +2521,7 @@
           "t_array(t_uint256)49_storage": {
             "label": "uint256[49]"
           },
-          "t_struct(Treasury)11822_storage": {
+          "t_struct(Treasury)11694_storage": {
             "label": "struct PIXBaseSale.Treasury",
             "members": [
               {
@@ -2511,13 +2591,13 @@
           {
             "contract": "PIXBaseSale",
             "label": "landTreasury",
-            "type": "t_struct(Treasury)11822_storage",
+            "type": "t_struct(Treasury)11694_storage",
             "src": "contracts/sale/PIXBaseSale.sol:31"
           },
           {
             "contract": "PIXBaseSale",
             "label": "pixtTreasury",
-            "type": "t_struct(Treasury)11822_storage",
+            "type": "t_struct(Treasury)11694_storage",
             "src": "contracts/sale/PIXBaseSale.sol:32"
           },
           {
@@ -2565,7 +2645,7 @@
           {
             "contract": "PIXFixedSale",
             "label": "saleInfo",
-            "type": "t_mapping(t_uint256,t_struct(FixedSaleInfo)12034_storage)",
+            "type": "t_mapping(t_uint256,t_struct(FixedSaleInfo)11906_storage)",
             "src": "contracts/sale/PIXFixedSale.sol:40"
           },
           {
@@ -2582,13 +2662,13 @@
           }
         ],
         "types": {
-          "t_mapping(t_uint256,t_struct(FixedSaleInfo)12034_storage)": {
+          "t_mapping(t_uint256,t_struct(FixedSaleInfo)11906_storage)": {
             "label": "mapping(uint256 => struct PIXFixedSale.FixedSaleInfo)"
           },
           "t_uint256": {
             "label": "uint256"
           },
-          "t_struct(FixedSaleInfo)12034_storage": {
+          "t_struct(FixedSaleInfo)11906_storage": {
             "label": "struct PIXFixedSale.FixedSaleInfo",
             "members": [
               {
@@ -2630,7 +2710,7 @@
           "t_array(t_uint256)50_storage": {
             "label": "uint256[50]"
           },
-          "t_struct(Treasury)11822_storage": {
+          "t_struct(Treasury)11694_storage": {
             "label": "struct PIXBaseSale.Treasury",
             "members": [
               {
@@ -2793,7 +2873,7 @@
           {
             "contract": "PIX",
             "label": "treasury",
-            "type": "t_struct(Treasury)9810_storage",
+            "type": "t_struct(Treasury)9682_storage",
             "src": "contracts/PIX.sol:21"
           },
           {
@@ -2823,13 +2903,13 @@
           {
             "contract": "PIX",
             "label": "combineCounts",
-            "type": "t_mapping(t_enum(PIXSize)9805,t_uint16)",
+            "type": "t_mapping(t_enum(PIXSize)9677,t_uint16)",
             "src": "contracts/PIX.sol:26"
           },
           {
             "contract": "PIX",
             "label": "pixInfos",
-            "type": "t_mapping(t_uint256,t_struct(PIXInfo)9819_storage)",
+            "type": "t_mapping(t_uint256,t_struct(PIXInfo)9691_storage)",
             "src": "contracts/PIX.sol:27"
           },
           {
@@ -2841,13 +2921,13 @@
           {
             "contract": "PIX",
             "label": "oracleManager",
-            "type": "t_contract(IOracleManager)9727",
+            "type": "t_contract(IOracleManager)9599",
             "src": "contracts/PIX.sol:29"
           },
           {
             "contract": "PIX",
             "label": "swapManager",
-            "type": "t_contract(ISwapManager)9855",
+            "type": "t_contract(ISwapManager)9727",
             "src": "contracts/PIX.sol:30"
           },
           {
@@ -2879,7 +2959,7 @@
           "t_uint256": {
             "label": "uint256"
           },
-          "t_struct(Treasury)9810_storage": {
+          "t_struct(Treasury)9682_storage": {
             "label": "struct IPIX.Treasury",
             "members": [
               {
@@ -2907,10 +2987,10 @@
           "t_mapping(t_address,t_uint256)": {
             "label": "mapping(address => uint256)"
           },
-          "t_mapping(t_enum(PIXSize)9805,t_uint16)": {
+          "t_mapping(t_enum(PIXSize)9677,t_uint16)": {
             "label": "mapping(enum IPIX.PIXSize => uint16)"
           },
-          "t_enum(PIXSize)9805": {
+          "t_enum(PIXSize)9677": {
             "label": "enum IPIX.PIXSize",
             "members": [
               "Pix",
@@ -2923,10 +3003,10 @@
           "t_uint16": {
             "label": "uint16"
           },
-          "t_mapping(t_uint256,t_struct(PIXInfo)9819_storage)": {
+          "t_mapping(t_uint256,t_struct(PIXInfo)9691_storage)": {
             "label": "mapping(uint256 => struct IPIX.PIXInfo)"
           },
-          "t_struct(PIXInfo)9819_storage": {
+          "t_struct(PIXInfo)9691_storage": {
             "label": "struct IPIX.PIXInfo",
             "members": [
               {
@@ -2935,15 +3015,15 @@
               },
               {
                 "label": "category",
-                "type": "t_enum(PIXCategory)9799"
+                "type": "t_enum(PIXCategory)9671"
               },
               {
                 "label": "size",
-                "type": "t_enum(PIXSize)9805"
+                "type": "t_enum(PIXSize)9677"
               }
             ]
           },
-          "t_enum(PIXCategory)9799": {
+          "t_enum(PIXCategory)9671": {
             "label": "enum IPIX.PIXCategory",
             "members": [
               "Legendary",
@@ -2953,10 +3033,10 @@
               "Outliers"
             ]
           },
-          "t_contract(IOracleManager)9727": {
+          "t_contract(IOracleManager)9599": {
             "label": "contract IOracleManager"
           },
-          "t_contract(ISwapManager)9855": {
+          "t_contract(ISwapManager)9727": {
             "label": "contract ISwapManager"
           },
           "t_mapping(t_bool,t_mapping(t_uint256,t_bool))": {
@@ -2988,6 +3068,259 @@
           },
           "t_array(t_uint256)50_storage": {
             "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "047af3c0d3c90115523d97b6fcc6e4ee202150583dc09ed80d6bbc09ccada0a6": {
+      "address": "0x897945A56464616a525C9e5F11a8D400a72a8f3A",
+      "txHash": "0x5915715c399b79d59d320ad67c1e72dfad24438d3a2e08a5423231af45e056de",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:37"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:42"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "userInfo",
+            "type": "t_mapping(t_address,t_struct(UserInfo)12564_storage)",
+            "src": "contracts/staking/PIXStaking.sol:23"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "tierInfo",
+            "type": "t_mapping(t_uint256,t_uint256)",
+            "src": "contracts/staking/PIXStaking.sol:24"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "rewardToken",
+            "type": "t_contract(IERC20Upgradeable)926",
+            "src": "contracts/staking/PIXStaking.sol:26"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "pixNFT",
+            "type": "t_address",
+            "src": "contracts/staking/PIXStaking.sol:28"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "lastUpdateBlock",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXStaking.sol:29"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "rewardPerBlock",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXStaking.sol:30"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "totalTiers",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXStaking.sol:31"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "accPixNFTPerShare",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXStaking.sol:32"
+          }
+        ],
+        "types": {
+          "t_mapping(t_address,t_struct(UserInfo)12564_storage)": {
+            "label": "mapping(address => struct PIXStaking.UserInfo)"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_struct(UserInfo)12564_storage": {
+            "label": "struct PIXStaking.UserInfo",
+            "members": [
+              {
+                "label": "isStaked",
+                "type": "t_mapping(t_uint256,t_bool)"
+              },
+              {
+                "label": "rewardDebt",
+                "type": "t_uint256"
+              },
+              {
+                "label": "tiers",
+                "type": "t_uint256"
+              }
+            ]
+          },
+          "t_mapping(t_uint256,t_bool)": {
+            "label": "mapping(uint256 => bool)"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)"
+          },
+          "t_contract(IERC20Upgradeable)926": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "bf15f2f61b109206e69e93c9436db3a33493c273ea3e79d1827e844f2525b096": {
+      "address": "0x2F94C3189edA0e357B23048aEc736F323Ac431f6",
+      "txHash": "0x67bbe576aec81870127faf6c1d1902db900ac0928329a5b72d885c5b7dc3eece",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:37"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:42"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "pixToken",
+            "type": "t_contract(IERC20Upgradeable)926",
+            "src": "contracts/staking/PIXTStaking.sol:14"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "totalStaked",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXTStaking.sol:16"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "stakedAmounts",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "contracts/staking/PIXTStaking.sol:17"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "periodFinish",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXTStaking.sol:19"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "rewardRate",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXTStaking.sol:20"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "lastUpdateTime",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXTStaking.sol:21"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "rewardPerTokenStored",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXTStaking.sol:22"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "rewardDistributor",
+            "type": "t_address",
+            "src": "contracts/staking/PIXTStaking.sol:23"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "userRewardPerTokenPaid",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "contracts/staking/PIXTStaking.sol:24"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "rewards",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "contracts/staking/PIXTStaking.sol:25"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)926": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          },
+          "t_bool": {
+            "label": "bool"
           }
         }
       }
