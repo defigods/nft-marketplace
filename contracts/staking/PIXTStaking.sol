@@ -2,16 +2,16 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-contract PIXTStaking is Ownable {
-    using SafeERC20 for IERC20;
+contract PIXTStaking is OwnableUpgradeable {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     uint256 public constant DURATION = 10 days;
-    IERC20 public immutable pixToken;
+    IERC20Upgradeable public pixToken;
 
     uint256 public totalStaked;
     mapping(address => uint256) public stakedAmounts;
@@ -44,14 +44,15 @@ contract PIXTStaking is Ownable {
         _;
     }
 
-    constructor(address token) {
+    function initialize(address token) external initializer {
         require(token != address(0), "Staking: INVALID_PIXT");
-        pixToken = IERC20(token);
+        pixToken = IERC20Upgradeable(token);
+        __Ownable_init();
     }
 
     /// @dev validation reward period
     function lastTimeRewardApplicable() public view returns (uint256) {
-        return Math.min(block.timestamp, periodFinish);
+        return MathUpgradeable.min(block.timestamp, periodFinish);
     }
 
     /// @dev reward rate per staked token

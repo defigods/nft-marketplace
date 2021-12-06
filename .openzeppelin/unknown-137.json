@@ -44,6 +44,21 @@
       "address": "0x5A98E7cE0F72995fdc13D91255443F374c1299A6",
       "txHash": "0xb67ffa6cc8544e3b8c11cdf82cd063e73519e3c5e00e1f4bb7b637800bddd8bd",
       "kind": "transparent"
+    },
+    {
+      "address": "0xA80EF9F00D0281d2915fEbff5a9A140438Bb7cFE",
+      "txHash": "0x7473cba877b57120d9eb6486293be62fdf8ee0b3f41de793e493796f283cd30b",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x8ffB93EAff4fba8511Bb18346db9043b4C72494C",
+      "txHash": "0xfed582d7fe0e8d3886cf51257e5b7abb008f627fd6df105d47a4030ee78ae0b1",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xd64Dc09221868021a8627262Feb0EB69403B17E1",
+      "txHash": "0x9e666b54a9ddcdde2371b145be56409e541dbe7c9339c145b142a934bb579f4c",
+      "kind": "transparent"
     }
   ],
   "impls": {
@@ -409,6 +424,259 @@
           },
           "t_array(t_uint256)49_storage": {
             "label": "uint256[49]"
+          }
+        }
+      }
+    },
+    "bf15f2f61b109206e69e93c9436db3a33493c273ea3e79d1827e844f2525b096": {
+      "address": "0x0401f04cEEcB6185Bd139342E42463DB6F2C9990",
+      "txHash": "0xf8e1db2250baf17634f2bc15d7b8340e8db4d9ca6bb28fc284d4986040210a41",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:37"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:42"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "pixToken",
+            "type": "t_contract(IERC20Upgradeable)926",
+            "src": "contracts/staking/PIXTStaking.sol:14"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "totalStaked",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXTStaking.sol:16"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "stakedAmounts",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "contracts/staking/PIXTStaking.sol:17"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "periodFinish",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXTStaking.sol:19"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "rewardRate",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXTStaking.sol:20"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "lastUpdateTime",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXTStaking.sol:21"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "rewardPerTokenStored",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXTStaking.sol:22"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "rewardDistributor",
+            "type": "t_address",
+            "src": "contracts/staking/PIXTStaking.sol:23"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "userRewardPerTokenPaid",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "contracts/staking/PIXTStaking.sol:24"
+          },
+          {
+            "contract": "PIXTStaking",
+            "label": "rewards",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "contracts/staking/PIXTStaking.sol:25"
+          }
+        ],
+        "types": {
+          "t_contract(IERC20Upgradeable)926": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          },
+          "t_bool": {
+            "label": "bool"
+          }
+        }
+      }
+    },
+    "047af3c0d3c90115523d97b6fcc6e4ee202150583dc09ed80d6bbc09ccada0a6": {
+      "address": "0x1Ee6BC3fAE69E8A13B261EF729bBb0CA5Fc9b55a",
+      "txHash": "0x4e14ac38d8c9b9232b740e545cf7933275b77ab2f2947bff0c34059dfb2205d1",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:37"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:42"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "_owner",
+            "type": "t_address",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "contract": "OwnableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:82"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "userInfo",
+            "type": "t_mapping(t_address,t_struct(UserInfo)12564_storage)",
+            "src": "contracts/staking/PIXStaking.sol:23"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "tierInfo",
+            "type": "t_mapping(t_uint256,t_uint256)",
+            "src": "contracts/staking/PIXStaking.sol:24"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "rewardToken",
+            "type": "t_contract(IERC20Upgradeable)926",
+            "src": "contracts/staking/PIXStaking.sol:26"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "pixNFT",
+            "type": "t_address",
+            "src": "contracts/staking/PIXStaking.sol:28"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "lastUpdateBlock",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXStaking.sol:29"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "rewardPerBlock",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXStaking.sol:30"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "totalTiers",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXStaking.sol:31"
+          },
+          {
+            "contract": "PIXStaking",
+            "label": "accPixNFTPerShare",
+            "type": "t_uint256",
+            "src": "contracts/staking/PIXStaking.sol:32"
+          }
+        ],
+        "types": {
+          "t_mapping(t_address,t_struct(UserInfo)12564_storage)": {
+            "label": "mapping(address => struct PIXStaking.UserInfo)"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_struct(UserInfo)12564_storage": {
+            "label": "struct PIXStaking.UserInfo",
+            "members": [
+              {
+                "label": "isStaked",
+                "type": "t_mapping(t_uint256,t_bool)"
+              },
+              {
+                "label": "rewardDebt",
+                "type": "t_uint256"
+              },
+              {
+                "label": "tiers",
+                "type": "t_uint256"
+              }
+            ]
+          },
+          "t_mapping(t_uint256,t_bool)": {
+            "label": "mapping(uint256 => bool)"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)"
+          },
+          "t_contract(IERC20Upgradeable)926": {
+            "label": "contract IERC20Upgradeable"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
           }
         }
       }

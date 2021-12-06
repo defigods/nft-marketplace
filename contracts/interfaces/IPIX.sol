@@ -53,6 +53,8 @@ interface IPIX {
         PIXSize size;
     }
 
+    function isTerritory(uint256 tokenId) external view returns (bool);
+
     function pixesInLand(uint256[] calldata tokenIds) external view returns (bool);
 
     function setPIXInLandStatus(uint256[] calldata pixIds) external;
