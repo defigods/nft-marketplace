@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
 import "./interfaces/IPIX.sol";
 import "./interfaces/IOracleManager.sol";
 import "./interfaces/ISwapManager.sol";
@@ -295,5 +296,26 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             require(traders[operator], "Pix: NON_WHITELISTED_TRADER");
         }
         _setApprovalForAll(msg.sender, operator, approved);
+    }
+
+    bytes32 public merkleRoot;
+    mapping(bytes32 => bool) public leafUsed;
+
+    function setMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+        merkleRoot = _merkleRoot;
+    }
+
+    function mintByProof(
+        address to,
+        PIXInfo memory info,
+        bytes32[] calldata merkleProofs
+    ) external {
+        bytes32 leaf = keccak256(abi.encode(to, info.pixId, info.category, info.size));
+        require(!leafUsed[leaf], "Pix: already minted");
+        require(
+            MerkleProofUpgradeable.verify(merkleProofs, merkleRoot, leaf),
+            "Pix: invalid proof"
+        );
+        _safeMint(to, info);
     }
 }
