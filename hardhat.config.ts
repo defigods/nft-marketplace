@@ -44,4 +44,7 @@ export default {
       },
     },
   },
+  mocha: {
+    timeout: 2000000,
+  },
 };
