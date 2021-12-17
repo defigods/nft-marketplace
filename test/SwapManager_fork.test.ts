@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import hre, { ethers } from 'hardhat';
-import { Contract, utils, constants, BigNumber, Signer } from 'ethers';
-import { generateRandomAddress } from './utils';
+import { Contract, utils, constants, Signer } from 'ethers';
 import 'dotenv/config';
 
 describe('SwapManager', function () {
@@ -11,7 +10,6 @@ describe('SwapManager', function () {
   const usdt = '0xc2132d05d31c914a87c6611c10748aeb04b58e8f';
   const weth = '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270';
   let swapManager: Contract;
-  let owner: Signer;
   let alice: Signer;
   let bob: Signer;
 

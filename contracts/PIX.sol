@@ -145,6 +145,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         if (token == address(0)) {
             require(msg.value == price, "Pix: INSUFFICIENT_FUNDS");
         } else {
+            require(msg.value == 0, "Pix: INVALID_VALUE");
             IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), price);
         }
         if (treasury.treasury != address(0)) {
@@ -160,7 +161,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
                         treasury.treasury
                     );
                 } else {
-                    pixToken.approve(address(swapManager), treasuryFee);
+                    IERC20Upgradeable(token).approve(address(swapManager), treasuryFee);
                     swapManager.swap(token, address(pixToken), treasuryFee, treasury.treasury);
                 }
             }
@@ -306,5 +307,9 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             require(traders[operator], "Pix: NON_WHITELISTED_TRADER");
         }
         _setApprovalForAll(msg.sender, operator, approved);
+    }
+
+    function setTokenForPrice(address _tokenForPrice) external onlyOwner {
+        tokenForPrice = _tokenForPrice;
     }
 }
