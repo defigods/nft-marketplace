@@ -152,6 +152,13 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             if (treasuryFee > 0) {
                 if (token == address(pixToken)) {
                     pixToken.safeTransfer(treasury.treasury, treasuryFee);
+                } else if (token == address(0)) {
+                    swapManager.swap{value: treasuryFee}(
+                        token,
+                        address(pixToken),
+                        treasuryFee,
+                        treasury.treasury
+                    );
                 } else {
                     pixToken.approve(address(swapManager), treasuryFee);
                     swapManager.swap(token, address(pixToken), treasuryFee, treasury.treasury);
