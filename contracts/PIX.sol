@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
@@ -12,6 +13,7 @@ import "./libraries/DecimalMath.sol";
 
 contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using AddressUpgradeable for address;
     using DecimalMath for uint256;
 
     IERC20Upgradeable public pixToken;
@@ -42,6 +44,9 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     uint256 public limitForMedium;
     mapping(address => mapping(uint256 => uint256)) packsPurchasedByType;
     mapping(uint256 => uint256) packsPurchasedInDrop;
+    mapping(uint256 => uint256) dropStartTimes;
+    mapping(uint256 => uint256) dropEndTimes;
+    mapping(uint256 => address) playerAddresses;
 
     modifier onlyMod() {
         require(moderators[msg.sender], "Pix: NON_MODERATOR");
@@ -137,8 +142,14 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     function requestMint(
         address token,
         uint256 dropId,
+        uint256 playerId,
         uint256 mode
     ) external payable {
+        require(playerAddresses[playerId] == msg.sender, "Pix: INVALID_PLAYER_ID");
+        require(
+            dropStartTimes[dropId] <= block.timestamp && dropEndTimes[dropId] >= block.timestamp,
+            "!Pix: DROP_SALE_TIME"
+        );
         require(
             packsPurchasedByType[msg.sender][mode] < getLimitCount(mode),
             "Pix: OVERFLOW_LIMIT"
@@ -315,13 +326,15 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             msg.sender == owner || isApprovedForAll(owner, msg.sender),
             "ERC721: approve caller is not the owner nor approved for all"
         );
-        require(traders[to], "Pix: NON_WHITELISTED_TRADER");
+        if (to.isContract()) {
+            require(traders[to], "Pix: NON_WHITELISTED_TRADER");
+        }
 
         _approve(to, tokenId);
     }
 
     function setApprovalForAll(address operator, bool approved) public virtual override {
-        if (approved) {
+        if (approved && operator.isContract()) {
             require(traders[operator], "Pix: NON_WHITELISTED_TRADER");
         }
         _setApprovalForAll(msg.sender, operator, approved);
@@ -336,19 +349,23 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         else limit = limitForMedium;
     }
 
-    function addPackType(uint256 price) external onlyOwner {
-        packPrices.push(price);
-    }
-
-    function removePackType() external onlyOwner {
-        packPrices.pop();
-    }
-
     function setSmallLimitCount(uint256 limit) external onlyOwner {
         limitForSmall = limit;
     }
 
     function setMediumLimitCount(uint256 limit) external onlyOwner {
         limitForMedium = limit;
+    }
+
+    function setStartTime(uint256 dropId, uint256 startTime) external onlyOwner {
+        dropStartTimes[dropId] = startTime;
+    }
+
+    function setEndTime(uint256 dropId, uint256 endTime) external onlyOwner {
+        dropEndTimes[dropId] = endTime;
+    }
+
+    function setPlayerAddress(uint256 playerId, address account) external onlyOwner {
+        playerAddresses[playerId] = account;
     }
 }
