@@ -234,9 +234,7 @@ describe('PIX', function () {
 
     it('should request mint', async function () {
       const tx = await pixNFT.connect(alice).requestMint(usdc.address, 1, 1, 1);
-      expect(tx)
-        .to.emit(pixNFT, 'Requested')
-        .withArgs(await alice.getAddress(), 1);
+      expect(tx).to.emit(pixNFT, 'Requested').withArgs(1, 1, 1);
       expect(await pixNFT.pendingPackType(await alice.getAddress())).to.equal(1);
       expect(await usdc.balanceOf(pixNFT.address)).equal(price);
     });

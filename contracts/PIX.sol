@@ -193,7 +193,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         }
         pendingPackType[msg.sender] = mode;
         pendingPackDropId[msg.sender] = dropId;
-        emit Requested(msg.sender, mode);
+        emit Requested(dropId, playerId, mode);
     }
 
     function mintTo(
