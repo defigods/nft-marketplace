@@ -36,6 +36,12 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
      */
     mapping(bool => mapping(uint256 => bool)) public pixInLand;
     mapping(address => bool) public traders;
+    mapping(address => uint256) public pendingPackDropId;
+
+    uint256 public limitForSmall;
+    uint256 public limitForMedium;
+    mapping(address => mapping(uint256 => uint256)) packsPurchasedByType;
+    mapping(uint256 => uint256) packsPurchasedInDrop;
 
     modifier onlyMod() {
         require(moderators[msg.sender], "Pix: NON_MODERATOR");
@@ -128,7 +134,15 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         emit TreasuryUpdated(_treasury, _fee);
     }
 
-    function requestMint(address token, uint256 mode) external payable {
+    function requestMint(
+        address token,
+        uint256 dropId,
+        uint256 mode
+    ) external payable {
+        require(
+            packsPurchasedByType[msg.sender][mode] < getLimitCount(mode),
+            "Pix: OVERFLOW_LIMIT"
+        );
         require(paymentTokens[token], "Pix: TOKEN_NOT_APPROVED");
         require(mode > 0 && mode <= packPrices.length, "Pix: INVALID_PRICE_MODE");
         require(pendingPackType[msg.sender] == 0, "Pix: PENDING_REQUEST_EXIST");
@@ -167,6 +181,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             }
         }
         pendingPackType[msg.sender] = mode;
+        pendingPackDropId[msg.sender] = dropId;
         emit Requested(msg.sender, mode);
     }
 
@@ -185,7 +200,10 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
 
     function completeRequest(address to, uint256 mode) external onlyMod {
         require(pendingPackType[to] == mode, "Pix: INVALID_REQUEST");
+        packsPurchasedByType[to][mode] += 1;
+        packsPurchasedInDrop[pendingPackDropId[to]] += 1;
         pendingPackType[to] = 0;
+        pendingPackDropId[to] = 0;
     }
 
     function combine(uint256[] calldata tokenIds) external {
@@ -311,5 +329,26 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
 
     function setTokenForPrice(address _tokenForPrice) external onlyOwner {
         tokenForPrice = _tokenForPrice;
+    }
+
+    function getLimitCount(uint256 mode) public view returns (uint256 limit) {
+        if (mode == 1) limit = limitForSmall;
+        else limit = limitForMedium;
+    }
+
+    function addPackType(uint256 price) external onlyOwner {
+        packPrices.push(price);
+    }
+
+    function removePackType() external onlyOwner {
+        packPrices.pop();
+    }
+
+    function setSmallLimitCount(uint256 limit) external onlyOwner {
+        limitForSmall = limit;
+    }
+
+    function setMediumLimitCount(uint256 limit) external onlyOwner {
+        limitForMedium = limit;
     }
 }
