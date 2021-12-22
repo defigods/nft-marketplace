@@ -38,18 +38,30 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
      */
     mapping(bool => mapping(uint256 => bool)) public pixInLand;
     mapping(address => bool) public traders;
-    mapping(address => uint256) public pendingPackDropId;
 
-    uint256 public limitForSmall;
-    uint256 public limitForMedium;
-    mapping(address => mapping(uint256 => uint256)) packsPurchasedByType;
-    mapping(uint256 => uint256) packsPurchasedInDrop;
-    mapping(uint256 => uint256) dropStartTimes;
-    mapping(uint256 => uint256) dropEndTimes;
-    mapping(uint256 => address) playerAddresses;
+    mapping(address => uint256) public pendingPackDropId; // disabled
+    uint256 public limitForSmall; // disabled
+    uint256 public limitForMedium; // disabled
+    mapping(address => mapping(uint256 => uint256)) packsPurchasedByType; // disabled
+    mapping(uint256 => uint256) packsPurchasedInDrop; // disabled
+    mapping(uint256 => uint256) dropStartTimes; // disabled
+    mapping(uint256 => uint256) dropEndTimes; // disabled
+    mapping(uint256 => address) playerAddresses; // disabled
+
+    mapping(uint256 => DropInfo) public dropInfos;
+    mapping(uint256 => uint256[]) public relatedDrops;
+    mapping(uint256 => mapping(uint256 => bool)) public relatedDropsStatus;
+    mapping(uint256 => mapping(uint256 => uint256)) public packsPurchased;
+    mapping(address => PackRequest) public packRequests;
+    mapping(address => bool) public blacklistedAddresses;
 
     modifier onlyMod() {
         require(moderators[msg.sender], "Pix: NON_MODERATOR");
+        _;
+    }
+
+    modifier nonBlacklisted() {
+        require(blacklistedAddresses[msg.sender] == false, "Pix: BLACKLISTED");
         _;
     }
 
@@ -139,24 +151,32 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         emit TreasuryUpdated(_treasury, _fee);
     }
 
+    function isDisabledDropForPlayer(uint256 playerId, uint256 dropId) public view returns (bool) {
+        for (uint256 i; i < relatedDrops[dropId].length; i += 1) {
+            if (packsPurchased[playerId][relatedDrops[dropId][i]] > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function requestMint(
         address token,
         uint256 dropId,
         uint256 playerId,
         uint256 mode
-    ) external payable {
-        require(playerAddresses[playerId] == msg.sender, "Pix: INVALID_PLAYER_ID");
+    ) external payable nonBlacklisted {
+        DropInfo storage drop = dropInfos[dropId];
+        require(!isDisabledDropForPlayer(playerId, dropId), "Pix: DROP_DISABLED");
+        require(drop.requestCount < drop.maxCount, "Pix: PACKS_ALL_SOLD_OUT");
+        require(packsPurchased[playerId][dropId] < drop.limitForPlayer, "Pix: OVERFLOW_LIMIT");
         require(
-            dropStartTimes[dropId] <= block.timestamp && dropEndTimes[dropId] >= block.timestamp,
+            drop.startTime <= block.timestamp && drop.endTime >= block.timestamp,
             "!Pix: DROP_SALE_TIME"
-        );
-        require(
-            packsPurchasedByType[msg.sender][mode] < getLimitCount(mode),
-            "Pix: OVERFLOW_LIMIT"
         );
         require(paymentTokens[token], "Pix: TOKEN_NOT_APPROVED");
         require(mode > 0 && mode <= packPrices.length, "Pix: INVALID_PRICE_MODE");
-        require(pendingPackType[msg.sender] == 0, "Pix: PENDING_REQUEST_EXIST");
+        require(packRequests[msg.sender].playerId == 0, "Pix: PENDING_REQUEST_EXIST");
 
         if (address(oracleManager) == address(0)) {
             require(token == tokenForPrice, "Pix: UNSUPPORTED_ORACLE");
@@ -191,8 +211,8 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
                 }
             }
         }
-        pendingPackType[msg.sender] = mode;
-        pendingPackDropId[msg.sender] = dropId;
+        packRequests[msg.sender] = PackRequest(playerId, dropId);
+        dropInfos[dropId].requestCount += 1;
         emit Requested(dropId, playerId, mode);
     }
 
@@ -201,7 +221,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         uint256[] calldata pixIds,
         PIXCategory[] calldata categories
     ) external onlyMod {
-        require(pendingPackType[to] > 0, "Pix: NO_PENDING_REQUEST");
+        require(packRequests[to].playerId > 0, "Pix: NO_PENDING_REQUEST");
         require(pixIds.length == categories.length, "Pix: INVALID_LENGTH");
 
         for (uint256 i; i < pixIds.length; i += 1) {
@@ -209,12 +229,18 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         }
     }
 
-    function completeRequest(address to, uint256 mode) external onlyMod {
-        require(pendingPackType[to] == mode, "Pix: INVALID_REQUEST");
-        packsPurchasedByType[to][mode] += 1;
-        packsPurchasedInDrop[pendingPackDropId[to]] += 1;
-        pendingPackType[to] = 0;
-        pendingPackDropId[to] = 0;
+    function completeRequest(address to) external onlyMod {
+        PackRequest storage request = packRequests[to];
+        require(request.playerId > 0, "Pix: INVALID_REQUEST");
+
+        packsPurchased[request.playerId][request.dropId] += 1;
+
+        delete packRequests[to];
+    }
+
+    function cancelRequest(address to) external onlyMod {
+        delete packRequests[to];
+        dropInfos[packRequests[to].dropId].requestCount -= 1;
     }
 
     function combine(uint256[] calldata tokenIds) external {
@@ -344,28 +370,27 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         tokenForPrice = _tokenForPrice;
     }
 
-    function getLimitCount(uint256 mode) public view returns (uint256 limit) {
-        if (mode == 1) limit = limitForSmall;
-        else limit = limitForMedium;
+    function setDropInfo(uint256 dropId, DropInfo calldata drop) external onlyOwner {
+        DropInfo storage dropInfo = dropInfos[dropId];
+        dropInfo.maxCount = drop.maxCount;
+        dropInfo.requestCount = drop.requestCount;
+        dropInfo.limitForPlayer = drop.limitForPlayer;
+        dropInfo.startTime = drop.startTime;
+        dropInfo.endTime = drop.endTime;
     }
 
-    function setSmallLimitCount(uint256 limit) external onlyOwner {
-        limitForSmall = limit;
+    function setRelationForDrops(uint256 drop1, uint256 drop2) external onlyOwner {
+        if (!relatedDropsStatus[drop1][drop2]) {
+            relatedDrops[drop1].push(drop2);
+            relatedDropsStatus[drop1][drop2] = true;
+        }
+        if (!relatedDropsStatus[drop2][drop1]) {
+            relatedDrops[drop2].push(drop1);
+            relatedDropsStatus[drop2][drop1] = true;
+        }
     }
 
-    function setMediumLimitCount(uint256 limit) external onlyOwner {
-        limitForMedium = limit;
-    }
-
-    function setStartTime(uint256 dropId, uint256 startTime) external onlyOwner {
-        dropStartTimes[dropId] = startTime;
-    }
-
-    function setEndTime(uint256 dropId, uint256 endTime) external onlyOwner {
-        dropEndTimes[dropId] = endTime;
-    }
-
-    function setPlayerAddress(uint256 playerId, address account) external onlyOwner {
-        playerAddresses[playerId] = account;
+    function setBlacklistedAddress(address account, bool blacklisted) external onlyOwner {
+        blacklistedAddresses[account] = blacklisted;
     }
 }

@@ -32,11 +32,13 @@ describe('PIX', function () {
     await usdc.transfer(await alice.getAddress(), utils.parseUnits('20000', 6));
     await usdc.connect(alice).approve(pixNFT.address, constants.MaxUint256);
 
-    await pixNFT.setSmallLimitCount(10);
-    await pixNFT.setMediumLimitCount(50);
-    await pixNFT.setPlayerAddress(1, await alice.getAddress());
-    await pixNFT.setStartTime(1, (await getCurrentTime()).sub(100));
-    await pixNFT.setEndTime(1, (await getCurrentTime()).add(100000000000));
+    await pixNFT.setDropInfo(1, [
+      100,
+      0,
+      10,
+      (await getCurrentTime()).sub(100),
+      (await getCurrentTime()).add(1000000000),
+    ]);
   });
 
   describe('#initialize', () => {
@@ -235,7 +237,7 @@ describe('PIX', function () {
     it('should request mint', async function () {
       const tx = await pixNFT.connect(alice).requestMint(usdc.address, 1, 1, 1);
       expect(tx).to.emit(pixNFT, 'Requested').withArgs(1, 1, 1);
-      expect(await pixNFT.pendingPackType(await alice.getAddress())).to.equal(1);
+      expect((await pixNFT.packRequests(await alice.getAddress()))[1]).to.equal(1);
       expect(await usdc.balanceOf(pixNFT.address)).equal(price);
     });
   });
@@ -276,21 +278,14 @@ describe('PIX', function () {
 
   describe('#completeRequest', () => {
     it('revert if caller is not moderator', async () => {
-      await expect(
-        pixNFT.connect(alice).completeRequest(await alice.getAddress(), 1),
-      ).to.revertedWith('Pix: NON_MODERATOR');
-    });
-
-    it('revert if request is invalid', async () => {
-      await pixNFT.connect(alice).requestMint(usdc.address, 1, 1, 1);
-      await expect(pixNFT.completeRequest(await alice.getAddress(), 2)).to.revertedWith(
-        'Pix: INVALID_REQUEST',
+      await expect(pixNFT.connect(alice).completeRequest(await alice.getAddress())).to.revertedWith(
+        'Pix: NON_MODERATOR',
       );
     });
 
     it('should complete request', async () => {
       await pixNFT.connect(alice).requestMint(usdc.address, 1, 1, 1);
-      await pixNFT.completeRequest(await alice.getAddress(), 1);
+      await pixNFT.completeRequest(await alice.getAddress());
       expect(await pixNFT.pendingPackType(await alice.getAddress())).to.equal(0);
     });
   });

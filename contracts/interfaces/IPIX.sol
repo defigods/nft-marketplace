@@ -53,6 +53,19 @@ interface IPIX {
         PIXSize size;
     }
 
+    struct DropInfo {
+        uint256 maxCount;
+        uint256 requestCount;
+        uint256 limitForPlayer;
+        uint256 startTime;
+        uint256 endTime;
+    }
+
+    struct PackRequest {
+        uint256 playerId;
+        uint256 dropId;
+    }
+
     function isTerritory(uint256 tokenId) external view returns (bool);
 
     function pixesInLand(uint256[] calldata tokenIds) external view returns (bool);
