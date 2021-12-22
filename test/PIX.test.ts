@@ -227,13 +227,6 @@ describe('PIX', function () {
       );
     });
 
-    it('revert if pending request exists', async function () {
-      await pixNFT.connect(alice).requestMint(usdc.address, 1, 1, 1);
-      await expect(pixNFT.connect(alice).requestMint(usdc.address, 1, 1, 1)).to.revertedWith(
-        'Pix: PENDING_REQUEST_EXIST',
-      );
-    });
-
     it('should request mint', async function () {
       const tx = await pixNFT.connect(alice).requestMint(usdc.address, 1, 1, 1);
       expect(tx).to.emit(pixNFT, 'Requested').withArgs(1, 1, 1);
@@ -246,12 +239,6 @@ describe('PIX', function () {
     it('revert if msg.sender is not moderator', async function () {
       await expect(pixNFT.connect(alice).mintTo(await alice.getAddress(), [], [])).to.revertedWith(
         'Pix: NON_MODERATOR',
-      );
-    });
-
-    it('revert if no pending request exists', async function () {
-      await expect(pixNFT.mintTo(await alice.getAddress(), [], [])).to.revertedWith(
-        'Pix: NO_PENDING_REQUEST',
       );
     });
 

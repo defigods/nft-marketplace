@@ -176,7 +176,6 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         );
         require(paymentTokens[token], "Pix: TOKEN_NOT_APPROVED");
         require(mode > 0 && mode <= packPrices.length, "Pix: INVALID_PRICE_MODE");
-        require(packRequests[msg.sender].playerId == 0, "Pix: PENDING_REQUEST_EXIST");
 
         if (address(oracleManager) == address(0)) {
             require(token == tokenForPrice, "Pix: UNSUPPORTED_ORACLE");
@@ -221,7 +220,6 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         uint256[] calldata pixIds,
         PIXCategory[] calldata categories
     ) external onlyMod {
-        require(packRequests[to].playerId > 0, "Pix: NO_PENDING_REQUEST");
         require(pixIds.length == categories.length, "Pix: INVALID_LENGTH");
 
         for (uint256 i; i < pixIds.length; i += 1) {
@@ -232,15 +230,13 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     function completeRequest(address to) external onlyMod {
         PackRequest storage request = packRequests[to];
         require(request.playerId > 0, "Pix: INVALID_REQUEST");
-
         packsPurchased[request.playerId][request.dropId] += 1;
-
         delete packRequests[to];
     }
 
     function cancelRequest(address to) external onlyMod {
-        delete packRequests[to];
         dropInfos[packRequests[to].dropId].requestCount -= 1;
+        delete packRequests[to];
     }
 
     function combine(uint256[] calldata tokenIds) external {
