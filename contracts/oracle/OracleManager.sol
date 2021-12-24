@@ -21,13 +21,14 @@ contract OracleManager is IOracleManager, Ownable {
     ) external onlyOwner {
         // address(0) => ETH
         require(token0 != token1, "invalid tokens");
-        require(oracle != address(0), "invalid oracle");
 
         (address tokenA, address tokenB) = IOracle(oracle).tokens();
         if (tokenA == token0) {
             require(tokenB == token1, "token and oracle not match");
         } else if (tokenA == token1) {
             require(tokenB == token0, "token and oracle not match");
+        } else {
+            revert("token and oracle not match");
         }
         oracles[token0][token1] = oracle;
         oracles[token1][token0] = oracle;

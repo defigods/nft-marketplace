@@ -9,9 +9,9 @@ contract ChainlinkOracle is IOracle {
     AggregatorV3Interface public immutable priceFeed;
     address public immutable token0;
     address public immutable token1;
-    uint8 public immutable decimals;
-    uint8 private immutable token0Decimals;
-    uint8 private immutable token1Decimals;
+    uint256 public immutable decimals;
+    uint256 public immutable token0Decimals;
+    uint256 public immutable token1Decimals;
 
     constructor(
         address _token0,
@@ -19,14 +19,13 @@ contract ChainlinkOracle is IOracle {
         address _priceFeed
     ) {
         require(_token0 != _token1, "invalid tokens");
-        require(_priceFeed != address(0), "invalid price feed");
 
         token0 = _token0;
         token1 = _token1;
         priceFeed = AggregatorV3Interface(_priceFeed);
-        decimals = AggregatorV3Interface(_priceFeed).decimals();
-        token0Decimals = IERC20Detailed(_token0).decimals();
-        token1Decimals = IERC20Detailed(_token1).decimals();
+        decimals = 10**AggregatorV3Interface(_priceFeed).decimals();
+        token0Decimals = 10**(_token0 == address(0) ? 18 : IERC20Detailed(_token0).decimals());
+        token1Decimals = 10**(_token1 == address(0) ? 18 : IERC20Detailed(_token1).decimals());
     }
 
     function tokens() external view override returns (address, address) {
@@ -42,7 +41,7 @@ contract ChainlinkOracle is IOracle {
             return (amount * uint256(price) * token1Decimals) / (token0Decimals * decimals);
         } else {
             require(token == token1, "invalid token");
-            return (amount * uint256(price) * token0Decimals) / (token1Decimals * decimals);
+            return (amount * token0Decimals * decimals) / (token1Decimals * uint256(price));
         }
     }
 }

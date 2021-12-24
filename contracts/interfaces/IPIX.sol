@@ -24,7 +24,7 @@ interface IPIX {
 
     event Combined(uint256 indexed tokenId, PIXCategory category, PIXSize size);
 
-    event Requested(address indexed account, uint256 indexed mode);
+    event Requested(uint256 indexed dropId, uint256 indexed playerId, uint256 indexed mode);
 
     enum PIXCategory {
         Legendary,
@@ -51,6 +51,19 @@ interface IPIX {
         uint256 pixId;
         PIXCategory category;
         PIXSize size;
+    }
+
+    struct DropInfo {
+        uint256 maxCount;
+        uint256 requestCount;
+        uint256 limitForPlayer;
+        uint256 startTime;
+        uint256 endTime;
+    }
+
+    struct PackRequest {
+        uint256 playerId;
+        uint256 dropId;
     }
 
     function isTerritory(uint256 tokenId) external view returns (bool);
