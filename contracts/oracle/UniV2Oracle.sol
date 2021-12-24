@@ -15,6 +15,7 @@ contract UniV2Oracle is IOracle {
     IUniswapV2Pair immutable pair;
     address public immutable token0;
     address public immutable token1;
+    address public immutable weth;
 
     uint256 public price0CumulativeLast;
     uint256 public price1CumulativeLast;
@@ -22,12 +23,16 @@ contract UniV2Oracle is IOracle {
     FixedPoint.uq112x112 public price0Average;
     FixedPoint.uq112x112 public price1Average;
 
+    bool private firstUpdated = false;
+
     constructor(
         address factory,
         address tokenA,
-        address tokenB
+        address tokenB,
+        address weth_
     ) {
         IUniswapV2Pair _pair = IUniswapV2Pair(IUniswapV2Factory(factory).getPair(tokenA, tokenB));
+        weth = weth_;
         pair = _pair;
         token0 = _pair.token0();
         token1 = _pair.token1();
@@ -40,7 +45,7 @@ contract UniV2Oracle is IOracle {
     }
 
     function tokens() external view override returns (address, address) {
-        return (token0, token1);
+        return (token0 == weth ? address(0) : token0, token1 == weth ? address(0) : token1);
     }
 
     function update() public {
@@ -51,9 +56,11 @@ contract UniV2Oracle is IOracle {
         ) = UniswapV2OracleLibrary.currentCumulativePrices(address(pair));
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
 
-        if (timeElapsed < PERIOD) {
+        if (firstUpdated && timeElapsed < PERIOD) {
             return;
         }
+
+        firstUpdated = true;
 
         // overflow is desired, casting never truncates
         // cumulative price is in (uq112x112 price * seconds) units so we simply wrap it after division by time elapsed
@@ -75,10 +82,13 @@ contract UniV2Oracle is IOracle {
         returns (uint256 amountOut)
     {
         update();
-        if (token == token0) {
+        if (token == token0 || (token == address(0) && token0 == weth)) {
             amountOut = price0Average.mul(amountIn).decode144();
         } else {
-            require(token == token1, "ExampleOracleSimple: INVALID_TOKEN");
+            require(
+                token == token1 || (token == address(0) && token1 == weth),
+                "ExampleOracleSimple: INVALID_TOKEN"
+            );
             amountOut = price1Average.mul(amountIn).decode144();
         }
     }
