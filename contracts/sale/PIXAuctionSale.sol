@@ -47,6 +47,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable, EIP712Upgrad
         keccak256("BidMessage(address bidder,uint256 price,uint256 saleId,uint256 nonce)");
 
     address public burnHolder;
+    address public operator;
 
     function initialize(address _pixt, address _pix) external initializer {
         __PIXBaseSale_init(_pixt, _pix);
@@ -103,7 +104,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable, EIP712Upgrad
      */
     function cancelSale(uint256 _saleId) external {
         AuctionSaleInfo storage _saleInfo = saleInfo[_saleId];
-        require(_saleInfo.seller == msg.sender, "Sale: NOT_SELLER");
+        require(_saleInfo.seller == msg.sender || msg.sender == operator, "Sale: NOT_SELLER");
 
         for (uint256 i; i < _saleInfo.tokenIds.length; i += 1) {
             IERC721Upgradeable(_saleInfo.nftToken).safeTransferFrom(
@@ -180,5 +181,10 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable, EIP712Upgrad
 
     function setBurnHolder(address holder) external onlyOwner {
         burnHolder = holder;
+    }
+
+    function setOperator(address _operator) external onlyOwner {
+        require(_operator != address(0), "Sale: INVALID_OPERATOR");
+        operator = _operator;
     }
 }
