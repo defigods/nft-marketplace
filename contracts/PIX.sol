@@ -56,7 +56,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     mapping(address => PackRequest) public packRequests;
     mapping(address => bool) public blacklistedAddresses;
 
-    bytes32 public merkleRoot;
+    mapping(bytes32 => bool) public merkleRoots;
     mapping(bytes32 => bool) public leafUsed;
 
     modifier onlyMod() {
@@ -394,21 +394,40 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         blacklistedAddresses[account] = blacklisted;
     }
 
-    function setMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
-        merkleRoot = _merkleRoot;
+    function setMerkleRoot(bytes32 _merkleRoot, bool add) external onlyOwner {
+        merkleRoots[_merkleRoot] = add;
     }
 
     function mintByProof(
         address to,
         PIXInfo memory info,
+        bytes32 merkleRoot,
         bytes32[] calldata merkleProofs
-    ) external {
+    ) public {
+        require(merkleRoots[merkleRoot], "Pix: invalid root");
         bytes32 leaf = keccak256(abi.encode(to, info.pixId, info.category, info.size));
         require(!leafUsed[leaf], "Pix: already minted");
+        leafUsed[leaf] = true;
         require(
             MerkleProofUpgradeable.verify(merkleProofs, merkleRoot, leaf),
             "Pix: invalid proof"
         );
         _safeMint(to, info);
+    }
+
+    function mintByProofInBatch(
+        address to,
+        PIXInfo[] memory info,
+        bytes32[] calldata merkleRoot,
+        bytes32[][] calldata merkleProofs
+    ) external {
+        require(
+            info.length == merkleRoot.length && info.length == merkleProofs.length,
+            "Pix: invalid length"
+        );
+        uint256 len = info.length;
+        for (uint256 i; i < len; i += 1) {
+            mintByProof(to, info[i], merkleRoot[i], merkleProofs[i]);
+        }
     }
 }

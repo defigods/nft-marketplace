@@ -30,30 +30,17 @@ export enum PIXSize {
   Domain = 4,
 }
 
-// export const pixes = [
-//   {
-//     to: '0x4db66587ff11a451f00d7e637e57bf2332c84eab',
-//     pixId: '1',
-//     category: PIXCategory.Common,
-//     size: PIXSize.Pix,
-//   },
-// ];
-
 const generateRandomPixes = () => {
-  let count = 149617062;
+  let count = 1000;
   let randomPixes = [];
-  console.log('generate start');
-  console.log(Date.now());
   for (let i = 0; i < count; i += 1) {
     randomPixes.push({
-      to: '0x0cd22dca98855d520c94146b1ac67c9dc1679c3a',
+      to: generateRandomAddress(),
       pixId: '1',
       category: PIXCategory.Common,
       size: PIXSize.Pix,
     });
   }
-  console.log('generate done');
-  console.log(Date.now());
   return randomPixes;
 };
 
@@ -67,11 +54,7 @@ export const getMerkleTree = () => {
       ),
     ),
   );
-  console.log('leaf generated');
-  console.log(Date.now());
   const merkleTree = new MerkleTree(leafNodes, keccak256, { sortPairs: true });
-  console.log('merkle generated');
-  console.log(Date.now());
   return {
     merkleTree,
     leafNodes,
