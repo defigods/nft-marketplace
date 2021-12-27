@@ -26,7 +26,7 @@ describe('SwapManager', function () {
       ],
     });
 
-    [owner, alice, bob] = await ethers.getSigners();
+    [alice, bob] = await ethers.getSigners();
 
     const SwapManagerFactory = await ethers.getContractFactory('SwapManager');
     swapManager = await SwapManagerFactory.deploy(router);

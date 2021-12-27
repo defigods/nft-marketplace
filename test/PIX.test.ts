@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
 import { Signer, Contract, BigNumber, constants, utils } from 'ethers';
-import { PIXCategory, PIXSize, DENOMINATOR, getCurrentTime, getMerkleTree } from './utils';
+import { PIXCategory, PIXSize, DENOMINATOR, getCurrentTime } from './utils';
 
 describe('PIX', function () {
   let owner: Signer;
@@ -12,7 +12,6 @@ describe('PIX', function () {
   let usdc: Contract;
   const price = utils.parseUnits('5', 6);
   const ZeroAddress = ethers.constants.AddressZero;
-  const { leafNodes, merkleTree, pixes } = getMerkleTree();
 
   beforeEach(async function () {
     [owner, alice] = await ethers.getSigners();
@@ -530,85 +529,6 @@ describe('PIX', function () {
       expect(await pixNFT.isApprovedForAll(await alice.getAddress(), pixToken.address)).to.equal(
         true,
       );
-    });
-  });
-
-  describe('#setMerkleRoot', () => {
-    it('revert if msg.sender is not owner', async () => {
-      await expect(pixNFT.connect(alice).setMerkleRoot(merkleTree.getRoot(), true)).to.revertedWith(
-        'Ownable: caller is not the owner',
-      );
-    });
-
-    it('should set merkle root by owner', async () => {
-      await pixNFT.connect(owner).setMerkleRoot(merkleTree.getRoot(), true);
-      expect(await pixNFT.merkleRoots(merkleTree.getHexRoot())).to.equal(true);
-
-      await pixNFT.connect(owner).setMerkleRoot(merkleTree.getRoot(), false);
-      expect(await pixNFT.merkleRoots(merkleTree.getHexRoot())).to.equal(false);
-    });
-  });
-
-  describe.only('#mintByProof', () => {
-    beforeEach(async () => {
-      await pixNFT.connect(owner).setMerkleRoot(merkleTree.getRoot(), true);
-    });
-
-    it('revert if merkle root is not registered', async () => {
-      const anotherMerkleTreeInfo = getMerkleTree();
-      let index = 0;
-      const hexProof = anotherMerkleTreeInfo.merkleTree.getHexProof(leafNodes[index]);
-      const pixInfo = [
-        anotherMerkleTreeInfo.pixes[index].pixId,
-        anotherMerkleTreeInfo.pixes[index].category,
-        anotherMerkleTreeInfo.pixes[index].size,
-      ];
-      await expect(
-        pixNFT.mintByProof(
-          anotherMerkleTreeInfo.pixes[index].to,
-          pixInfo,
-          anotherMerkleTreeInfo.merkleTree.getRoot(),
-          hexProof,
-        ),
-      ).to.revertedWith('Pix: invalid root');
-    });
-
-    it('revert if merkle root is invalid', async () => {
-      const anotherMerkleTreeInfo = getMerkleTree();
-      let index = 0;
-      const hexProof = anotherMerkleTreeInfo.merkleTree.getHexProof(leafNodes[index]);
-      const pixInfo = [
-        anotherMerkleTreeInfo.pixes[index].pixId,
-        anotherMerkleTreeInfo.pixes[index].category,
-        anotherMerkleTreeInfo.pixes[index].size,
-      ];
-      await expect(
-        pixNFT.mintByProof(
-          anotherMerkleTreeInfo.pixes[index].to,
-          pixInfo,
-          merkleTree.getRoot(),
-          hexProof,
-        ),
-      ).to.revertedWith('Pix: invalid proof');
-    });
-
-    it('should mint by proof', async () => {
-      let index = 0;
-      const hexProof = merkleTree.getHexProof(leafNodes[index]);
-      const pixInfo = [pixes[index].pixId, pixes[index].category, pixes[index].size];
-      await pixNFT.mintByProof(pixes[index].to, pixInfo, merkleTree.getRoot(), hexProof);
-      expect((await pixNFT.ownerOf(1)).toLowerCase()).to.equal(pixes[index].to.toLowerCase());
-    });
-
-    it('revert if already minted', async () => {
-      let index = 0;
-      const hexProof = merkleTree.getHexProof(leafNodes[index]);
-      const pixInfo = [pixes[index].pixId, pixes[index].category, pixes[index].size];
-      await pixNFT.mintByProof(pixes[index].to, pixInfo, merkleTree.getRoot(), hexProof);
-
-      await expect(
-        pixNFT.mintByProof(pixes[index].to, pixInfo, merkleTree.getRoot(), hexProof),
-      ).to.revertedWith('Pix: already minted');
     });
   });
 });
