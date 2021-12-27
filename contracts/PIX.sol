@@ -280,7 +280,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         info.pixId = pixId;
     }
 
-    function safeMint(address to, PIXInfo memory info) external onlyMod {
+    function safeMint(address to, PIXInfo memory info) external override onlyMod {
         _safeMint(to, info);
     }
 

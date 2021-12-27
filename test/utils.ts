@@ -1,5 +1,7 @@
-import { Wallet, BigNumber } from 'ethers';
+import { Wallet, BigNumber, utils } from 'ethers';
 import { time } from '@openzeppelin/test-helpers';
+import { MerkleTree } from 'merkletreejs';
+import keccak256 from 'keccak256';
 
 export const DENOMINATOR = BigNumber.from('10000');
 
@@ -27,3 +29,35 @@ export enum PIXSize {
   Zone = 3,
   Domain = 4,
 }
+
+const generateRandomPixes = () => {
+  let count = 1000;
+  let randomPixes = [];
+  for (let i = 0; i < count; i += 1) {
+    randomPixes.push({
+      to: generateRandomAddress(),
+      pixId: '1',
+      category: PIXCategory.Common,
+      size: PIXSize.Pix,
+    });
+  }
+  return randomPixes;
+};
+
+export const getMerkleTree = () => {
+  const pixes = generateRandomPixes();
+  const leafNodes = pixes.map((pix) =>
+    keccak256(
+      utils.defaultAbiCoder.encode(
+        ['address', 'uint256', 'uint8', 'uint8'],
+        [pix.to, pix.pixId, pix.category, pix.size],
+      ),
+    ),
+  );
+  const merkleTree = new MerkleTree(leafNodes, keccak256, { sortPairs: true });
+  return {
+    merkleTree,
+    leafNodes,
+    pixes,
+  };
+};

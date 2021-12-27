@@ -32,6 +32,8 @@
     "ethers": "^5.4.5",
     "hardhat": "^2.6.1",
     "hardhat-gas-reporter": "^1.0.4",
+    "keccak256": "^1.0.3",
+    "merkletreejs": "^0.2.24",
     "prettier": "^2.3.2",
     "prettier-plugin-solidity": "^1.0.0-beta.17",
     "solhint": "^3.3.6",
