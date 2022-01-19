@@ -65,6 +65,12 @@ describe('PIXFixedSale', function () {
       );
     });
 
+    it('revert if PIX not approved', async () => {
+      await expect(
+        fixedSale.connect(alice).requestSale(pixNFT.address, [tokenId], price),
+      ).to.revertedWith('ERC721: transfer caller is not owner nor approved');
+    });
+
     it('should request sale and emit SaleRequested event', async () => {
       await pixNFT.connect(alice).approve(fixedSale.address, tokenId);
 
@@ -77,6 +83,8 @@ describe('PIXFixedSale', function () {
       expect(saleInfo.seller).to.be.equal(await alice.getAddress());
       expect(saleInfo.nftToken).to.be.equal(pixNFT.address);
       expect(saleInfo.price).to.be.equal(price);
+
+      expect(await pixNFT.ownerOf(tokenId)).to.be.equal(fixedSale.address);
 
       await expect(tx)
         .emit(fixedSale, 'SaleRequested')
@@ -145,7 +153,70 @@ describe('PIXFixedSale', function () {
       expect(saleInfo.nftToken).to.be.equal(constants.AddressZero);
       expect(saleInfo.price).to.be.equal(0);
 
+      expect(await pixNFT.ownerOf(tokenId)).to.be.equal(await alice.getAddress());
+
       await expect(tx).emit(fixedSale, 'SaleCancelled').withArgs(lastSaleId);
+    });
+  });
+
+  describe('#purchaseNFT function', () => {
+    const tokenId = 1;
+    const price = utils.parseEther('1');
+    const lastTokenId = 1;
+
+    beforeEach(async () => {
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
+
+      await pixNFT.connect(alice).approve(fixedSale.address, tokenId);
+    });
+
+    it('revert if NFT is not for sale', async () => {
+      await expect(fixedSale.connect(bob).purchaseNFT(lastTokenId)).to.revertedWith(
+        'Sale: INVALID_ID',
+      );
+    });
+
+    it('should purchase PIX and send to seller and treasury', async () => {
+      await fixedSale.setTreasury(treasury, 100, 0, false);
+      await pixtToken.connect(bob).approve(fixedSale.address, price);
+
+      await fixedSale.connect(alice).requestSale(pixNFT.address, [tokenId], price);
+      const aliceBalanceBefore = await pixtToken.balanceOf(await alice.getAddress());
+      const treasuryBalanceBefore = await pixtToken.balanceOf(treasury);
+      const tx = await fixedSale.connect(bob).purchaseNFT(lastTokenId);
+      expect(await pixNFT.ownerOf(tokenId)).to.be.equal(await bob.getAddress());
+      const fee = price.mul(BigNumber.from('100')).div(DENOMINATOR);
+      expect(await pixtToken.balanceOf(await alice.getAddress())).to.be.equal(
+        aliceBalanceBefore.add(price).sub(fee),
+      );
+      expect(await pixtToken.balanceOf(treasury)).to.be.equal(treasuryBalanceBefore.add(fee));
+      expect(tx)
+        .to.emit(fixedSale, 'Purchased')
+        .withArgs(await alice.getAddress(), await bob.getAddress(), lastTokenId, price);
+      const saleInfo = await fixedSale.saleInfo(lastTokenId);
+      expect(saleInfo.seller).to.be.equal(constants.AddressZero);
+      expect(saleInfo.price).to.be.equal(0);
+    });
+
+    it('should not send fee if zero', async () => {
+      await pixtToken.connect(bob).approve(fixedSale.address, price);
+
+      await fixedSale.connect(alice).requestSale(pixNFT.address, [tokenId], price);
+      const aliceBalanceBefore = await pixtToken.balanceOf(await alice.getAddress());
+      const treasuryBalanceBefore = await pixtToken.balanceOf(treasury);
+      const tx = await fixedSale.connect(bob).purchaseNFT(tokenId);
+      expect(await pixNFT.ownerOf(tokenId)).to.be.equal(await bob.getAddress());
+      expect(await pixtToken.balanceOf(await alice.getAddress())).to.be.equal(
+        aliceBalanceBefore.add(price),
+      );
+      expect(await pixtToken.balanceOf(treasury)).to.be.equal(treasuryBalanceBefore);
+      expect(tx)
+        .to.emit(fixedSale, 'Purchased')
+        .withArgs(await alice.getAddress(), await bob.getAddress(), tokenId, price);
+      const saleInfo = await fixedSale.saleInfo(tokenId);
+      expect(saleInfo.seller).to.be.equal(constants.AddressZero);
+      expect(saleInfo.nftToken).to.be.equal(constants.AddressZero);
+      expect(saleInfo.price).to.be.equal(0);
     });
   });
 
