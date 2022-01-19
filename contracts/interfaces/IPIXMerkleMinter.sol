@@ -10,7 +10,7 @@ interface IPIXMerkleMinter {
         IPIX.PIXInfo memory info,
         bytes32 merkleRoot,
         bytes32[] calldata merkleProofs
-    ) external;
+    ) external returns (uint256);
 
     function mintToNewOwnerInBatch(
         address destination,
@@ -18,5 +18,5 @@ interface IPIXMerkleMinter {
         IPIX.PIXInfo[] memory info,
         bytes32[] calldata merkleRoot,
         bytes32[][] calldata merkleProofs
-    ) external;
+    ) external returns (uint256[] memory);
 }

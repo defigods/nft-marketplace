@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "../libraries/DecimalMath.sol";
 import "./PIXBaseSale.sol";
+import "../interfaces/IPIXMerkleMinter.sol";
 
 contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -50,6 +51,9 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
     mapping(address => mapping(uint256 => uint256)) public noncesForSale;
     bytes32 private constant OFFER_MESSAGE =
         keccak256("OfferMessage(address bidder,uint256 price,uint256 saleId,uint256 nonce)");
+
+    IPIXMerkleMinter public pixMerkleMinter;
+    address public pixNft;
 
     function initialize(address _pixt, address _pix) external initializer {
         __PIXBaseSale_init(_pixt, _pix);
@@ -265,5 +269,97 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
 
     function setBurnHolder(address holder) external onlyOwner {
         burnHolder = holder;
+    }
+
+    function setPixNft(address _merkleMinter, address _pix) external onlyOwner {
+        pixMerkleMinter = IPIXMerkleMinter(_merkleMinter);
+        pixNft = _pix;
+    }
+
+    function requestSaleWithHash(
+        uint256[] calldata _tokenIds,
+        uint256 _price,
+        IPIX.PIXInfo[] memory info,
+        bytes32[] calldata merkleRoot,
+        bytes32[][] calldata merkleProofs
+    ) external onlyWhitelistedNFT(pixNFT) {
+        require(_price > 0, "Sale: PRICE_ZERO");
+
+        uint256[] memory mintedTokenIds = pixMerkleMinter.mintToNewOwnerInBatch(
+            address(this),
+            msg.sender,
+            info,
+            merkleRoot,
+            merkleProofs
+        );
+
+        uint256 tokenLength = _tokenIds.length;
+        uint256[] memory saleTokenIds = new uint256[](tokenLength + mintedTokenIds.length);
+
+        for (uint256 i; i < tokenLength; i += 1) {
+            saleTokenIds[i] = _tokenIds[i];
+            IERC721Upgradeable(pixNFT).safeTransferFrom(msg.sender, address(this), saleTokenIds[i]);
+        }
+        for (uint256 i = 0; i < saleTokenIds.length; i += 1) {
+            saleTokenIds[i + tokenLength] = mintedTokenIds[i];
+        }
+
+        lastSaleId += 1;
+        saleInfo[lastSaleId] = FixedSaleInfo({
+            seller: msg.sender,
+            nftToken: pixNFT,
+            price: _price,
+            tokenIds: saleTokenIds
+        });
+
+        emit SaleRequested(msg.sender, lastSaleId, pixNFT, saleTokenIds, _price);
+    }
+
+    function sellNFTWithSignatureWithHash(
+        address buyer,
+        uint256 price,
+        uint256 tokenId,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        uint256 nonce = nonces[buyer][nftToken][tokenId]++;
+        bytes32 structHash = keccak256(
+            abi.encode(BID_MESSAGE, buyer, price, nftToken, tokenId, nonce)
+        );
+        bytes32 hash = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(hash, v, r, s);
+        require(signer == buyer, "Sale: INVALID_SIGNATURE");
+
+        address _buyer = buyer;
+        uint256 _price = price;
+        address _nftToken = nftToken;
+        uint256 _tokenId = tokenId;
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = _tokenId;
+
+        Treasury memory treasury;
+        if (_nftToken == pixNFT && IPIX(pixNFT).pixesInLand(tokenIds)) {
+            treasury = landTreasury;
+        } else {
+            treasury = pixtTreasury;
+        }
+
+        uint256 fee = _price.decimalMul(treasury.fee);
+        uint256 burnFee = _price.decimalMul(treasury.burnFee);
+        uint256 tradeAmount = _price - fee - burnFee;
+        IERC20Upgradeable(pixToken).safeTransferFrom(_buyer, msg.sender, tradeAmount);
+        if (fee > 0) {
+            IERC20Upgradeable(pixToken).safeTransferFrom(_buyer, treasury.treasury, fee);
+        }
+        if (burnFee > 0) {
+            if (burnHolder == address(0)) ERC20Burnable(pixToken).burnFrom(_buyer, burnFee);
+            else IERC20Upgradeable(pixToken).safeTransferFrom(_buyer, burnHolder, burnFee);
+        }
+
+        IERC721Upgradeable(_nftToken).safeTransferFrom(msg.sender, _buyer, _tokenId);
+
+        emit PurchasedWithSignature(msg.sender, _buyer, _nftToken, _tokenId, _price);
     }
 }

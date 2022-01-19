@@ -67,7 +67,7 @@ contract PIXMerkleMinter is OwnableUpgradeable {
         IPIX.PIXInfo memory info,
         bytes32 merkleRoot,
         bytes32[] calldata merkleProofs
-    ) public {
+    ) public returns (uint256) {
         require(msg.sender == marketplace, "Pix: not marketplace");
         require(merkleRoots[merkleRoot], "Pix: invalid root");
         bytes32 leaf = keccak256(abi.encode(oldOwner, info.pixId, info.category, info.size));
@@ -78,6 +78,8 @@ contract PIXMerkleMinter is OwnableUpgradeable {
             "Pix: invalid proof"
         );
         pix.safeMint(destination, info);
+
+        return pix.lastTokenId();
     }
 
     function mintToNewOwnerInBatch(
@@ -86,14 +88,23 @@ contract PIXMerkleMinter is OwnableUpgradeable {
         IPIX.PIXInfo[] memory info,
         bytes32[] calldata merkleRoot,
         bytes32[][] calldata merkleProofs
-    ) external {
+    ) external returns (uint256[] memory) {
         require(
             info.length == merkleRoot.length && info.length == merkleProofs.length,
             "Pix: invalid length"
         );
         uint256 len = info.length;
+        uint256[] memory newIds = new uint256[](len);
         for (uint256 i; i < len; i += 1) {
-            mintToNewOwner(destination, oldOwner, info[i], merkleRoot[i], merkleProofs[i]);
+            newIds[i] = mintToNewOwner(
+                destination,
+                oldOwner,
+                info[i],
+                merkleRoot[i],
+                merkleProofs[i]
+            );
         }
+
+        return newIds;
     }
 }
