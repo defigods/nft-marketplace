@@ -30,13 +30,6 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
         uint256 price
     );
 
-    event SalePurchasedWithSignature(
-        address indexed seller,
-        address indexed buyer,
-        uint256 indexed saleId,
-        uint256 price
-    );
-
     struct FixedSaleInfo {
         address seller; // Seller address
         address nftToken; // NFT token address
@@ -214,7 +207,7 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
             IERC721Upgradeable(_nftToken).safeTransferFrom(msg.sender, _buyer, tokenIds[i]);
         }
 
-        emit SalePurchasedWithSignature(msg.sender, _buyer, _saleId, _price);
+        emit Purchased(msg.sender, _buyer, _saleId, _price);
     }
 
     function setBurnHolder(address holder) external onlyOwner {
