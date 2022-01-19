@@ -109,7 +109,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable, EIP712Upgrad
         for (uint256 i; i < _saleInfo.tokenIds.length; i += 1) {
             IERC721Upgradeable(_saleInfo.nftToken).safeTransferFrom(
                 address(this),
-                msg.sender,
+                _saleInfo.seller,
                 _saleInfo.tokenIds[i]
             );
         }
