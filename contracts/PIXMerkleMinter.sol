@@ -11,7 +11,7 @@ contract PIXMerkleMinter is OwnableUpgradeable {
 
     IPIX public pix;
 
-    address public marketplace;
+    mapping(address => bool) public delegateMinters;
 
     function initialize(address _pix) external initializer {
         require(_pix != address(0), "Pix: INVALID_PIX");
@@ -57,8 +57,8 @@ contract PIXMerkleMinter is OwnableUpgradeable {
         }
     }
 
-    function setMarketplace(address _marketplace) external onlyOwner {
-        marketplace = _marketplace;
+    function setDelegateMinter(address _minter, bool enabled) external onlyOwner {
+        delegateMinters[_minter] = enabled;
     }
 
     function mintToNewOwner(
@@ -68,7 +68,7 @@ contract PIXMerkleMinter is OwnableUpgradeable {
         bytes32 merkleRoot,
         bytes32[] calldata merkleProofs
     ) public returns (uint256) {
-        require(msg.sender == marketplace, "Pix: not marketplace");
+        require(delegateMinters[msg.sender], "Pix: not delegate minter");
         require(merkleRoots[merkleRoot], "Pix: invalid root");
         bytes32 leaf = keccak256(abi.encode(oldOwner, info.pixId, info.category, info.size));
         require(!leafUsed[leaf], "Pix: already minted");
@@ -90,7 +90,9 @@ contract PIXMerkleMinter is OwnableUpgradeable {
         bytes32[][] calldata merkleProofs
     ) external returns (uint256[] memory) {
         require(
-            info.length == merkleRoot.length && info.length == merkleProofs.length,
+            info.length > 0 &&
+                info.length == merkleRoot.length &&
+                info.length == merkleProofs.length,
             "Pix: invalid length"
         );
         uint256 len = info.length;

@@ -2,6 +2,7 @@ import { Wallet, BigNumber, utils } from 'ethers';
 import { time } from '@openzeppelin/test-helpers';
 import { MerkleTree } from 'merkletreejs';
 import keccak256 from 'keccak256';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 export const DENOMINATOR = BigNumber.from('10000');
 
@@ -30,22 +31,35 @@ export enum PIXSize {
   Domain = 4,
 }
 
-const generateRandomPixes = () => {
-  let count = 1000;
+const generateRandomPixes = (accounts: (SignerWithAddress | Wallet)[] | undefined) => {
   let randomPixes = [];
-  for (let i = 0; i < count; i += 1) {
-    randomPixes.push({
-      to: generateRandomAddress(),
-      pixId: '1',
-      category: PIXCategory.Common,
-      size: PIXSize.Pix,
-    });
+
+  if (accounts) {
+    for (let i = 0; i < accounts.length; i += 1) {
+      randomPixes.push({
+        to: accounts[i].address,
+        pixId: i + 1,
+        category: PIXCategory.Common,
+        size: PIXSize.Pix,
+      });
+    }
+  } else {
+    let count = 1000;
+    for (let i = 0; i < count; i += 1) {
+      randomPixes.push({
+        to: generateRandomAddress(),
+        pixId: i + 1,
+        category: PIXCategory.Common,
+        size: PIXSize.Pix,
+      });
+    }
   }
+
   return randomPixes;
 };
 
-export const getMerkleTree = () => {
-  const pixes = generateRandomPixes();
+export const getMerkleTree = (accounts: (SignerWithAddress | Wallet)[] | undefined) => {
+  const pixes = generateRandomPixes(accounts);
   const leafNodes = pixes.map((pix) =>
     keccak256(
       utils.defaultAbiCoder.encode(

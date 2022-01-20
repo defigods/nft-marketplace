@@ -3,19 +3,18 @@ import { ethers, upgrades } from 'hardhat';
 import { Signer, Contract } from 'ethers';
 import { getMerkleTree } from './utils';
 
-describe('PIX', function () {
+describe('PIXMerkleMinter', function () {
   let owner: Signer;
   let alice: Signer;
-  let bob: Signer;
-  let marketplace: Signer;
+  let minter: Signer;
   let pixToken: Contract;
   let pixNFT: Contract;
   let usdc: Contract;
   let merkleMinter: Contract;
-  const { leafNodes, merkleTree, pixes } = getMerkleTree();
+  const { leafNodes, merkleTree, pixes } = getMerkleTree(undefined);
 
   beforeEach(async function () {
-    [owner, alice, bob, marketplace] = await ethers.getSigners();
+    [owner, alice, minter] = await ethers.getSigners();
 
     const PIXTFactory = await ethers.getContractFactory('PIXT');
     pixToken = await PIXTFactory.deploy();
@@ -54,7 +53,7 @@ describe('PIX', function () {
     });
 
     it('revert if merkle root is not registered', async () => {
-      const anotherMerkleTreeInfo = getMerkleTree();
+      const anotherMerkleTreeInfo = getMerkleTree(undefined);
       let index = 0;
       const hexProof = anotherMerkleTreeInfo.merkleTree.getHexProof(leafNodes[index]);
       const pixInfo = [
@@ -73,7 +72,7 @@ describe('PIX', function () {
     });
 
     it('revert if merkle root is invalid', async () => {
-      const anotherMerkleTreeInfo = getMerkleTree();
+      const anotherMerkleTreeInfo = getMerkleTree(undefined);
       let index = 0;
       const hexProof = anotherMerkleTreeInfo.merkleTree.getHexProof(leafNodes[index]);
       const pixInfo = [
@@ -111,27 +110,27 @@ describe('PIX', function () {
     });
   });
 
-  describe('#setMarketplace', () => {
+  describe('#setDelegateMinter', () => {
     it('revert if msg.sender is not owner', async () => {
       await expect(
-        merkleMinter.connect(alice).setMarketplace(await marketplace.getAddress()),
+        merkleMinter.connect(alice).setDelegateMinter(await minter.getAddress(), true),
       ).to.revertedWith('Ownable: caller is not the owner');
     });
 
-    it('should set marketplace by owner', async () => {
-      await merkleMinter.connect(owner).setMarketplace(await marketplace.getAddress());
-      expect(await merkleMinter.marketplace()).to.equal(await marketplace.getAddress());
+    it('should set delegate minter by owner', async () => {
+      await merkleMinter.connect(owner).setDelegateMinter(await minter.getAddress(), true);
+      expect(await merkleMinter.delegateMinters(await minter.getAddress())).to.equal(true);
     });
   });
 
   describe('#mintToNewOwner', () => {
     beforeEach(async () => {
       await merkleMinter.connect(owner).setMerkleRoot(merkleTree.getRoot(), true);
-      await merkleMinter.connect(owner).setMarketplace(await marketplace.getAddress());
+      await merkleMinter.connect(owner).setDelegateMinter(await minter.getAddress(), true);
     });
 
-    it('revert if msg.sender is not marketplace', async () => {
-      const anotherMerkleTreeInfo = getMerkleTree();
+    it('revert if msg.sender is not delegate minter', async () => {
+      const anotherMerkleTreeInfo = getMerkleTree(undefined);
       let index = 0;
       const hexProof = anotherMerkleTreeInfo.merkleTree.getHexProof(leafNodes[index]);
       const pixInfo = [
@@ -149,11 +148,11 @@ describe('PIX', function () {
             anotherMerkleTreeInfo.merkleTree.getRoot(),
             hexProof,
           ),
-      ).to.revertedWith('Pix: not marketplace');
+      ).to.revertedWith('Pix: not delegate minter');
     });
 
     it('revert if merkle root is not registered', async () => {
-      const anotherMerkleTreeInfo = getMerkleTree();
+      const anotherMerkleTreeInfo = getMerkleTree(undefined);
       let index = 0;
       const hexProof = anotherMerkleTreeInfo.merkleTree.getHexProof(leafNodes[index]);
       const pixInfo = [
@@ -163,7 +162,7 @@ describe('PIX', function () {
       ];
       await expect(
         merkleMinter
-          .connect(marketplace)
+          .connect(minter)
           .mintToNewOwner(
             await alice.getAddress(),
             anotherMerkleTreeInfo.pixes[index].to,
@@ -175,7 +174,7 @@ describe('PIX', function () {
     });
 
     it('revert if merkle root is invalid', async () => {
-      const anotherMerkleTreeInfo = getMerkleTree();
+      const anotherMerkleTreeInfo = getMerkleTree(undefined);
       let index = 0;
       const hexProof = anotherMerkleTreeInfo.merkleTree.getHexProof(leafNodes[index]);
       const pixInfo = [
@@ -185,7 +184,7 @@ describe('PIX', function () {
       ];
       await expect(
         merkleMinter
-          .connect(marketplace)
+          .connect(minter)
           .mintToNewOwner(
             await alice.getAddress(),
             anotherMerkleTreeInfo.pixes[index].to,
@@ -201,7 +200,7 @@ describe('PIX', function () {
       const hexProof = merkleTree.getHexProof(leafNodes[index]);
       const pixInfo = [pixes[index].pixId, pixes[index].category, pixes[index].size];
       await merkleMinter
-        .connect(marketplace)
+        .connect(minter)
         .mintToNewOwner(
           await alice.getAddress(),
           pixes[index].to,
@@ -217,7 +216,7 @@ describe('PIX', function () {
       const hexProof = merkleTree.getHexProof(leafNodes[index]);
       const pixInfo = [pixes[index].pixId, pixes[index].category, pixes[index].size];
       await merkleMinter
-        .connect(marketplace)
+        .connect(minter)
         .mintToNewOwner(
           await alice.getAddress(),
           pixes[index].to,
@@ -228,7 +227,7 @@ describe('PIX', function () {
 
       await expect(
         merkleMinter
-          .connect(marketplace)
+          .connect(minter)
           .mintToNewOwner(
             await alice.getAddress(),
             pixes[index].to,
@@ -243,11 +242,11 @@ describe('PIX', function () {
   describe('#mintToNewOwnerInBatch', () => {
     beforeEach(async () => {
       await merkleMinter.connect(owner).setMerkleRoot(merkleTree.getRoot(), true);
-      await merkleMinter.connect(owner).setMarketplace(await marketplace.getAddress());
+      await merkleMinter.connect(owner).setDelegateMinter(await minter.getAddress(), true);
     });
 
-    it('revert if msg.sender is not marketplace', async () => {
-      const anotherMerkleTreeInfo = getMerkleTree();
+    it('revert if msg.sender is not delegate minter', async () => {
+      const anotherMerkleTreeInfo = getMerkleTree(undefined);
       let index = 0;
       const hexProof = anotherMerkleTreeInfo.merkleTree.getHexProof(leafNodes[index]);
       const pixInfo = [
@@ -265,11 +264,11 @@ describe('PIX', function () {
             [anotherMerkleTreeInfo.merkleTree.getRoot()],
             [hexProof],
           ),
-      ).to.revertedWith('Pix: not marketplace');
+      ).to.revertedWith('Pix: not delegate minter');
     });
 
     it('revert if merkle root is not registered', async () => {
-      const anotherMerkleTreeInfo = getMerkleTree();
+      const anotherMerkleTreeInfo = getMerkleTree(undefined);
       let index = 0;
       const hexProof = anotherMerkleTreeInfo.merkleTree.getHexProof(leafNodes[index]);
       const pixInfo = [
@@ -279,7 +278,7 @@ describe('PIX', function () {
       ];
       await expect(
         merkleMinter
-          .connect(marketplace)
+          .connect(minter)
           .mintToNewOwnerInBatch(
             await alice.getAddress(),
             anotherMerkleTreeInfo.pixes[index].to,
@@ -291,7 +290,7 @@ describe('PIX', function () {
     });
 
     it('revert if merkle root is invalid', async () => {
-      const anotherMerkleTreeInfo = getMerkleTree();
+      const anotherMerkleTreeInfo = getMerkleTree(undefined);
       let index = 0;
       const hexProof = anotherMerkleTreeInfo.merkleTree.getHexProof(leafNodes[index]);
       const pixInfo = [
@@ -301,7 +300,7 @@ describe('PIX', function () {
       ];
       await expect(
         merkleMinter
-          .connect(marketplace)
+          .connect(minter)
           .mintToNewOwnerInBatch(
             await alice.getAddress(),
             anotherMerkleTreeInfo.pixes[index].to,
@@ -317,7 +316,7 @@ describe('PIX', function () {
       const hexProof = merkleTree.getHexProof(leafNodes[index]);
       const pixInfo = [pixes[index].pixId, pixes[index].category, pixes[index].size];
       await merkleMinter
-        .connect(marketplace)
+        .connect(minter)
         .mintToNewOwnerInBatch(
           await alice.getAddress(),
           pixes[index].to,
@@ -333,7 +332,7 @@ describe('PIX', function () {
       const hexProof = merkleTree.getHexProof(leafNodes[index]);
       const pixInfo = [pixes[index].pixId, pixes[index].category, pixes[index].size];
       await merkleMinter
-        .connect(marketplace)
+        .connect(minter)
         .mintToNewOwner(
           await alice.getAddress(),
           pixes[index].to,
@@ -344,7 +343,7 @@ describe('PIX', function () {
 
       await expect(
         merkleMinter
-          .connect(marketplace)
+          .connect(minter)
           .mintToNewOwnerInBatch(
             await alice.getAddress(),
             pixes[index].to,
