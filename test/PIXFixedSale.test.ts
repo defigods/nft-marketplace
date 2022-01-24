@@ -412,7 +412,7 @@ describe('PIXFixedSale', function () {
       await pixNFT.safeMint(alice.address, [0, PIXCategory.Rare, PIXSize.Sector]);
     });
 
-    it.only('revert if signature invalid', async () => {
+    it('revert if signature invalid', async () => {
       const data = await getDigestWithHash(fixedSale, bob, price, alice, merkleTreeInfo.pixes[1]);
       const { v, r, s } = ecsign(
         Buffer.from(data.slice(2), 'hex'),
@@ -434,7 +434,7 @@ describe('PIXFixedSale', function () {
       ).to.revertedWith('Sale: INVALID_SIGNATURE');
     });
 
-    it.only('should purchase PIX and send to seller and treasury', async () => {
+    it('should purchase PIX and send to seller and treasury', async () => {
       await fixedSale.setTreasury(treasury, 100, 0, false);
       await pixtToken.connect(bob).approve(fixedSale.address, price);
 
