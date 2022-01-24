@@ -304,7 +304,7 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
             tokenIds: tokenIds
         });
 
-        emit SaleRequested(seller, lastSaleId, pixNFT, tokenIds, price);
+        emit SaleRequested(seller, lastSaleId, nftToken, tokenIds, price);
     }
 
     function _acceptPaymentForSell(
