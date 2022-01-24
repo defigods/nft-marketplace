@@ -1,7 +1,8 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
-import { Signer, Contract, Wallet, BigNumber, utils, constants } from 'ethers';
+import { Contract, Wallet, BigNumber, utils, constants } from 'ethers';
 import { ecsign } from 'ethereumjs-util';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   DENOMINATOR,
   generateRandomAddress,
@@ -9,17 +10,19 @@ import {
   increaseTime,
   PIXCategory,
   PIXSize,
+  getMerkleTree,
 } from './utils';
 const { keccak256, defaultAbiCoder, toUtf8Bytes, solidityPack } = utils;
 
 describe('PIXAuctionSale', function () {
-  let owner: Signer;
-  let alice: Signer;
+  let owner: SignerWithAddress;
+  let alice: SignerWithAddress;
   let bob: Wallet;
   let treasury: string = generateRandomAddress();
   let pixtToken: Contract;
   let pixNFT: Contract;
   let auctionSale: Contract;
+  let merkleMinter: Contract;
 
   beforeEach(async function () {
     [owner, alice] = await ethers.getSigners();
@@ -296,6 +299,83 @@ describe('PIXAuctionSale', function () {
       expect(saleInfo.seller).to.be.equal(constants.AddressZero);
       expect(saleInfo.endTime).to.be.equal(0);
       expect(saleInfo.minPrice).to.be.equal(0);
+    });
+  });
+
+  describe.only('#requestSaleWithHash function', () => {
+    const tokenId = 1;
+    let merkleTreeInfo;
+    let alicePixes = [];
+    let hexProofs = [];
+    let merkleRoots = [];
+    const aliceIndices = [1, 2];
+    const minPrice = utils.parseEther('1');
+    const auctionPeriod = BigNumber.from('3600');
+    let endTime: BigNumber;
+
+    beforeEach(async () => {
+      const PIXMerkleMinterFactory = await ethers.getContractFactory('PIXMerkleMinter');
+      merkleMinter = await upgrades.deployProxy(PIXMerkleMinterFactory, [pixNFT.address]);
+
+      await pixNFT.setModerator(merkleMinter.address, true);
+
+      await auctionSale.setPixMerkleMinter(merkleMinter.address);
+
+      await merkleMinter.setDelegateMinter(auctionSale.address, true);
+
+      merkleTreeInfo = getMerkleTree([bob, alice, alice, bob, owner]);
+
+      await merkleMinter.setMerkleRoot(merkleTreeInfo.merkleTree.getRoot(), true);
+
+      hexProofs = aliceIndices.map((idx) =>
+        merkleTreeInfo.merkleTree.getHexProof(merkleTreeInfo.leafNodes[idx]),
+      );
+
+      merkleRoots = aliceIndices.map(() => merkleTreeInfo.merkleTree.getRoot());
+
+      alicePixes = aliceIndices.map((idx) => [
+        merkleTreeInfo.pixes[idx].pixId,
+        merkleTreeInfo.pixes[idx].category,
+        merkleTreeInfo.pixes[idx].size,
+      ]);
+
+      await pixNFT.safeMint(alice.address, [0, PIXCategory.Rare, PIXSize.Sector]);
+      await pixNFT.safeMint(alice.address, [0, PIXCategory.Rare, PIXSize.Sector]);
+
+      await pixNFT.connect(alice).approve(auctionSale.address, tokenId);
+
+      endTime = (await getCurrentTime()).add(auctionPeriod);
+    });
+
+    it('revert if price is 0', async () => {
+      await expect(
+        auctionSale
+          .connect(alice)
+          .requestSaleWithHash([], endTime, 0, alicePixes, merkleRoots, hexProofs),
+      ).to.revertedWith('Sale: PRICE_ZERO');
+    });
+
+    it('should request sale and emit SaleRequested event', async () => {
+      const tx = await auctionSale
+        .connect(alice)
+        .requestSaleWithHash([tokenId], endTime, minPrice, alicePixes, merkleRoots, hexProofs);
+
+      const lastSaleId = 1;
+      expect(await auctionSale.lastSaleId()).to.be.equal(lastSaleId);
+
+      const saleInfo = await auctionSale.saleInfo(lastSaleId);
+      expect(saleInfo.seller).to.be.equal(alice.address);
+      expect(saleInfo.nftToken).to.be.equal(pixNFT.address);
+      expect(saleInfo.minPrice).to.be.equal(minPrice);
+      expect(saleInfo.endTime).to.be.equal(endTime);
+
+      expect(await pixNFT.ownerOf(tokenId)).to.be.equal(auctionSale.address);
+      expect(await pixNFT.ownerOf(3)).to.be.equal(auctionSale.address);
+      expect(await pixNFT.ownerOf(4)).to.be.equal(auctionSale.address);
+
+      await expect(tx)
+        .emit(auctionSale, 'SaleRequested')
+        .withArgs(alice.address, lastSaleId, pixNFT.address, endTime, [tokenId, 3, 4], minPrice);
     });
   });
 });
