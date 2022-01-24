@@ -18,7 +18,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
 
     IERC20Upgradeable public pixToken;
     string private _baseURIExtended;
-    uint256 public lastTokenId;
+    uint256 public override lastTokenId;
 
     Treasury public treasury;
     uint256 public combinePrice;
