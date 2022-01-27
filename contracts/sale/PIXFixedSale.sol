@@ -53,7 +53,7 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
         keccak256("OfferMessage(address bidder,uint256 price,uint256 saleId,uint256 nonce)");
 
     bytes32 private constant BID_MESSAGE_WITH_HASH =
-        keccak256("BidMessageWithHash(address bidder,uint256 price,address seller, PIXInfo info)");
+        keccak256("BidMessageWithHash(address bidder,uint256 price,address seller,PIXInfo info)");
 
     IPIXMerkleMinter public pixMerkleMinter;
 

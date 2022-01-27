@@ -532,7 +532,7 @@ const getDigestWithHash = async (
     ),
   );
   const hash = keccak256(
-    toUtf8Bytes('BidMessageWithHash(address bidder,uint256 price,address seller, PIXInfo info)'),
+    toUtf8Bytes('BidMessageWithHash(address bidder,uint256 price,address seller,PIXInfo info)'),
   );
 
   return keccak256(
