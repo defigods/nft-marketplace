@@ -53,7 +53,12 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
         keccak256("OfferMessage(address bidder,uint256 price,uint256 saleId,uint256 nonce)");
 
     bytes32 private constant BID_MESSAGE_WITH_HASH =
-        keccak256("BidMessageWithHash(address bidder,uint256 price,address seller,PIXInfo info)");
+        keccak256(
+            "BidMessageWithHash(address bidder,uint256 price,address seller,PIXInfo info)PIXInfo(uint256 pixId,uint8 category,uint8 size)"
+        );
+
+    bytes32 private constant PIXINFO_TYPEHASH =
+        keccak256("PIXInfo(uint256 pixId,uint8 category,uint8 size)");
 
     IPIXMerkleMinter public pixMerkleMinter;
 
@@ -272,7 +277,13 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
         );
 
         bytes32 structHash = keccak256(
-            abi.encode(BID_MESSAGE_WITH_HASH, buyer, price, msg.sender, info)
+            abi.encode(
+                BID_MESSAGE_WITH_HASH,
+                buyer,
+                price,
+                msg.sender,
+                keccak256(abi.encode(PIXINFO_TYPEHASH, info.pixId, info.category, info.size))
+            )
         );
         bytes32 hash = _hashTypedDataV4(structHash);
         address signer = ECDSA.recover(hash, v, r, s);
