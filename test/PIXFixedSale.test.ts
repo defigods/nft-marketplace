@@ -1,8 +1,10 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
-import { Contract, BigNumber, utils, constants, Signer } from 'ethers';
+import { Contract, BigNumber, utils, constants, Wallet } from 'ethers';
+import { ecsign } from 'ethereumjs-util';
 import { DENOMINATOR, generateRandomAddress, getMerkleTree, PIXCategory, PIXSize } from './utils';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+const { keccak256, defaultAbiCoder, toUtf8Bytes, solidityPack } = utils;
 
 describe('PIXFixedSale', function () {
   let owner: SignerWithAddress;
@@ -455,6 +457,51 @@ describe('PIXFixedSale', function () {
         .to.emit(fixedSale, 'PurchasedWithSignature')
         .withArgs(alice.address, bob.address, pixNFT.address, 3, price);
     });
+
+    it('should purchase PIX and send to seller and treasury', async () => {
+      const carol = Wallet.fromMnemonic(
+        'test test test test test test test test test test test junk',
+      ).connect(owner.provider);
+      await pixtToken.connect(bob).transfer(carol.address, utils.parseEther('1000'));
+
+      await fixedSale.setTreasury(treasury, 100, 0, false);
+      await pixtToken.connect(carol).approve(fixedSale.address, price);
+
+      const aliceBalanceBefore = await pixtToken.balanceOf(alice.address);
+      const treasuryBalanceBefore = await pixtToken.balanceOf(treasury);
+      const data = await getDigestWithHashV1(
+        fixedSale,
+        carol,
+        price,
+        alice,
+        merkleTreeInfo.pixes[1],
+      );
+      const { v, r, s } = ecsign(
+        Buffer.from(data.slice(2), 'hex'),
+        Buffer.from(carol.privateKey.slice(2), 'hex'),
+      );
+      const tx = await fixedSale
+        .connect(alice)
+        .sellNFTWithSignatureWithHash(
+          carol.address,
+          price,
+          alicePix,
+          merkleRoot,
+          hexProof,
+          v,
+          r,
+          s,
+        );
+      expect(await pixNFT.ownerOf(3)).to.be.equal(carol.address);
+      const fee = price.mul(BigNumber.from('100')).div(DENOMINATOR);
+      expect(await pixtToken.balanceOf(alice.address)).to.be.equal(
+        aliceBalanceBefore.add(price).sub(fee),
+      );
+      expect(await pixtToken.balanceOf(treasury)).to.be.equal(treasuryBalanceBefore.add(fee));
+      expect(tx)
+        .to.emit(fixedSale, 'PurchasedWithSignature')
+        .withArgs(alice.address, carol.address, pixNFT.address, 3, price);
+    });
   });
 });
 
@@ -535,4 +582,49 @@ const getDigestWithHash = async (
 
   const signature = await buyer._signTypedData(domain, types, value);
   return utils.splitSignature(signature);
+};
+
+const getDigestWithHashV1 = async (
+  sale: Contract,
+  buyer: Wallet,
+  price: BigNumber,
+  seller: SignerWithAddress,
+  info: any,
+) => {
+  const separator = keccak256(
+    defaultAbiCoder.encode(
+      ['bytes32', 'bytes32', 'bytes32', 'uint256', 'address'],
+      [
+        keccak256(
+          toUtf8Bytes(
+            'EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)',
+          ),
+        ),
+        keccak256(toUtf8Bytes('PlanetIX')),
+        keccak256(toUtf8Bytes('1')),
+        (await ethers.provider.getNetwork()).chainId,
+        sale.address,
+      ],
+    ),
+  );
+  const hash = keccak256(
+    toUtf8Bytes('BidMessageWithHash(address bidder,uint256 price,address seller,PIXInfo info)'),
+  );
+
+  return keccak256(
+    solidityPack(
+      ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
+      [
+        '0x19',
+        '0x01',
+        separator,
+        keccak256(
+          defaultAbiCoder.encode(
+            ['bytes32', 'address', 'uint256', 'address', 'uint256', 'uint8', 'uint8'],
+            [hash, buyer.address, price, seller.address, info.pixId, info.category, info.size],
+          ),
+        ),
+      ],
+    ),
+  );
 };
