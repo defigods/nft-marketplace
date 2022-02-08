@@ -53,6 +53,14 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
         keccak256("OfferMessage(address bidder,uint256 price,uint256 saleId,uint256 nonce)");
 
     bytes32 private constant BID_MESSAGE_WITH_HASH =
+        keccak256(
+            "BidMessageWithHash(address bidder,uint256 price,address seller,PIXInfo info)PIXInfo(uint256 pixId,uint8 category,uint8 size)"
+        );
+
+    bytes32 private constant PIXINFO_TYPEHASH =
+        keccak256("PIXInfo(uint256 pixId,uint8 category,uint8 size)");
+
+    bytes32 private constant BID_MESSAGE_WITH_HASH_V1 =
         keccak256("BidMessageWithHash(address bidder,uint256 price,address seller,PIXInfo info)");
 
     IPIXMerkleMinter public pixMerkleMinter;
@@ -253,6 +261,44 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
         _registerSaleRequest(msg.sender, pixNFT, _price, saleTokenIds);
     }
 
+    function _isValidV2Signature(
+        address buyer,
+        uint256 price,
+        IPIX.PIXInfo memory info,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) private view returns (bool) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                BID_MESSAGE_WITH_HASH,
+                buyer,
+                price,
+                msg.sender,
+                keccak256(abi.encode(PIXINFO_TYPEHASH, info.pixId, info.category, info.size))
+            )
+        );
+        bytes32 hash = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(hash, v, r, s);
+        return signer == buyer;
+    }
+
+    function _isValidV1Signature(
+        address buyer,
+        uint256 price,
+        IPIX.PIXInfo memory info,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) private view returns (bool) {
+        bytes32 structHash = keccak256(
+            abi.encode(BID_MESSAGE_WITH_HASH_V1, buyer, price, msg.sender, info)
+        );
+        bytes32 hash = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(hash, v, r, s);
+        return signer == buyer;
+    }
+
     function sellNFTWithSignatureWithHash(
         address buyer,
         uint256 price,
@@ -271,12 +317,11 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
             merkleProofs
         );
 
-        bytes32 structHash = keccak256(
-            abi.encode(BID_MESSAGE_WITH_HASH, buyer, price, msg.sender, info)
+        require(
+            _isValidV1Signature(buyer, price, info, v, r, s) ||
+                _isValidV2Signature(buyer, price, info, v, r, s),
+            "Sale: INVALID_SIGNATURE"
         );
-        bytes32 hash = _hashTypedDataV4(structHash);
-        address signer = ECDSA.recover(hash, v, r, s);
-        require(signer == buyer, "Sale: INVALID_SIGNATURE");
 
         uint256[] memory tokenIds = new uint256[](1);
         tokenIds[0] = tokenId;
