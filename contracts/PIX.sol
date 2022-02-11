@@ -55,6 +55,8 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     mapping(address => PackRequest) public packRequests;
     mapping(address => bool) public blacklistedAddresses;
 
+    uint256[] public packIXTPrices;
+
     modifier onlyMod() {
         require(moderators[msg.sender], "Pix: NON_MODERATOR");
         _;
@@ -132,6 +134,15 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         emit PackPriceUpdated(mode, price);
     }
 
+    function setPackIXTPrice(uint256 mode, uint256 price) external onlyOwner {
+        require(price > 0, "Pix: ZERO_PRICE");
+        if (mode == 0) {
+            packIXTPrices.push(price);
+        } else if (mode <= packIXTPrices.length) {
+            packIXTPrices[mode - 1] = price;
+        }
+    }
+
     function setCombinePrice(uint256 price) external onlyOwner {
         require(price > 0, "Pix: ZERO_PRICE");
         combinePrice = price;
@@ -184,6 +195,34 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             ? packPrices[mode - 1]
             : oracleManager.getAmountOut(tokenForPrice, token, packPrices[mode - 1]);
 
+        _registerRequest(token, dropId, playerId, mode, price);
+    }
+
+    function requestMintWithIXT(
+        uint256 dropId,
+        uint256 playerId,
+        uint256 mode
+    ) external nonBlacklisted {
+        DropInfo storage drop = dropInfos[dropId];
+        require(!isDisabledDropForPlayer(playerId, dropId), "Pix: DROP_DISABLED");
+        require(drop.requestCount < drop.maxCount, "Pix: PACKS_ALL_SOLD_OUT");
+        require(packsPurchased[playerId][dropId] < drop.limitForPlayer, "Pix: OVERFLOW_LIMIT");
+        require(
+            drop.startTime <= block.timestamp && drop.endTime >= block.timestamp,
+            "!Pix: DROP_SALE_TIME"
+        );
+        require(mode > 0 && mode <= packIXTPrices.length, "Pix: INVALID_PRICE_MODE");
+
+        _registerRequest(address(pixToken), dropId, playerId, mode, packIXTPrices[mode - 1]);
+    }
+
+    function _registerRequest(
+        address token,
+        uint256 dropId,
+        uint256 playerId,
+        uint256 mode,
+        uint256 price
+    ) internal {
         require(price > 0, "Pix: INVALID_PRICE");
 
         if (token == address(0)) {
