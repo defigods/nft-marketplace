@@ -24,7 +24,13 @@ interface IPIX {
 
     event Combined(uint256 indexed tokenId, PIXCategory category, PIXSize size);
 
-    event Requested(uint256 indexed dropId, uint256 indexed playerId, uint256 indexed mode);
+    event Requested(
+        uint256 indexed dropId,
+        uint256 indexed playerId,
+        uint256 indexed mode,
+        uint256 purchasedPacks,
+        uint256 count
+    );
 
     enum PIXCategory {
         Legendary,
