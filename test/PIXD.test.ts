@@ -24,10 +24,10 @@ describe('PIXD', function () {
 
   describe('#initialize', () => {
     it('name', async function () {
-      expect(await pixdToken.name()).equal('PlanetIX Elements');
+      expect(await pixdToken.name()).equal('PlanetIX Drones');
     });
     it('symbol', async function () {
-      expect(await pixdToken.symbol()).equal('IXE');
+      expect(await pixdToken.symbol()).equal('IXD');
     });
   });
 })
