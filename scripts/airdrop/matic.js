@@ -9,7 +9,7 @@ async function main() {
   const airdrop = await Airdrop.attach('0x2334bC478C60beE7674529580659CD6c115cBCbC');
   const csvFilePath = './scripts/airdrop/matic.csv';
 
-  data = await csv().fromFile(csvFilePath);
+  const data = await csv().fromFile(csvFilePath);
 
   let index = 0;
   let value = 0;
@@ -36,6 +36,7 @@ async function main() {
 
     const response = await airdrop.airdrop(ethers.constants.AddressZero, recipients, amounts, {
       gasPrice: 80000000000,
+      gasLimit: 9000000,
       value,
     });
 

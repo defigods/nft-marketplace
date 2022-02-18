@@ -18,3 +18,5 @@ coverage.json
 # Settings
 .vscode/
 .openzeppelin
+
+*.csv
