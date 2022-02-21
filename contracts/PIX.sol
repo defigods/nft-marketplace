@@ -55,6 +55,9 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     mapping(address => PackRequest) public packRequests;
     mapping(address => bool) public blacklistedAddresses;
 
+    uint256[] public packIXTPrices;
+    mapping(address => uint256) public packRequestCounts;
+
     modifier onlyMod() {
         require(moderators[msg.sender], "Pix: NON_MODERATOR");
         _;
@@ -132,6 +135,15 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         emit PackPriceUpdated(mode, price);
     }
 
+    function setPackIXTPrice(uint256 mode, uint256 price) external onlyOwner {
+        require(price > 0, "Pix: ZERO_PRICE");
+        if (mode == 0) {
+            packIXTPrices.push(price);
+        } else if (mode <= packIXTPrices.length) {
+            packIXTPrices[mode - 1] = price;
+        }
+    }
+
     function setCombinePrice(uint256 price) external onlyOwner {
         require(price > 0, "Pix: ZERO_PRICE");
         combinePrice = price;
@@ -184,16 +196,69 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             ? packPrices[mode - 1]
             : oracleManager.getAmountOut(tokenForPrice, token, packPrices[mode - 1]);
 
+        _registerRequest(token, dropId, playerId, mode, price, 1);
+    }
+
+    function requestMintWithIXT(
+        uint256 dropId,
+        uint256 playerId,
+        uint256 mode
+    ) external nonBlacklisted {
+        DropInfo storage drop = dropInfos[dropId];
+        require(!isDisabledDropForPlayer(playerId, dropId), "Pix: DROP_DISABLED");
+        require(drop.requestCount < drop.maxCount, "Pix: PACKS_ALL_SOLD_OUT");
+        require(packsPurchased[playerId][dropId] < drop.limitForPlayer, "Pix: OVERFLOW_LIMIT");
+        require(
+            drop.startTime <= block.timestamp && drop.endTime >= block.timestamp,
+            "!Pix: DROP_SALE_TIME"
+        );
+        require(mode > 0 && mode <= packIXTPrices.length, "Pix: INVALID_PRICE_MODE");
+
+        _registerRequest(address(pixToken), dropId, playerId, mode, packIXTPrices[mode - 1], 1);
+    }
+
+    function requestBatchMintWithIXT(
+        uint256 dropId,
+        uint256 playerId,
+        uint256 mode,
+        uint256 count
+    ) external nonBlacklisted {
+        DropInfo storage drop = dropInfos[dropId];
+        require(!isDisabledDropForPlayer(playerId, dropId), "Pix: DROP_DISABLED");
+        require(drop.requestCount + count <= drop.maxCount, "Pix: PACKS_ALL_SOLD_OUT");
+        require(
+            packsPurchased[playerId][dropId] + count <= drop.limitForPlayer,
+            "Pix: OVERFLOW_LIMIT"
+        );
+        require(
+            drop.startTime <= block.timestamp && drop.endTime >= block.timestamp,
+            "!Pix: DROP_SALE_TIME"
+        );
+        require(mode > 0 && mode <= packIXTPrices.length, "Pix: INVALID_PRICE_MODE");
+
+        _registerRequest(address(pixToken), dropId, playerId, mode, packIXTPrices[mode - 1], count);
+    }
+
+    function _registerRequest(
+        address token,
+        uint256 dropId,
+        uint256 playerId,
+        uint256 mode,
+        uint256 price,
+        uint256 count
+    ) internal {
         require(price > 0, "Pix: INVALID_PRICE");
+        require(count > 0, "Pix: INVALID_COUNT");
+        uint256 totalPrice = price * count;
 
         if (token == address(0)) {
-            require(msg.value == price, "Pix: INSUFFICIENT_FUNDS");
+            require(msg.value == totalPrice, "Pix: INSUFFICIENT_FUNDS");
         } else {
             require(msg.value == 0, "Pix: INVALID_VALUE");
-            IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), price);
+            IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), totalPrice);
         }
         if (treasury.treasury != address(0)) {
-            uint256 treasuryFee = price.decimalMul(treasury.fee);
+            uint256 treasuryFee = totalPrice.decimalMul(treasury.fee);
             if (treasuryFee > 0) {
                 if (token == address(pixToken)) {
                     pixToken.safeTransfer(treasury.treasury, treasuryFee);
@@ -211,8 +276,9 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             }
         }
         packRequests[msg.sender] = PackRequest(playerId, dropId);
-        dropInfos[dropId].requestCount += 1;
-        emit Requested(dropId, playerId, mode);
+        packRequestCounts[msg.sender] = count;
+        dropInfos[dropId].requestCount += count;
+        emit Requested(dropId, playerId, mode, packsPurchased[playerId][dropId] + 1, count);
     }
 
     function mintTo(
@@ -230,13 +296,15 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     function completeRequest(address to) external onlyMod {
         PackRequest storage request = packRequests[to];
         require(request.playerId > 0, "Pix: INVALID_REQUEST");
-        packsPurchased[request.playerId][request.dropId] += 1;
+        packsPurchased[request.playerId][request.dropId] += packRequestCounts[to];
         delete packRequests[to];
+        delete packRequestCounts[to];
     }
 
     function cancelRequest(address to) external onlyMod {
-        dropInfos[packRequests[to].dropId].requestCount -= 1;
+        dropInfos[packRequests[to].dropId].requestCount -= packRequestCounts[to];
         delete packRequests[to];
+        delete packRequestCounts[to];
     }
 
     function combine(uint256[] calldata tokenIds) external {
@@ -297,23 +365,6 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         _safeMint(to, lastTokenId);
         pixInfos[lastTokenId] = info;
         emit PIXMinted(to, lastTokenId, info.pixId, info.category, info.size);
-    }
-
-    function safeBurn(uint256 tokenId) external {
-        address owner = ownerOf(tokenId);
-        require(msg.sender == owner || isApprovedForAll(owner, msg.sender), "Pix: NON_APPROVED");
-        _burn(tokenId);
-    }
-
-    function batchBurn(uint256[] memory tokenIds) external {
-        for (uint256 i; i < tokenIds.length; i += 1) {
-            address owner = ownerOf(tokenIds[i]);
-            require(
-                msg.sender == owner || isApprovedForAll(owner, msg.sender),
-                "Pix: NON_APPROVED"
-            );
-            _burn(tokenIds[i]);
-        }
     }
 
     function _baseURI() internal view override returns (string memory) {

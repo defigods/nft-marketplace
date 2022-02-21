@@ -24,6 +24,16 @@ export default {
       chainId: 80001,
       accounts: [process.env.PRIVATE_KEY],
     },
+    maticdrop: {
+      url: 'https://polygon-rpc.com',
+      chainId: 137,
+      accounts: [process.env.MATIC_DROP_KEY],
+    },
+    ixtdrop: {
+      url: 'https://polygon-rpc.com',
+      chainId: 137,
+      accounts: [process.env.IXT_DROP_KEY],
+    },
   },
   typechain: {
     outDir: 'src/types',

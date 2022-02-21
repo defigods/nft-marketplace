@@ -229,7 +229,7 @@ describe('PIX', function () {
 
     it('should request mint', async function () {
       const tx = await pixNFT.connect(alice).requestMint(usdc.address, 1, 1, 1);
-      expect(tx).to.emit(pixNFT, 'Requested').withArgs(1, 1, 1);
+      expect(tx).to.emit(pixNFT, 'Requested').withArgs(1, 1, 1, 1, 1);
       expect((await pixNFT.packRequests(await alice.getAddress()))[1]).to.equal(1);
       expect(await usdc.balanceOf(pixNFT.address)).equal(price);
     });
@@ -309,38 +309,6 @@ describe('PIX', function () {
       }
       await pixNFT.batchMint(await alice.getAddress(), infos);
       expect(await pixNFT.totalSupply()).to.equal(10);
-    });
-  });
-
-  describe('#safeBurn', () => {
-    beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Zone]);
-      await pixNFT.safeMint(await alice.getAddress(), [1, PIXCategory.Common, PIXSize.Pix]);
-    });
-
-    it('revert if msg.sender is not approved', async () => {
-      await expect(pixNFT.safeBurn(1)).to.revertedWith('Pix: NON_APPROVED');
-    });
-
-    it('should safe burn', async () => {
-      await pixNFT.connect(alice).safeBurn(1);
-      expect(await pixNFT.totalSupply()).to.equal(1);
-    });
-  });
-
-  describe('#batchBurn', () => {
-    beforeEach(async () => {
-      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Zone]);
-      await pixNFT.safeMint(await alice.getAddress(), [1, PIXCategory.Common, PIXSize.Pix]);
-    });
-
-    it('revert if msg.sender is not approved', async () => {
-      await expect(pixNFT.batchBurn([1, 2])).to.revertedWith('Pix: NON_APPROVED');
-    });
-
-    it('should batch burn', async () => {
-      await pixNFT.connect(alice).batchBurn([1, 2]);
-      expect(await pixNFT.totalSupply()).to.equal(0);
     });
   });
 
