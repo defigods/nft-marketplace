@@ -17,7 +17,7 @@ export default {
     mainnet: {
       url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
       chainId: 137,
-      accounts: [process.env.MAINNET_KEY],
+      accounts: [process.env.PRIVATE_KEY],
     },
     testnet: {
       url: `https://polygon-mumbai.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
@@ -27,12 +27,12 @@ export default {
     maticdrop: {
       url: 'https://polygon-rpc.com',
       chainId: 137,
-      accounts: [process.env.MATIC_DROP_KEY],
+      accounts: [process.env.PRIVATE_KEY],
     },
     ixtdrop: {
       url: 'https://polygon-rpc.com',
       chainId: 137,
-      accounts: [process.env.IXT_DROP_KEY],
+      accounts: [process.env.PRIVATE_KEY],
     },
   },
   typechain: {
@@ -43,7 +43,7 @@ export default {
     currency: 'ETH',
   },
   etherscan: {
-    apiKey: process.env.API_KEY,
+    apiKey: process.env.ALCHEMY_KEY,
   },
   solidity: {
     version: '0.8.4',
