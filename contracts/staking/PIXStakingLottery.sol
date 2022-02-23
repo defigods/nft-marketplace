@@ -82,12 +82,11 @@ contract PIXStakingLottery is OwnableUpgradeable {
         emit WithdrawnPixNFT(_tokenId, msg.sender);
     }
 
-    function claim() external onlyOwner {
+    function claim() external {
         require(earned[msg.sender] > 0, "Claiming: NO_Tokens to withdraw");
 
-        earned[msg.sender] = 0;
         rewardToken.transfer(msg.sender, earned[msg.sender]);
-
+        earned[msg.sender] = 0;
         emit RewardPaid(earned[msg.sender], msg.sender);
     }
 

@@ -7,6 +7,8 @@ const getCurrentTime = async () => {
   return BigNumber.from((await time.latest()).toString());
 };
 
+const rewardPerBlock = BigNumber.from(10);
+
 describe('PIXTStakingLottery', function () {
   let owner: Signer;
   let distributor: Signer;
@@ -43,6 +45,7 @@ describe('PIXTStakingLottery', function () {
     await pixt.transfer(await distributor.getAddress(), reward.mul(3));
     await pixt.transfer(aliceAddress, reward);
     await pixt.transfer(bobAddress, reward);
+    await pixt.transfer(pixtStaking.address, reward);
     await pixt.connect(alice).approve(pixtStaking.address, reward);
     await pixt.connect(bob).approve(pixtStaking.address, reward);
   });
@@ -99,10 +102,20 @@ describe('PIXTStakingLottery', function () {
 
   describe('#claim', () => {
     it('alice claim reward', async () => {
+      await ownerStaking.setRewardPerBlock(rewardPerBlock);
+
+      await aliceStaking.stake(10);
+      await ownerStaking.setReward(await alice.getAddress());
+
+      await time.advanceBlock();
+      await time.advanceBlock();
+      await time.advanceBlock();
+      await time.advanceBlock();
+      await time.advanceBlock();
+
       const prevBalance = await pixt.balanceOf(aliceAddress);
-      const tx = await ownerStaking.claim(aliceAddress);
-      expect(tx).to.emit(aliceStaking, 'RewardPaid').withArgs(aliceAddress, reward);
-      expect(await pixt.balanceOf(aliceAddress)).to.closeTo(prevBalance, 10, '');
+      const tx = await aliceStaking.claim();
+      expect(await pixt.balanceOf(aliceAddress)).to.closeTo(prevBalance, 80, '');
     });
   });
 });

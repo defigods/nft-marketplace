@@ -80,20 +80,28 @@ describe('PIXStakingLottery', function () {
       await pixStaking.setTierInfo('1', '2');
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
+
+      await time.advanceBlock();
+      await time.advanceBlock();
+      await time.advanceBlock();
+      await time.advanceBlock();
+      await time.advanceBlock();
+
+      await pixStaking.connect(owner).setReward(await alice.getAddress());
     });
 
     it('should provide correct rewards', async function () {
-      await pixStaking.connect(owner).claim(await alice.getAddress());
+      await pixStaking.connect(alice).claim();
       expect(await pixToken.balanceOf(await alice.getAddress())).to.closeTo(
-        BigNumber.from(10000),
+        BigNumber.from(10050),
         10,
         '',
       );
     });
 
     it('should revert if didnt stake', async function () {
-      await expect(pixStaking.connect(owner).claim(await bob.getAddress())).to.revertedWith(
-        'Staking: NO_WITHDRAWALS',
+      await expect(pixStaking.connect(owner).claim()).to.revertedWith(
+        'Claiming: NO_Tokens to withdraw',
       );
     });
   });

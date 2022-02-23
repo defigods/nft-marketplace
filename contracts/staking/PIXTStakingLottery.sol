@@ -19,7 +19,7 @@ contract PIXTStakingLottery is OwnableUpgradeable {
     mapping(address => uint256) public earned;
 
     uint256 public lastUpdateBlock;
-    uint256 public rewardRate;
+    uint256 public rewardPerBlock;
     uint256 public rewardPerTokenStored;
 
     event Staked(address indexed user, uint256 amount);
@@ -48,6 +48,10 @@ contract PIXTStakingLottery is OwnableUpgradeable {
         emit Staked(msg.sender, amount);
     }
 
+    function setRewardPerBlock(uint256 _amount) external onlyOwner {
+        rewardPerBlock = _amount;
+    }
+
     /**
      * @dev unstake partial staked amount
      * @param amount staking token amount(>0) to unstake
@@ -65,13 +69,12 @@ contract PIXTStakingLottery is OwnableUpgradeable {
      * @dev claim reward and update reward related arguments
      * @notice emit {RewardPaid} event
      */
-    function claim(address _winner) public onlyOwner {
-        uint256 reward = _calculateReward();
-        if (reward > 0) {
-            pixToken.safeTransfer(_winner, reward);
-            lastUpdateBlock = block.number;
-            emit RewardPaid(_winner, reward);
-        }
+    function claim() external {
+        require(earned[msg.sender] > 0, "Claiming: NO_Tokens to withdraw");
+
+        pixToken.safeTransfer(msg.sender, earned[msg.sender]);
+        earned[msg.sender] = 0;
+        emit RewardPaid(msg.sender, earned[msg.sender]);
     }
 
     function setReward(address _winner) external onlyOwner {
@@ -84,6 +87,6 @@ contract PIXTStakingLottery is OwnableUpgradeable {
 
     function _calculateReward() internal view returns (uint256) {
         uint256 blocksPassed = block.number.sub(lastUpdateBlock);
-        return rewardRate.mul(blocksPassed);
+        return rewardPerBlock.mul(blocksPassed);
     }
 }
