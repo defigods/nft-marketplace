@@ -16,6 +16,7 @@ contract PIXTStakingLottery is OwnableUpgradeable {
 
     uint256 public totalStaked;
     mapping(address => uint256) public stakedAmounts;
+    mapping(address => uint256) public earned;
 
     uint256 public lastUpdateBlock;
     uint256 public rewardRate;
@@ -70,6 +71,14 @@ contract PIXTStakingLottery is OwnableUpgradeable {
             pixToken.safeTransfer(_winner, reward);
             lastUpdateBlock = block.number;
             emit RewardPaid(_winner, reward);
+        }
+    }
+
+    function setReward(address _winner) external onlyOwner {
+        uint256 pending = _calculateReward();
+        require(pending > 0, "setReward: no tokens to set");
+        if (pending > 0) {
+            earned[_winner] += pending;
         }
     }
 

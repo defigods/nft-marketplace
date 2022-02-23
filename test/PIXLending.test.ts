@@ -39,7 +39,7 @@ describe('PIXLending', function () {
 
     await pixNFT.setTrader(pixLending.address, true);
     await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Area]);
-    await pixToken.transfer(await bob.getAddress(), BigNumber.from(100000000));
+    await pixToken.transfer(await alice.getAddress(), BigNumber.from(100000000));
     await pixToken.transfer(await bob.getAddress(), BigNumber.from(100000000));
   });
 
@@ -50,14 +50,14 @@ describe('PIXLending', function () {
     });
   });
 
-  describe('ListNFT', () => {
+  describe('createRequest', () => {
     it('it should return owner address of the NFT', async () => {
       expect(await pixNFT.ownerOf(1)).to.equal(await alice.getAddress());
     });
 
-    it('it should List NFT correctly', async () => {
+    it('it should create request correctly', async () => {
       await pixNFT.connect(alice).approve(pixLending.address, 1);
-      await pixLending.connect(alice).listNFT(1, BigNumber.from(1000), 10000);
+      await pixLending.connect(alice).createRequest(1, BigNumber.from(1000), 10000);
       expect(await pixNFT.ownerOf(1)).to.equal(pixLending.address);
     });
   });
@@ -66,14 +66,14 @@ describe('PIXLending', function () {
     beforeEach(async function () {
       // Listing
       await pixNFT.connect(alice).approve(pixLending.address, 1);
-      await pixLending.connect(alice).listNFT(1, BigNumber.from(1000), 10000);
+      await pixLending.connect(alice).createRequest(1, BigNumber.from(1000), 10000);
     });
     it('it should be owner', async () => {
       expect(await pixNFT.ownerOf(1)).to.equal(pixLending.address);
     });
     it('it should Borrow NFT correctly', async () => {
       await pixToken.connect(bob).approve(pixLending.address, (await pixLending.info(1))[1]); // amount
-      await pixLending.connect(bob).borrowNFT(1);
+      await pixLending.connect(bob).acceptRequest(1);
       expect(await pixNFT.ownerOf(1)).to.equal(await bob.getAddress());
     });
   });
@@ -82,10 +82,10 @@ describe('PIXLending', function () {
     beforeEach(async function () {
       // Listing & Borrowing
       await pixNFT.connect(alice).approve(pixLending.address, 1);
-      await pixLending.connect(alice).listNFT(1, BigNumber.from(1000), 10000);
+      await pixLending.connect(alice).createRequest(1, BigNumber.from(1000), 10000);
 
       await pixToken.connect(bob).approve(pixLending.address, (await pixLending.info(1))[1] * 2); // amount
-      await pixLending.connect(bob).borrowNFT(1);
+      await pixLending.connect(bob).acceptRequest(1);
 
       await time.advanceBlock();
       await time.advanceBlock();
@@ -100,7 +100,7 @@ describe('PIXLending', function () {
       await pixNFT.connect(bob).approve(pixLending.address, 1);
       await pixToken.connect(alice).approve(pixLending.address, BigNumber.from(50000000));
       await pixToken.connect(bob).approve(await alice.getAddress(), BigNumber.from(50000000));
-      await pixLending.connect(bob).payDebt(1);
+      await pixLending.connect(alice).payDebt(1);
 
       expect(await pixNFT.ownerOf(1)).to.equal(await alice.getAddress());
     });

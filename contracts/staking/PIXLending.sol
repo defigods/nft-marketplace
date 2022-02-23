@@ -15,7 +15,7 @@ contract PIXLending is OwnableUpgradeable {
     enum Status {
         None,
         Listed,
-        Borrowed
+        Lended
     }
 
     struct NFTInfo {
@@ -23,7 +23,7 @@ contract PIXLending is OwnableUpgradeable {
         uint256 amount;
         address lender;
         uint256 duration;
-        uint256 borrowedTime;
+        uint256 lendTime;
         address borrower;
     }
     mapping(uint256 => NFTInfo) public info;
@@ -45,7 +45,7 @@ contract PIXLending is OwnableUpgradeable {
         feePerSecond = _amount;
     }
 
-    function listNFT(
+    function createRequest(
         uint256 _tokenId,
         uint256 _amount,
         uint256 _duration
@@ -54,56 +54,47 @@ contract PIXLending is OwnableUpgradeable {
 
         info[_tokenId].status = Status.Listed;
         info[_tokenId].amount = _amount;
-        info[_tokenId].lender = msg.sender;
+        info[_tokenId].borrower = msg.sender;
         info[_tokenId].duration = _duration;
 
         IERC721Upgradeable(pixNFT).transferFrom(msg.sender, address(this), _tokenId);
     }
 
-    function cancelNFT(uint256 _tokenId) external {
-        require(info[_tokenId].status == Status.Listed, "Canceling: INVALID_PIX");
-        require(info[_tokenId].lender == msg.sender, "Canceling: INVALID lister");
+    function cancelRequest(uint256 _tokenId) external {
+        require(info[_tokenId].status == Status.Listed, "cancelRequest: INVALID_PIX");
+        require(info[_tokenId].borrower == msg.sender, "cancelRequest: INVALID lister");
 
         info[_tokenId].status = Status.None;
 
         IERC721Upgradeable(pixNFT).transferFrom(address(this), msg.sender, _tokenId);
     }
 
-    function borrowNFT(uint256 _tokenId) external {
-        require(info[_tokenId].status == Status.Listed, "Borrowing: INVALID_PIX");
-        info[_tokenId].status = Status.Borrowed;
+    function acceptRequest(uint256 _tokenId) external {
+        require(info[_tokenId].status == Status.Listed, "acceptRequest: INVALID_PIX");
+        info[_tokenId].status = Status.Lended;
 
-        info[_tokenId].borrowedTime = block.timestamp;
-        info[_tokenId].borrower = msg.sender;
+        info[_tokenId].lendTime = block.timestamp;
+        info[_tokenId].lender = msg.sender;
         IERC721Upgradeable(pixNFT).transferFrom(address(this), msg.sender, _tokenId);
         pixt.transferFrom(msg.sender, info[_tokenId].lender, info[_tokenId].amount);
     }
 
     function payDebt(uint256 _tokenId) external {
-        require(info[_tokenId].status == Status.Borrowed, "Paying: INVALID_PIX");
+        require(info[_tokenId].status == Status.Lended, "Paying: INVALID_PIX");
         require(info[_tokenId].borrower == msg.sender, "Paying: INVALID borrower");
 
-        if (block.timestamp - info[_tokenId].borrowedTime > info[_tokenId].duration) {
+        if (block.timestamp - info[_tokenId].lendTime > info[_tokenId].duration) {
             info[_tokenId].status = Status.None;
             return;
         }
 
-        if (info[_tokenId].amount < calculateFee(info[_tokenId].borrowedTime)) {
-            info[_tokenId].status = Status.None;
+        uint256 amount = info[_tokenId].amount.add(calculateFee(info[_tokenId].lendTime));
 
-            uint256 pixAmount = calculateFee(info[_tokenId].borrowedTime) - info[_tokenId].amount;
-            IERC721Upgradeable(pixNFT).transferFrom(msg.sender, info[_tokenId].lender, _tokenId);
-            pixt.transferFrom(msg.sender, info[_tokenId].lender, pixAmount);
-            return;
-        }
-
-        uint256 amount = info[_tokenId].amount.sub(calculateFee(info[_tokenId].borrowedTime));
-
-        IERC721Upgradeable(pixNFT).transferFrom(msg.sender, info[_tokenId].lender, _tokenId);
-        pixt.transferFrom(info[_tokenId].lender, msg.sender, amount);
+        IERC721Upgradeable(pixNFT).transferFrom(info[_tokenId].lender, msg.sender, _tokenId);
+        pixt.transferFrom(msg.sender, info[_tokenId].lender, amount);
     }
 
-    function calculateFee(uint256 _borrowedTime) public view returns (uint256) {
-        return block.timestamp.sub(_borrowedTime).mul(feePerSecond);
+    function calculateFee(uint256 _lendTime) public view returns (uint256) {
+        return block.timestamp.sub(_lendTime).mul(feePerSecond);
     }
 }

@@ -12,7 +12,7 @@ contract PIXStakingLottery is OwnableUpgradeable {
 
     event StakedPixNFT(uint256 tokenId, address indexed recipient);
     event WithdrawnPixNFT(uint256 tokenId, address indexed recipient);
-    event ClaimPixNFT(uint256 pending, address indexed recipient);
+    event RewardPaid(uint256 pending, address indexed recipient);
 
     struct UserInfo {
         mapping(uint256 => bool) isStaked;
@@ -21,6 +21,7 @@ contract PIXStakingLottery is OwnableUpgradeable {
 
     mapping(address => UserInfo) public userInfo;
     mapping(uint256 => uint256) public tierInfo;
+    mapping(address => uint256) public earned;
 
     IERC20Upgradeable public rewardToken;
 
@@ -81,16 +82,21 @@ contract PIXStakingLottery is OwnableUpgradeable {
         emit WithdrawnPixNFT(_tokenId, msg.sender);
     }
 
-    function claim(address _winner) external onlyOwner {
-        UserInfo storage user = userInfo[_winner];
-        require(user.tiers > 0, "Staking: NO_WITHDRAWALS");
+    function claim() external onlyOwner {
+        require(earned[msg.sender] > 0, "Claiming: NO_Tokens to withdraw");
 
+        earned[msg.sender] = 0;
+        rewardToken.transfer(msg.sender, earned[msg.sender]);
+
+        emit RewardPaid(earned[msg.sender], msg.sender);
+    }
+
+    function setReward(address _winner) external onlyOwner {
         uint256 pending = _calculateReward();
+        require(pending > 0, "setReward: no tokens to set");
         if (pending > 0) {
-            rewardToken.transfer(_winner, pending);
-            emit ClaimPixNFT(pending, _winner);
+            earned[_winner] += pending;
         }
-        lastUpdateBlock = block.number;
     }
 
     function setRewardPerBlock(uint256 _amount) external onlyOwner {
