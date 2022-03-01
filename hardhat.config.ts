@@ -51,11 +51,11 @@ export default {
     },
     ixtMaticLpToken: {
       137: '0x014ac2a53aa6fba4dcd93fde6d3c787b79a1a6e6',
-      80001: '',
+      80001: '0x4E35eB336A9D1ACC2B2626874B5e2bfA22571a23',
     },
     ixtUsdtLpToken: {
       137: '0x304e57c752e854e9a233ae82fcc42f7568b81180',
-      80001: '',
+      80001: '0xd391B55DbA3572033fCA80644071dBC5E0573b2B',
     },
   },
   dependencyCompiler: {
