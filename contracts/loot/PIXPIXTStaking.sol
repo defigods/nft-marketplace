@@ -57,7 +57,7 @@ contract PIXPIXTStaking is OwnableUpgradeable {
         uint256 _tokensPerNFT
     ) external initializer {
         require(_pixToken != address(0), "Staking: INVALID_PIXT");
-        require(_pixNFT != address(0), "Staking: INVALID_PIXF");
+        require(_pixNFT != address(0), "Staking: INVALID_PIX");
         require(_tokensPerNFT > 0, "Staking: INVALID_TOKENS_PER_NFT");
 
         pixToken = IERC20(_pixToken);
