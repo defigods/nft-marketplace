@@ -25,12 +25,12 @@ export default {
       accounts: [process.env.PRIVATE_KEY],
     },
     maticdrop: {
-      url: 'https://polygon-rpc.com',
+      url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
       chainId: 137,
       accounts: [process.env.MATIC_DROP_KEY],
     },
     ixtdrop: {
-      url: 'https://polygon-rpc.com',
+      url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
       chainId: 137,
       accounts: [process.env.IXT_DROP_KEY],
     },

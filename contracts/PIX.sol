@@ -129,10 +129,14 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     }
 
     function setPackPrice(uint256 mode, uint256 price) external onlyOwner {
-        require(mode > 0 && mode < packPrices.length, "Pix: INVALID_PRICE_MODE");
         require(price > 0, "Pix: ZERO_PRICE");
-        packPrices[mode - 1] = price;
-        emit PackPriceUpdated(mode, price);
+        if (mode == 0) {
+            packPrices.push(price);
+            emit PackPriceUpdated(packPrices.length, price);
+        } else if (mode <= packPrices.length) {
+            packPrices[mode - 1] = price;
+            emit PackPriceUpdated(mode, price);
+        }
     }
 
     function setPackIXTPrice(uint256 mode, uint256 price) external onlyOwner {
@@ -172,16 +176,20 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         return false;
     }
 
-    function requestMint(
+    function requestBatchMint(
         address token,
         uint256 dropId,
         uint256 playerId,
-        uint256 mode
+        uint256 mode,
+        uint256 count
     ) external payable nonBlacklisted {
         DropInfo storage drop = dropInfos[dropId];
         require(!isDisabledDropForPlayer(playerId, dropId), "Pix: DROP_DISABLED");
-        require(drop.requestCount < drop.maxCount, "Pix: PACKS_ALL_SOLD_OUT");
-        require(packsPurchased[playerId][dropId] < drop.limitForPlayer, "Pix: OVERFLOW_LIMIT");
+        require(drop.requestCount + count <= drop.maxCount, "Pix: PACKS_ALL_SOLD_OUT");
+        require(
+            packsPurchased[playerId][dropId] + count <= drop.limitForPlayer,
+            "Pix: OVERFLOW_LIMIT"
+        );
         require(
             drop.startTime <= block.timestamp && drop.endTime >= block.timestamp,
             "!Pix: DROP_SALE_TIME"
@@ -196,25 +204,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             ? packPrices[mode - 1]
             : oracleManager.getAmountOut(tokenForPrice, token, packPrices[mode - 1]);
 
-        _registerRequest(token, dropId, playerId, mode, price, 1);
-    }
-
-    function requestMintWithIXT(
-        uint256 dropId,
-        uint256 playerId,
-        uint256 mode
-    ) external nonBlacklisted {
-        DropInfo storage drop = dropInfos[dropId];
-        require(!isDisabledDropForPlayer(playerId, dropId), "Pix: DROP_DISABLED");
-        require(drop.requestCount < drop.maxCount, "Pix: PACKS_ALL_SOLD_OUT");
-        require(packsPurchased[playerId][dropId] < drop.limitForPlayer, "Pix: OVERFLOW_LIMIT");
-        require(
-            drop.startTime <= block.timestamp && drop.endTime >= block.timestamp,
-            "!Pix: DROP_SALE_TIME"
-        );
-        require(mode > 0 && mode <= packIXTPrices.length, "Pix: INVALID_PRICE_MODE");
-
-        _registerRequest(address(pixToken), dropId, playerId, mode, packIXTPrices[mode - 1], 1);
+        _registerRequest(token, dropId, playerId, mode, price, count);
     }
 
     function requestBatchMintWithIXT(
@@ -385,6 +375,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             if (info.size == PIXSize.Pix)
                 inside = inside || pixInLand[false][pixInfos[tokenIds[i]].pixId];
             else inside = inside || pixInLand[true][tokenIds[i]];
+            if (inside) break;
         }
     }
 
