@@ -2,16 +2,14 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "../libraries/DecimalMath.sol";
-import "./PIXBaseSale.sol";
-import "../interfaces/IPIXMerkleMinter.sol";
+import "./PIXLandBaseSale.sol";
 
-contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable, EIP712Upgradeable {
+contract PIXLandAuctionSale is PIXLandBaseSale, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using DecimalMath for uint256;
 
@@ -21,6 +19,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable, EIP712Upgrad
         address nftToken,
         uint64 endTime,
         uint256[] tokenIds,
+        uint256[] amounts,
         uint256 price
     );
 
@@ -32,6 +31,7 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable, EIP712Upgrad
         uint64 endTime; // Auction end time
         uint256 minPrice; // min auction price
         uint256[] tokenIds; // List of tokenIds
+        uint256[] amounts; // List of amounts
     }
 
     struct AuctionSaleState {
@@ -49,12 +49,9 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable, EIP712Upgrad
     address public burnHolder;
     address public operator;
 
-    IPIXMerkleMinter public pixMerkleMinter;
-
-    function initialize(address _pixt, address _pix) external initializer {
-        __PIXBaseSale_init(_pixt, _pix);
+    function initialize(address _pixt, address _pixLand) external initializer {
+        __PIXLandBaseSale_init(_pixt, _pixLand);
         __ReentrancyGuard_init();
-        __EIP712_init("PlanetIX", "1");
     }
 
     /** @notice request sale for fixed price
@@ -66,18 +63,25 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable, EIP712Upgrad
     function requestSale(
         address _nftToken,
         uint256[] calldata _tokenIds,
+        uint256[] calldata _amounts,
         uint64 _endTime,
         uint256 _minPrice
     ) external onlyWhitelistedNFT(_nftToken) {
         require(_minPrice > 0, "Sale: PRICE_ZERO");
-        require(_tokenIds.length > 0, "Sale: NO_TOKENS");
+        require(_tokenIds.length > 0 && _tokenIds.length == _amounts.length, "Sale: NO_TOKENS");
         require(_endTime > block.timestamp, "Sale: INVALID_TIME");
 
         for (uint256 i; i < _tokenIds.length; i += 1) {
-            IERC721Upgradeable(_nftToken).safeTransferFrom(msg.sender, address(this), _tokenIds[i]);
+            IERC1155Upgradeable(_nftToken).safeTransferFrom(
+                msg.sender,
+                address(this),
+                _tokenIds[i],
+                _amounts[i],
+                ""
+            );
         }
 
-        _registerSaleRequest(msg.sender, _nftToken, _endTime, _minPrice, _tokenIds);
+        _registerSaleRequest(msg.sender, _nftToken, _endTime, _minPrice, _tokenIds, _amounts);
     }
 
     /** @notice update auction info
@@ -100,10 +104,12 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable, EIP712Upgrad
         require(_saleInfo.seller == msg.sender || msg.sender == operator, "Sale: NOT_SELLER");
 
         for (uint256 i; i < _saleInfo.tokenIds.length; i += 1) {
-            IERC721Upgradeable(_saleInfo.nftToken).safeTransferFrom(
+            IERC1155Upgradeable(_saleInfo.nftToken).safeTransferFrom(
                 address(this),
                 _saleInfo.seller,
-                _saleInfo.tokenIds[i]
+                _saleInfo.tokenIds[i],
+                _saleInfo.amounts[i],
+                ""
             );
         }
 
@@ -134,42 +140,38 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable, EIP712Upgrad
         address signer = ECDSA.recover(hash, v, r, s);
         require(signer == buyer, "Sale: INVALID_SIGNATURE");
 
-        address _buyer = buyer;
-        uint256 _price = price;
-        uint256 _saleId = saleId;
-
-        Treasury memory treasury;
-        if (_saleInfo.nftToken == pixNFT && IPIX(pixNFT).pixesInLand(_saleInfo.tokenIds)) {
-            treasury = landTreasury;
-        } else {
-            treasury = pixtTreasury;
-        }
-
-        uint256 fee = _price.decimalMul(treasury.fee);
-        uint256 burnFee = _price.decimalMul(treasury.burnFee);
-        IERC20Upgradeable(pixToken).safeTransferFrom(
-            _buyer,
-            _saleInfo.seller,
-            _price - fee - burnFee
-        );
-        if (fee > 0) {
-            IERC20Upgradeable(pixToken).safeTransferFrom(_buyer, treasury.treasury, fee);
-        }
-        if (burnFee > 0) {
-            if (burnHolder == address(0)) ERC20Burnable(pixToken).burnFrom(_buyer, burnFee);
-            else IERC20Upgradeable(pixToken).safeTransferFrom(_buyer, burnHolder, burnFee);
-        }
+        _acceptPaymentForSell(_saleInfo.seller, buyer, price);
 
         for (uint256 i; i < _saleInfo.tokenIds.length; i += 1) {
-            IERC721Upgradeable(_saleInfo.nftToken).safeTransferFrom(
+            IERC1155Upgradeable(_saleInfo.nftToken).safeTransferFrom(
                 address(this),
-                _buyer,
-                _saleInfo.tokenIds[i]
+                buyer,
+                _saleInfo.tokenIds[i],
+                _saleInfo.amounts[i],
+                ""
             );
         }
 
-        emit Purchased(_saleInfo.seller, _buyer, _saleId, _price);
-        delete saleInfo[_saleId];
+        emit Purchased(_saleInfo.seller, buyer, saleId, price);
+        delete saleInfo[saleId];
+    }
+
+    function _acceptPaymentForSell(
+        address seller,
+        address buyer,
+        uint256 price
+    ) private {
+        uint256 fee = price.decimalMul(treasury.fee);
+        uint256 burnFee = price.decimalMul(treasury.burnFee);
+        uint256 tradeAmount = price - fee - burnFee;
+        IERC20Upgradeable(pixToken).safeTransferFrom(buyer, seller, tradeAmount);
+        if (fee > 0) {
+            IERC20Upgradeable(pixToken).safeTransferFrom(buyer, treasury.treasury, fee);
+        }
+        if (burnFee > 0) {
+            if (burnHolder == address(0)) ERC20Burnable(pixToken).burnFrom(buyer, burnFee);
+            else IERC20Upgradeable(pixToken).safeTransferFrom(buyer, burnHolder, burnFee);
+        }
     }
 
     function setBurnHolder(address holder) external onlyOwner {
@@ -181,50 +183,13 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable, EIP712Upgrad
         operator = _operator;
     }
 
-    function setPixMerkleMinter(address _pixMerkleMinter) external onlyOwner {
-        pixMerkleMinter = IPIXMerkleMinter(_pixMerkleMinter);
-    }
-
-    function requestSaleWithHash(
-        uint256[] calldata _tokenIds,
-        uint64 _endTime,
-        uint256 _minPrice,
-        IPIX.PIXInfo[] memory info,
-        bytes32[] calldata merkleRoot,
-        bytes32[][] calldata merkleProofs
-    ) external onlyWhitelistedNFT(pixNFT) {
-        require(_minPrice > 0, "Sale: PRICE_ZERO");
-        require(info.length > 0, "Sale: NO_TOKENS");
-        require(_endTime > block.timestamp, "Sale: INVALID_TIME");
-
-        uint256[] memory mintedTokenIds = pixMerkleMinter.mintToNewOwnerInBatch(
-            address(this),
-            msg.sender,
-            info,
-            merkleRoot,
-            merkleProofs
-        );
-
-        uint256 tokenLength = _tokenIds.length;
-        uint256[] memory saleTokenIds = new uint256[](tokenLength + mintedTokenIds.length);
-
-        for (uint256 i; i < tokenLength; i += 1) {
-            saleTokenIds[i] = _tokenIds[i];
-            IERC721Upgradeable(pixNFT).safeTransferFrom(msg.sender, address(this), saleTokenIds[i]);
-        }
-        for (uint256 i = 0; i < mintedTokenIds.length; i += 1) {
-            saleTokenIds[i + tokenLength] = mintedTokenIds[i];
-        }
-
-        _registerSaleRequest(msg.sender, pixNFT, _endTime, _minPrice, saleTokenIds);
-    }
-
     function _registerSaleRequest(
         address seller,
         address nftToken,
         uint64 endTime,
         uint256 minPrice,
-        uint256[] memory tokenIds
+        uint256[] memory tokenIds,
+        uint256[] memory amounts
     ) private {
         lastSaleId += 1;
         saleInfo[lastSaleId] = AuctionSaleInfo({
@@ -232,9 +197,10 @@ contract PIXAuctionSale is PIXBaseSale, ReentrancyGuardUpgradeable, EIP712Upgrad
             nftToken: nftToken,
             endTime: endTime,
             minPrice: minPrice,
-            tokenIds: tokenIds
+            tokenIds: tokenIds,
+            amounts: amounts
         });
 
-        emit SaleRequested(seller, lastSaleId, nftToken, endTime, tokenIds, minPrice);
+        emit SaleRequested(seller, lastSaleId, nftToken, endTime, tokenIds, amounts, minPrice);
     }
 }
