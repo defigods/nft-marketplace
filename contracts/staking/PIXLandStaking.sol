@@ -10,12 +10,12 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 contract PIXLandStaking is OwnableUpgradeable, ERC1155HolderUpgradeable {
     using SafeMathUpgradeable for uint256;
 
-    event StakedPixLandNFT(uint256 tokenId, address indexed recipient);
-    event WithdrawnPixLandNFT(uint256 tokenId, address indexed recipient);
-    event ClaimPixLandNFT(uint256 pending, address indexed recipient);
+    event StakedPixLandNFT(address indexed account, uint256 tokenId, uint256 amount);
+    event WithdrawnPixLandNFT(address indexed account, uint256 tokenId, uint256 amount);
+    event ClaimPixLandNFT(address indexed account, uint256 pending);
 
     struct UserInfo {
-        mapping(uint256 => bool) isStaked;
+        mapping(uint256 => uint256) stakedAmount;
         uint256 rewardDebt;
         uint256 tiers;
     }
@@ -85,17 +85,16 @@ contract PIXLandStaking is OwnableUpgradeable, ERC1155HolderUpgradeable {
         // Update User Info
         user.tiers = user.tiers.add(tiers);
         user.rewardDebt = user.tiers.mul(accPixLandNFTPerShare).div(ACC_PIX_PRECISION);
-        user.isStaked[_tokenId] = true;
+        user.stakedAmount[_tokenId] += _amount;
 
-        emit StakedPixLandNFT(_tokenId, address(this));
+        emit StakedPixLandNFT(msg.sender, _tokenId, _amount);
     }
 
-    function unstake(uint256 _tokenId, uint256 _amount) external updateRewardPool {
+    function withdraw(uint256 _tokenId, uint256 _amount) external updateRewardPool {
         require(_tokenId > 0, "LandStaking: INVALID_TOKEN_ID");
         require(_amount > 0, "LandStaking: INVALID_AMOUNT");
         UserInfo storage user = userInfo[msg.sender];
         require(user.tiers > 0, "LandStaking: NO_WITHDRAWALS");
-        require(user.isStaked[_tokenId], "LandStaking: NO_STAKES");
 
         uint256 pending = user.tiers.mul(accPixLandNFTPerShare).div(ACC_PIX_PRECISION).sub(
             user.rewardDebt
@@ -113,9 +112,9 @@ contract PIXLandStaking is OwnableUpgradeable, ERC1155HolderUpgradeable {
         // Update UserInfo
         user.tiers = user.tiers.sub(tierInfo[_tokenId]);
         user.rewardDebt = user.tiers.mul(accPixLandNFTPerShare).div(ACC_PIX_PRECISION);
-        user.isStaked[_tokenId] = false;
+        user.stakedAmount[_tokenId] -= _amount;
 
-        emit WithdrawnPixLandNFT(_tokenId, msg.sender);
+        emit WithdrawnPixLandNFT(msg.sender, _tokenId, _amount);
     }
 
     function claim() external updateRewardPool {
@@ -127,7 +126,7 @@ contract PIXLandStaking is OwnableUpgradeable, ERC1155HolderUpgradeable {
         );
         if (pending > 0) {
             rewardToken.transfer(msg.sender, pending);
-            emit ClaimPixLandNFT(pending, msg.sender);
+            emit ClaimPixLandNFT(msg.sender, pending);
         }
         // Update UserInfo
         user.rewardDebt = user.tiers.mul(accPixLandNFTPerShare).div(ACC_PIX_PRECISION);
@@ -139,7 +138,6 @@ contract PIXLandStaking is OwnableUpgradeable, ERC1155HolderUpgradeable {
 
     function setTierInfo(uint256 _tokenId, uint256 _tiers) external onlyOwner {
         require(_tiers > 0, "LandStaking: INVALID_TIERS");
-
         tierInfo[_tokenId] = _tiers;
     }
 
