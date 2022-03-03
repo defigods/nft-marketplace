@@ -4,10 +4,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "../interfaces/IPIX.sol";
 
-contract PIXStaking is OwnableUpgradeable {
+contract PIXStaking is OwnableUpgradeable, ERC721HolderUpgradeable {
     using SafeMathUpgradeable for uint256;
 
     event StakedPixNFT(uint256 tokenId, address indexed recipient);
@@ -54,6 +55,7 @@ contract PIXStaking is OwnableUpgradeable {
         pixNFT = _pixNFT;
         rewardPerBlock = _rewardPerBlock;
         __Ownable_init();
+        __ERC721Holder_init();
     }
 
     function stake(uint256 _tokenId) external updateRewardPool {
@@ -72,7 +74,7 @@ contract PIXStaking is OwnableUpgradeable {
             rewardToken.transfer(msg.sender, pending);
         }
 
-        IERC721Upgradeable(pixNFT).transferFrom(msg.sender, address(this), _tokenId);
+        IERC721Upgradeable(pixNFT).safeTransferFrom(msg.sender, address(this), _tokenId);
         totalTiers = totalTiers.add(tiers);
 
         // Update User Info
@@ -94,7 +96,7 @@ contract PIXStaking is OwnableUpgradeable {
         );
         rewardToken.transfer(msg.sender, pending);
 
-        IERC721Upgradeable(pixNFT).transferFrom(address(this), msg.sender, _tokenId);
+        IERC721Upgradeable(pixNFT).safeTransferFrom(address(this), msg.sender, _tokenId);
         totalTiers = totalTiers.sub(tierInfo[_tokenId]);
         // Update UserInfo
         user.tiers = user.tiers.sub(tierInfo[_tokenId]);

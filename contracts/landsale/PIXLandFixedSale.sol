@@ -54,8 +54,8 @@ contract PIXLandFixedSale is PIXLandBaseSale {
     bytes32 private constant OFFER_MESSAGE =
         keccak256("OfferMessage(address bidder,uint256 price,uint256 saleId,uint256 nonce)");
 
-    function initialize(address _pixt, address _pix) external initializer {
-        __PIXLandBaseSale_init(_pixt, _pix);
+    function initialize(address _pixt, address _pixLand) external initializer {
+        __PIXLandBaseSale_init(_pixt, _pixLand);
     }
 
     /** @notice request sale for fixed price

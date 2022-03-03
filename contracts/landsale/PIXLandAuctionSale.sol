@@ -49,10 +49,9 @@ contract PIXLandAuctionSale is PIXLandBaseSale, ReentrancyGuardUpgradeable {
     address public burnHolder;
     address public operator;
 
-    function initialize(address _pixt, address _pix) external initializer {
-        __PIXLandBaseSale_init(_pixt, _pix);
+    function initialize(address _pixt, address _pixLand) external initializer {
+        __PIXLandBaseSale_init(_pixt, _pixLand);
         __ReentrancyGuard_init();
-        __EIP712_init("PlanetIX", "1");
     }
 
     /** @notice request sale for fixed price
