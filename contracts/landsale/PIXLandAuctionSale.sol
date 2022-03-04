@@ -68,7 +68,10 @@ contract PIXLandAuctionSale is PIXLandBaseSale, ReentrancyGuardUpgradeable {
         uint256 _minPrice
     ) external onlyWhitelistedNFT(_nftToken) {
         require(_minPrice > 0, "Sale: PRICE_ZERO");
-        require(_tokenIds.length > 0 && _tokenIds.length == _amounts.length, "Sale: NO_TOKENS");
+        require(
+            _tokenIds.length > 0 && _tokenIds.length == _amounts.length,
+            "Sale: INVALID_ARGUMENTS"
+        );
         require(_endTime > block.timestamp, "Sale: INVALID_TIME");
 
         for (uint256 i; i < _tokenIds.length; i += 1) {

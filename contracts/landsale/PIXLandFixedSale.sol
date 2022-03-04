@@ -70,7 +70,10 @@ contract PIXLandFixedSale is PIXLandBaseSale {
         uint256 _price
     ) external onlyWhitelistedNFT(_nftToken) {
         require(_price > 0, "Sale: PRICE_ZERO");
-        require(_tokenIds.length > 0, "Sale: NO_TOKENS");
+        require(
+            _tokenIds.length > 0 && _tokenIds.length == _amounts.length,
+            "Sale: INVALID_ARGUMENTS"
+        );
 
         for (uint256 i; i < _tokenIds.length; i += 1) {
             IERC1155Upgradeable(_nftToken).safeTransferFrom(
