@@ -14,6 +14,7 @@ describe('PIXStakingLottery', function () {
   let pixStaking: Contract;
 
   const rewardPerBlock = BigNumber.from(10);
+  const period = BigNumber.from(1000);
 
   beforeEach(async function () {
     [owner, alice, bob] = await ethers.getSigners();
@@ -32,6 +33,7 @@ describe('PIXStakingLottery', function () {
       pixToken.address,
       pixNFT.address,
       rewardPerBlock,
+      period,
     ]);
 
     await pixNFT.setTrader(pixStaking.address, true);

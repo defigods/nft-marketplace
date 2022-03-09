@@ -107,12 +107,13 @@ contract PIXStakingLottery is
 
         UserInfo storage user = userInfo[_winner];
         require(user.tiers > 0, "SetReward: INV_WINNER");
-        lastUpdateBlock = block.timestamp;
+
         uint256 pending = _calculateReward();
         require(pending > 0, "setReward: no tokens to set");
         if (pending > 0) {
             earned[_winner] += pending;
         }
+        lastUpdateBlock = block.timestamp;
     }
 
     function setRewardPerBlock(uint256 _amount) external onlyOwner {

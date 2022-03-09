@@ -8,6 +8,7 @@ const getCurrentTime = async () => {
 };
 
 const rewardPerBlock = BigNumber.from(10);
+const period = BigNumber.from(1000);
 
 describe('PIXTStakingLottery', function () {
   let owner: Signer;
@@ -37,7 +38,11 @@ describe('PIXTStakingLottery', function () {
     pixt = await PIXTFactory.deploy();
 
     const PIXTStakingFactory = await ethers.getContractFactory('PIXTStakingLottery');
-    pixtStaking = await upgrades.deployProxy(PIXTStakingFactory, [pixt.address]);
+    pixtStaking = await upgrades.deployProxy(PIXTStakingFactory, [
+      pixt.address,
+      rewardPerBlock,
+      period,
+    ]);
 
     aliceStaking = pixtStaking.connect(alice);
     bobStaking = pixtStaking.connect(bob);

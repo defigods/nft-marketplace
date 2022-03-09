@@ -88,12 +88,12 @@ contract PIXTStakingLottery is OwnableUpgradeable {
         require(block.timestamp - lastUpdateBlock >= period, "SetWinner: Already set winner");
 
         require(stakedAmounts[_winner] > 0, "SetReward: INV_WINNER");
-        lastUpdateBlock = block.timestamp;
         uint256 pending = _calculateReward();
         require(pending > 0, "setReward: no tokens to set");
         if (pending > 0) {
             earned[_winner] += pending;
         }
+        lastUpdateBlock = block.timestamp;
     }
 
     function _calculateReward() internal view returns (uint256) {
