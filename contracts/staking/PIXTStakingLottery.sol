@@ -20,15 +20,21 @@ contract PIXTStakingLottery is OwnableUpgradeable {
 
     uint256 public lastUpdateBlock;
     uint256 public rewardPerBlock;
-    uint256 public rewardPerTokenStored;
+    uint256 public period;
 
     event Staked(address indexed user, uint256 amount);
     event Unstaked(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
 
-    function initialize(address token) external initializer {
+    function initialize(
+        address token,
+        uint256 _rewardPerBlock,
+        uint256 _period
+    ) external initializer {
         require(token != address(0), "Staking: INVALID_PIXT");
         pixToken = IERC20Upgradeable(token);
+        rewardPerBlock = _rewardPerBlock;
+        period = _period;
         __Ownable_init();
     }
 
@@ -37,7 +43,7 @@ contract PIXTStakingLottery is OwnableUpgradeable {
      * @param amount staking token amount(>0) to stakes
      * @notice emit {Staked} event
      */
-    function stake(uint256 amount) public {
+    function stake(uint256 amount) external {
         require(amount > 0, "Staking: STAKE_ZERO");
         totalStaked += amount;
         stakedAmounts[msg.sender] += amount;
@@ -57,8 +63,9 @@ contract PIXTStakingLottery is OwnableUpgradeable {
      * @param amount staking token amount(>0) to unstake
      * @notice emit {Unstaked} event
      */
-    function unstake(uint256 amount) public {
+    function unstake(uint256 amount) external {
         require(amount > 0, "Staking: UNSTAKE_ZERO");
+        require(stakedAmounts[msg.sender] >= amount, "Staking: No Tokens to Withdraw");
         totalStaked -= amount;
         stakedAmounts[msg.sender] -= amount;
         pixToken.safeTransfer(msg.sender, amount);
@@ -78,6 +85,10 @@ contract PIXTStakingLottery is OwnableUpgradeable {
     }
 
     function setReward(address _winner) external onlyOwner {
+        require(block.timestamp - lastUpdateBlock >= period, "SetWinner: Already set winner");
+
+        require(stakedAmounts[_winner] > 0, "SetReward: INV_WINNER");
+        lastUpdateBlock = block.timestamp;
         uint256 pending = _calculateReward();
         require(pending > 0, "setReward: no tokens to set");
         if (pending > 0) {

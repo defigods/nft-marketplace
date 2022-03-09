@@ -97,6 +97,7 @@ contract PIXTStaking is OwnableUpgradeable {
      */
     function unstake(uint256 amount) public updateReward(msg.sender) {
         require(amount > 0, "Staking: UNSTAKE_ZERO");
+        require(stakedAmounts[msg.sender] >= 0, "Staking: No Tokens to Withdraw");
         totalStaked -= amount;
         stakedAmounts[msg.sender] -= amount;
         pixToken.safeTransfer(msg.sender, amount);
