@@ -110,9 +110,7 @@ contract PIXStakingLottery is
 
         uint256 pending = _calculateReward();
         require(pending > 0, "setReward: no tokens to set");
-        if (pending > 0) {
-            earned[_winner] += pending;
-        }
+        earned[_winner] += pending;
         lastUpdateBlock = block.timestamp;
     }
 
