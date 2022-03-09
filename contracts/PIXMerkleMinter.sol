@@ -109,4 +109,20 @@ contract PIXMerkleMinter is OwnableUpgradeable {
 
         return newIds;
     }
+
+    function disableProof(
+        address to,
+        IPIX.PIXInfo memory info,
+        bytes32 merkleRoot,
+        bytes32[] calldata merkleProofs
+    ) external onlyOwner {
+        require(merkleRoots[merkleRoot], "Pix: invalid root");
+        bytes32 leaf = keccak256(abi.encode(to, info.pixId, info.category, info.size));
+        require(!leafUsed[leaf], "Pix: already minted");
+        require(
+            MerkleProofUpgradeable.verify(merkleProofs, merkleRoot, leaf),
+            "Pix: invalid proof"
+        );
+        leafUsed[leaf] = true;
+    }
 }
