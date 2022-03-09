@@ -135,7 +135,6 @@ contract PIXLandAuctionSale is PIXLandBaseSale, ReentrancyGuardUpgradeable {
         bytes32 s
     ) external nonReentrant {
         AuctionSaleInfo storage _saleInfo = saleInfo[saleId];
-        require(_saleInfo.endTime <= block.timestamp, "!Sale: ALREADY_ENDED");
 
         uint256 nonce = nonces[buyer][saleId]++;
         bytes32 structHash = keccak256(abi.encode(BID_MESSAGE, buyer, price, saleId, nonce));
