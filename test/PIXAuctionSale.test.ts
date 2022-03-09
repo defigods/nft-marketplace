@@ -207,14 +207,6 @@ describe('PIXAuctionSale', function () {
       endTime = (await getCurrentTime()).add(auctionPeriod);
     });
 
-    it('revert if not ended yet', async () => {
-      const data = await getDigest(auctionSale, bob, minPrice, BigNumber.from(tokenId));
-      await auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, minPrice);
-      await expect(
-        auctionSale.endAuction(await bob.getAddress(), minPrice, tokenId, data.v, data.r, data.s),
-      ).to.revertedWith('!Sale: ALREADY_ENDED');
-    });
-
     it('revert if invalid signature', async () => {
       const data = await getDigest(auctionSale, alice, minPrice, BigNumber.from(tokenId));
       await auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, minPrice);

@@ -27,8 +27,8 @@ async function main() {
         break;
       }
       recipients.push(data[index]['wallet_address']);
-      amounts.push(web3.utils.toWei(data[index]['PIX'], 'ether'));
-      value += parseInt(data[index]['PIX']);
+      amounts.push(web3.utils.toWei(data[index]['IXT'], 'ether'));
+      value += parseInt(data[index]['IXT']);
       index++;
     }
 

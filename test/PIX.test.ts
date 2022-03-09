@@ -73,7 +73,7 @@ describe('PIX', function () {
     });
 
     it('should withdraw erc20 tokens to owner address', async () => {
-      await pixNFT.connect(alice).requestMint(usdc.address, 1, 1, 1);
+      await pixNFT.connect(alice).requestBatchMint(usdc.address, 1, 1, 1, 1);
       expect(await usdc.balanceOf(pixNFT.address)).to.equal(utils.parseUnits('5', 6));
       await pixNFT.withdraw([usdc.address]);
       expect(await usdc.balanceOf(pixNFT.address)).to.equal(0);
@@ -107,10 +107,6 @@ describe('PIX', function () {
       await expect(pixNFT.connect(alice).setPackPrice(1, price)).to.revertedWith(
         'Ownable: caller is not the owner',
       );
-    });
-
-    it('revert if mode is invalid', async () => {
-      await expect(pixNFT.setPackPrice(0, 0)).to.revertedWith('Pix: INVALID_PRICE_MODE');
     });
 
     it('revert if price is zero', async () => {
@@ -214,21 +210,21 @@ describe('PIX', function () {
     });
   });
 
-  describe('#requestMint', function () {
+  describe('#requestBatchMint', function () {
     it('revert if payment token is not approved', async function () {
-      await expect(pixNFT.connect(alice).requestMint(ZeroAddress, 1, 1, 1)).to.revertedWith(
+      await expect(pixNFT.connect(alice).requestBatchMint(ZeroAddress, 1, 1, 1, 1)).to.revertedWith(
         'Pix: TOKEN_NOT_APPROVED',
       );
     });
 
     it('revert if mode is invalid', async function () {
-      await expect(pixNFT.connect(alice).requestMint(pixToken.address, 1, 1, 0)).to.revertedWith(
-        'Pix: INVALID_PRICE_MODE',
-      );
+      await expect(
+        pixNFT.connect(alice).requestBatchMint(pixToken.address, 1, 1, 0, 1),
+      ).to.revertedWith('Pix: INVALID_PRICE_MODE');
     });
 
     it('should request mint', async function () {
-      const tx = await pixNFT.connect(alice).requestMint(usdc.address, 1, 1, 1);
+      const tx = await pixNFT.connect(alice).requestBatchMint(usdc.address, 1, 1, 1, 1);
       expect(tx).to.emit(pixNFT, 'Requested').withArgs(1, 1, 1, 1, 1);
       expect((await pixNFT.packRequests(await alice.getAddress()))[1]).to.equal(1);
       expect(await usdc.balanceOf(pixNFT.address)).equal(price);
@@ -243,14 +239,14 @@ describe('PIX', function () {
     });
 
     it('revert if invalid parameters', async function () {
-      await pixNFT.connect(alice).requestMint(usdc.address, 1, 1, 1);
+      await pixNFT.connect(alice).requestBatchMint(usdc.address, 1, 1, 1, 1);
       await expect(pixNFT.mintTo(await alice.getAddress(), [1], [])).to.revertedWith(
         'Pix: INVALID_LENGTH',
       );
     });
 
     it('should mint new pixes by moderator', async () => {
-      await pixNFT.connect(alice).requestMint(usdc.address, 1, 1, 1);
+      await pixNFT.connect(alice).requestBatchMint(usdc.address, 1, 1, 1, 1);
 
       const pixIds = [];
       const categories = [];
@@ -271,7 +267,7 @@ describe('PIX', function () {
     });
 
     it('should complete request', async () => {
-      await pixNFT.connect(alice).requestMint(usdc.address, 1, 1, 1);
+      await pixNFT.connect(alice).requestBatchMint(usdc.address, 1, 1, 1, 1);
       await pixNFT.completeRequest(await alice.getAddress());
       expect(await pixNFT.pendingPackType(await alice.getAddress())).to.equal(0);
     });
