@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IFractionalSettings.sol";
 
-contract Settings is Ownable, IFractionalSettings {
+contract FractionalSettings is Ownable, IFractionalSettings {
     /// @notice the maximum auction length
     uint256 public override maxAuctionLength;
 
