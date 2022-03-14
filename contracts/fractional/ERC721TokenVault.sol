@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IFractionalSettings.sol";
 import "../interfaces/IWETH.sol";
 
-contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
+contract ERC721TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     using Address for address;
 
     /// -----------------------------------
