@@ -1,9 +1,8 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
-import { Signer, Contract, BigNumber } from 'ethers';
-import { PIXCategory, PIXSize } from './utils';
+import { Signer, Contract, BigNumber, constants } from 'ethers';
+import { PIXCategory, PIXSize, increaseTime } from './utils';
 import { time } from '@openzeppelin/test-helpers';
-
 describe('PIXStaking', function () {
   let owner: Signer;
   let alice: Signer;
@@ -28,30 +27,34 @@ describe('PIXStaking', function () {
     pixNFT = await upgrades.deployProxy(PIXFactory, [pixToken.address, usdc.address]);
 
     const PIXStakingFactory = await ethers.getContractFactory('PIXStaking');
-    pixStaking = await upgrades.deployProxy(PIXStakingFactory, [
-      pixToken.address,
-      pixNFT.address,
-      rewardPerBlock,
-    ]);
+    pixStaking = await upgrades.deployProxy(PIXStakingFactory, [pixToken.address, pixNFT.address]);
 
     await pixNFT.setTrader(pixStaking.address, true);
     await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Area]);
     await pixToken.transfer(pixStaking.address, ethers.utils.parseEther('1000000'));
     await pixToken.transfer(await alice.getAddress(), BigNumber.from(10000));
     await pixToken.transfer(await bob.getAddress(), BigNumber.from(10000));
+
+    await pixStaking.connect(owner).setRewardDistributor(await owner.getAddress());
+    await pixStaking.connect(owner).notifyRewardAmount(BigNumber.from(864000));
   });
 
-  describe('setRewardPerBlock', () => {
+  describe('setRewardDistributor', () => {
     it('it should set reward amount correctly', async () => {
-      await pixStaking.connect(owner).setRewardPerBlock(ethers.utils.parseEther('2.0'));
-      expect(await pixStaking.rewardPerBlock()).to.equal(ethers.utils.parseEther('2.0'));
+      await pixStaking.connect(owner).setRewardDistributor(await alice.getAddress());
+      expect(await pixStaking.rewardDistributor()).to.equal(await alice.getAddress());
     });
-  });
 
-  describe('setTierInfo', () => {
-    it('it should set tier amount correctly', async () => {
-      await pixStaking.setTierInfo('1', '2');
-      expect(await pixStaking.tierInfo(1)).to.equal('2');
+    it('it should revert if the caller is not a owner', async () => {
+      await expect(
+        pixStaking.connect(alice).setRewardDistributor(await bob.getAddress()),
+      ).to.revertedWith('Ownable: caller is not the owner');
+    });
+
+    it('it should revert if the distributor address is zero address', async () => {
+      await expect(
+        pixStaking.connect(owner).setRewardDistributor(constants.AddressZero),
+      ).to.revertedWith('Staking: INVALID_DISTRIBUTOR');
     });
   });
 
@@ -81,24 +84,24 @@ describe('PIXStaking', function () {
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
 
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
+      await increaseTime(BigNumber.from(50));
+    });
+
+    it('should return correct rewards amount', async function () {
+      expect(await pixStaking.earned(await alice.getAddress())).to.closeTo(
+        BigNumber.from(50),
+        1,
+        '',
+      );
     });
 
     it('should provide correct rewards', async function () {
       await pixStaking.connect(alice).claim();
       expect(await pixToken.balanceOf(await alice.getAddress())).to.closeTo(
         BigNumber.from(10050),
-        10,
+        1,
         '',
       );
-    });
-
-    it('should revert if didnt stake', async function () {
-      await expect(pixStaking.connect(bob).claim()).to.revertedWith('Staking: NO_WITHDRAWALS');
     });
   });
 
@@ -108,19 +111,13 @@ describe('PIXStaking', function () {
       await pixStaking.setTierInfo('1', '2');
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
-
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
     });
 
     it('should provide correct rewards', async function () {
       await pixStaking.connect(alice).withdraw(1);
       expect(await pixToken.balanceOf(await alice.getAddress())).to.closeTo(
-        BigNumber.from(10050),
-        10,
+        BigNumber.from(10000),
+        1,
         '',
       );
     });
