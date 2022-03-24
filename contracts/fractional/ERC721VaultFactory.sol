@@ -22,7 +22,7 @@ contract ERC721VaultFactory is Ownable, Pausable {
     /// @notice the TokenVault logic contract
     address public immutable logic;
 
-    event Mint(address indexed token, uint256 id, uint256 price, address vault, uint256 vaultId);
+    event Mint(address[] tokens, uint256[] ids, uint256 price, address vault, uint256 vaultId);
 
     constructor(address _settings) {
         settings = _settings;
@@ -32,24 +32,24 @@ contract ERC721VaultFactory is Ownable, Pausable {
     /// @notice the function to mint a new vault
     /// @param _name the desired name of the vault
     /// @param _symbol the desired sumbol of the vault
-    /// @param _token the ERC721 token address fo the NFT
-    /// @param _id the uint256 ID of the token
+    /// @param _tokens the ERC721 token addresses fo the NFT
+    /// @param _ids the uint256 IDs of the token
     /// @param _listPrice the initial price of the NFT
     /// @return the ID of the vault
     function mint(
         string memory _name,
         string memory _symbol,
-        address _token,
-        uint256 _id,
+        address[] memory _tokens,
+        uint256[] memory _ids,
         uint256 _supply,
         uint256 _listPrice,
         uint256 _fee
     ) external whenNotPaused returns (uint256) {
         bytes memory _initializationCalldata = abi.encodeWithSignature(
-            "initialize(address,address,uint256,uint256,uint256,uint256,string,string)",
+            "initialize(address,address[],uint256[],uint256,uint256,uint256,string,string)",
             msg.sender,
-            _token,
-            _id,
+            _tokens,
+            _ids,
             _supply,
             _listPrice,
             _fee,
@@ -59,9 +59,12 @@ contract ERC721VaultFactory is Ownable, Pausable {
 
         address vault = address(new InitializedProxy(logic, _initializationCalldata));
 
-        emit Mint(_token, _id, _listPrice, vault, vaultCount);
+        emit Mint(_tokens, _ids, _listPrice, vault, vaultCount);
 
-        IERC721(_token).safeTransferFrom(msg.sender, vault, _id);
+        uint256 length = _tokens.length;
+        for (uint256 i = 0; i < length; i++) {
+            IERC721(_tokens[i]).transferFrom(msg.sender, vault, _ids[i]);
+        }
 
         vaults[vaultCount] = vault;
         vaultCount++;

@@ -23,11 +23,11 @@ contract ERC721TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     /// -------- TOKEN INFORMATION --------
     /// -----------------------------------
 
-    /// @notice the ERC721 token address of the vault's token
-    address public token;
+    /// @notice the ERC721 token addresses of the vault's token
+    address[] public tokens;
 
-    /// @notice the ERC721 token ID of the vault's token
-    uint256 public id;
+    /// @notice the ERC721 token IDs of the vault's token
+    uint256[] public ids;
 
     /// -------------------------------------
     /// -------- AUCTION INFORMATION --------
@@ -116,20 +116,22 @@ contract ERC721TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
 
     function initialize(
         address _curator,
-        address _token,
-        uint256 _id,
+        address[] memory _tokens,
+        uint256[] memory _ids,
         uint256 _supply,
         uint256 _listPrice,
         uint256 _fee,
         string memory _name,
         string memory _symbol
     ) external initializer {
+        require(_tokens.length == _ids.length, "init:invalid tokens and ids");
+
         // initialize inherited contracts
         __ERC20_init(_name, _symbol);
         __ERC721Holder_init();
         // set storage variables
-        token = _token;
-        id = _id;
+        tokens = _tokens;
+        ids = _ids;
         auctionLength = 3 days;
         curator = _curator;
         fee = _fee;
@@ -395,7 +397,10 @@ contract ERC721TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
         _claimFees();
 
         // transfer erc721 to winner
-        IERC721(token).transferFrom(address(this), winning, id);
+        uint256 length = tokens.length;
+        for (uint256 i = 0; i < length; i++) {
+            IERC721(tokens[i]).transferFrom(address(this), winning, ids[i]);
+        }
 
         auctionState = State.ended;
 
@@ -408,7 +413,10 @@ contract ERC721TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
         _burn(msg.sender, totalSupply());
 
         // transfer erc721 to redeemer
-        IERC721(token).transferFrom(address(this), msg.sender, id);
+        uint256 length = tokens.length;
+        for (uint256 i = 0; i < length; i++) {
+            IERC721(tokens[i]).transferFrom(address(this), msg.sender, ids[i]);
+        }
 
         auctionState = State.redeemed;
 
