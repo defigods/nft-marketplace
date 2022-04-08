@@ -2,14 +2,16 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155SupplyUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "./interfaces/IPIX.sol";
 
-contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
-    using StringsUpgradeable for uint256;
-
-    event LandmarkMinted(address indexed account, uint256 indexed tokenId, PIXCategory category);
+contract PIXLandmark is ERC721EnumerableUpgradeable, OwnableUpgradeable {
+    event LandmarkMinted(
+        address indexed account,
+        uint256 indexed tokenId,
+        PIXCategory category,
+        uint256 indexed landmarkType
+    );
 
     enum PIXCategory {
         Legendary,
@@ -19,13 +21,18 @@ contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
         Outliers
     }
 
-    string private _baseURI;
+    struct LandmarkInfo {
+        PIXCategory category;
+        uint256 landmarkType;
+    }
+
+    string private _baseURIExtended;
     IPIX public pixNFT;
 
     mapping(address => bool) public moderators;
-    mapping(uint256 => PIXCategory) public categories;
+    mapping(uint256 => LandmarkInfo) public landInfos;
     mapping(uint256 => bool) public pixesInLandStatus;
-    mapping(uint256 => uint256[]) public pixesInLandmark;
+    mapping(uint256 => uint256[]) public pixesInLandType;
     uint256 public lastTokenId;
 
     modifier onlyMod() {
@@ -33,13 +40,11 @@ contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
         _;
     }
 
-    function initialize(address pix, string memory uri_) external initializer {
+    function initialize(address pix) external initializer {
         require(pix != address(0), "Landmark: INVALID_PIX");
-        require(bytes(uri_).length > 0, "Landmark: INVALID_URI");
-        __ERC1155Supply_init();
-        __ERC1155_init(uri_);
+        __ERC721Enumerable_init();
+        __ERC721_init("PIX Landmark", "PIXLand");
         __Ownable_init();
-        _baseURI = uri_;
         pixNFT = IPIX(pix);
         moderators[msg.sender] = true;
     }
@@ -49,33 +54,39 @@ contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
         moderators[moderator] = approved;
     }
 
-    function addPixesInLandmark(uint256 id, uint256[] calldata pixIds) external onlyMod {
-        require(id > 0, "Landmark: INVALID_ID");
+    function addLandmarkType(uint256 landmarkType, uint256[] calldata pixIds) external onlyMod {
+        require(landmarkType > 0, "Landmark: INVALID_TYPE");
 
         for (uint256 i; i < pixIds.length; i += 1) {
             pixesInLandStatus[pixIds[i]] = true;
-            pixesInLandmark[id].push(pixIds[i]);
+            pixesInLandType[landmarkType].push(pixIds[i]);
             pixNFT.setPIXInLandStatus(pixIds);
         }
     }
 
-    function safeMint(
-        address to,
-        uint256 id,
-        uint256 amount,
-        PIXCategory category
-    ) external onlyMod {
-        require(id > 0, "Landmark: INVALID_ID");
-        require(amount > 0, "Landmark: INVALID_AMOUNT");
-        _mint(to, id, amount, "");
-        categories[id] = category;
+    function safeMint(address to, LandmarkInfo memory info) external onlyMod {
+        require(info.landmarkType > 0, "Landmark: INVALID_TYPE");
+
+        lastTokenId += 1;
+        _safeMint(to, lastTokenId);
+        landInfos[lastTokenId] = info;
+        emit LandmarkMinted(to, lastTokenId, info.category, info.landmarkType);
     }
 
-    function setBaseURI(string memory uri_) external onlyOwner {
-        _baseURI = uri_;
+    function safeBurn(uint256 tokenId) external {
+        address owner = ownerOf(tokenId);
+        require(
+            msg.sender == owner || isApprovedForAll(owner, msg.sender),
+            "Landmark: NON_APPROVED"
+        );
+        _burn(tokenId);
     }
 
-    function uri(uint256 id) public view override returns (string memory) {
-        return string(abi.encodePacked(_baseURI, id.toString()));
+    function _baseURI() internal view override returns (string memory) {
+        return _baseURIExtended;
+    }
+
+    function setBaseURI(string memory baseURI_) external onlyOwner {
+        _baseURIExtended = baseURI_;
     }
 }

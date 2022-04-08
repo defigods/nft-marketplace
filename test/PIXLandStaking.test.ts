@@ -10,6 +10,7 @@ describe('PIXLandStaking', function () {
   let bob: Signer;
   let pixToken: Contract;
   let usdc: Contract;
+  let pixNFT: Contract;
   let pixLandmark: Contract;
   let pixStaking: Contract;
 
@@ -24,8 +25,11 @@ describe('PIXLandStaking', function () {
     const MockTokenFactory = await ethers.getContractFactory('MockToken');
     usdc = await MockTokenFactory.deploy('Mock USDC', 'USDC', 6);
 
+    const PIXFactory = await ethers.getContractFactory('PIX');
+    pixNFT = await upgrades.deployProxy(PIXFactory, [pixToken.address, usdc.address]);
+
     const PIXLandmarkFactory = await ethers.getContractFactory('PIXLandmark');
-    pixLandmark = await upgrades.deployProxy(PIXLandmarkFactory, [pixToken.address, usdc.address]);
+    pixLandmark = await upgrades.deployProxy(PIXLandmarkFactory, [pixNFT.address]);
 
     const PIXLandStakingFactory = await ethers.getContractFactory('PIXLandStaking');
     pixStaking = await upgrades.deployProxy(PIXLandStakingFactory, [
@@ -34,7 +38,7 @@ describe('PIXLandStaking', function () {
       rewardPerBlock,
     ]);
 
-    await pixLandmark.safeMint(await alice.getAddress(), 1, 1, PIXCategory.Common);
+    await pixLandmark.safeMint(await alice.getAddress(), [1, 1, PIXCategory.Common]);
     await pixToken.transfer(pixStaking.address, ethers.utils.parseEther('1000000'));
     await pixToken.transfer(await alice.getAddress(), BigNumber.from(10000));
     await pixToken.transfer(await bob.getAddress(), BigNumber.from(10000));
@@ -56,19 +60,17 @@ describe('PIXLandStaking', function () {
 
   describe('stake', () => {
     it('revert if nftId is zero', async function () {
-      await expect(pixStaking.connect(alice).stake(0, 1)).to.revertedWith(
-        'Staking: INVALID_TOKEN_ID',
-      );
+      await expect(pixStaking.connect(alice).stake(0)).to.revertedWith('Staking: INVALID_TOKEN_ID');
     });
 
     it("revert if tier didn't set", async function () {
-      await expect(pixStaking.connect(alice).stake(1, 1)).to.revertedWith('Staking: INVALID_TIER');
+      await expect(pixStaking.connect(alice).stake(1)).to.revertedWith('Staking: INVALID_TIER');
     });
 
     it('should stake an NFT', async function () {
       await pixStaking.setTierInfo(1, 2);
       await pixLandmark.connect(alice).setApprovalForAll(pixStaking.address, true);
-      await pixStaking.connect(alice).stake(1, 1);
+      await pixStaking.connect(alice).stake(1);
       expect(await pixStaking.totalTiers()).to.equal(2);
     });
   });
@@ -78,7 +80,7 @@ describe('PIXLandStaking', function () {
       // Stake an NFT from Alice
       await pixStaking.setTierInfo(1, 2);
       await pixLandmark.connect(alice).setApprovalForAll(pixStaking.address, true);
-      await pixStaking.connect(alice).stake(1, 1);
+      await pixStaking.connect(alice).stake(1);
 
       await time.advanceBlock();
       await time.advanceBlock();
@@ -106,7 +108,7 @@ describe('PIXLandStaking', function () {
       // Stake an NFT from Alice
       await pixStaking.setTierInfo(1, 2);
       await pixLandmark.connect(alice).setApprovalForAll(pixStaking.address, true);
-      await pixStaking.connect(alice).stake(1, 1);
+      await pixStaking.connect(alice).stake(1);
 
       await time.advanceBlock();
       await time.advanceBlock();
@@ -115,8 +117,14 @@ describe('PIXLandStaking', function () {
       await time.advanceBlock();
     });
 
+    it('revert if nftId is zero', async function () {
+      await expect(pixStaking.connect(alice).withdraw(0)).to.revertedWith(
+        'Staking: INVALID_TOKEN_ID',
+      );
+    });
+
     it('should provide correct rewards', async function () {
-      await pixStaking.connect(alice).withdraw(1, 1);
+      await pixStaking.connect(alice).withdraw(1);
       expect(await pixToken.balanceOf(await alice.getAddress())).to.closeTo(
         BigNumber.from(10050),
         10,
@@ -125,9 +133,9 @@ describe('PIXLandStaking', function () {
     });
 
     it('should stake again', async function () {
-      await pixStaking.connect(alice).withdraw(1, 1);
+      await pixStaking.connect(alice).withdraw(1);
       await pixLandmark.connect(alice).setApprovalForAll(pixStaking.address, true);
-      await pixStaking.connect(alice).stake(1, 1);
+      await pixStaking.connect(alice).stake(1);
     });
   });
 });

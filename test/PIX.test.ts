@@ -32,13 +32,12 @@ describe('PIX', function () {
     await usdc.transfer(await alice.getAddress(), utils.parseUnits('20000', 6));
     await usdc.connect(alice).approve(pixNFT.address, constants.MaxUint256);
 
-    await pixNFT.setDropInfo(1, [
-      100,
-      0,
-      10,
-      (await getCurrentTime()).sub(100),
-      (await getCurrentTime()).add(1000000000),
-    ]);
+    await pixNFT.setDropInfo(
+      1,
+      [100, 0, 10, (await getCurrentTime()).sub(100), (await getCurrentTime()).add(1000000000)],
+      5000000,
+      false,
+    );
   });
 
   describe('#initialize', () => {
@@ -99,23 +98,6 @@ describe('PIX', function () {
 
       await pixNFT.setModerator(await alice.getAddress(), false);
       expect(await pixNFT.moderators(await alice.getAddress())).to.equal(false);
-    });
-  });
-
-  describe('#setPackPrice', () => {
-    it('revert if msg.sender is not owner', async () => {
-      await expect(pixNFT.connect(alice).setPackPrice(1, price)).to.revertedWith(
-        'Ownable: caller is not the owner',
-      );
-    });
-
-    it('revert if price is zero', async () => {
-      await expect(pixNFT.setPackPrice(1, 0)).to.revertedWith('Pix: ZERO_PRICE');
-    });
-
-    it('should set price by owner', async () => {
-      await pixNFT.setPackPrice(1, price);
-      expect(await pixNFT.packPrices(0)).to.equal(price);
     });
   });
 
@@ -217,10 +199,22 @@ describe('PIX', function () {
       );
     });
 
-    it('revert if mode is invalid', async function () {
+    it('revert if count overflow', async function () {
       await expect(
-        pixNFT.connect(alice).requestBatchMint(pixToken.address, 1, 1, 0, 1),
-      ).to.revertedWith('Pix: INVALID_PRICE_MODE');
+        pixNFT.connect(alice).requestBatchMint(pixToken.address, 1, 1, 0, 101),
+      ).to.revertedWith('Pix: PACKS_ALL_SOLD_OUT');
+    });
+
+    it('revert if count per user overflow', async function () {
+      await expect(
+        pixNFT.connect(alice).requestBatchMint(pixToken.address, 1, 1, 0, 11),
+      ).to.revertedWith('Pix: OVERFLOW_LIMIT');
+    });
+
+    it('revert if token not approved', async function () {
+      await expect(
+        pixNFT.connect(alice).requestBatchMint(constants.AddressZero, 1, 1, 0, 1),
+      ).to.revertedWith('Pix: TOKEN_NOT_APPROVED');
     });
 
     it('should request mint', async function () {

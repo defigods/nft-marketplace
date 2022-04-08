@@ -60,32 +60,36 @@ describe('PIXAuctionSale', function () {
 
     it('revert if nft token is not whitelisted', async () => {
       await expect(
-        auctionSale.connect(alice).requestSale(generateRandomAddress(), [tokenId], endTime, 0),
+        auctionSale
+          .connect(alice)
+          .requestSale(generateRandomAddress(), [tokenId], endTime, 0, 86400),
       ).to.revertedWith('Sale: NOT_WHITELISTED_NFT');
     });
 
     it('revert if minPrice is 0', async () => {
       await expect(
-        auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, 0),
+        auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, 0, 86400),
       ).to.revertedWith('Sale: PRICE_ZERO');
     });
 
     it('revert if no tokens', async () => {
       await expect(
-        auctionSale.connect(alice).requestSale(pixNFT.address, [], endTime, 1),
+        auctionSale.connect(alice).requestSale(pixNFT.address, [], endTime, 1, 86400),
       ).to.revertedWith('Sale: NO_TOKENS');
     });
 
     it('revert if endTime is less than block timestamp', async () => {
       const oldEndTime = (await getCurrentTime()).sub(BigNumber.from('10'));
       await expect(
-        auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], oldEndTime, minPrice),
+        auctionSale
+          .connect(alice)
+          .requestSale(pixNFT.address, [tokenId], oldEndTime, minPrice, 86400),
       ).to.revertedWith('Sale: INVALID_TIME');
     });
 
     it('revert if PIX not approved', async () => {
       await expect(
-        auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, minPrice),
+        auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, minPrice, 86400),
       ).to.revertedWith('ERC721: transfer caller is not owner nor approved');
     });
 
@@ -94,7 +98,7 @@ describe('PIXAuctionSale', function () {
 
       const tx = await auctionSale
         .connect(alice)
-        .requestSale(pixNFT.address, [tokenId], endTime, minPrice);
+        .requestSale(pixNFT.address, [tokenId], endTime, minPrice, 86400);
 
       const lastSaleId = 1;
       const saleInfo = await auctionSale.saleInfo(lastSaleId);
@@ -129,7 +133,9 @@ describe('PIXAuctionSale', function () {
       await pixNFT.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
 
-      await auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, minPrice);
+      await auctionSale
+        .connect(alice)
+        .requestSale(pixNFT.address, [tokenId], endTime, minPrice, 86400);
     });
 
     it('revert if msg.sender is not seller', async () => {
@@ -170,7 +176,9 @@ describe('PIXAuctionSale', function () {
       await pixNFT.connect(alice).approve(auctionSale.address, tokenId);
       endTime = (await getCurrentTime()).add(auctionPeriod);
 
-      await auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, minPrice);
+      await auctionSale
+        .connect(alice)
+        .requestSale(pixNFT.address, [tokenId], endTime, minPrice, 86400);
     });
 
     it('revert if msg.sender is not seller', async () => {
@@ -209,11 +217,28 @@ describe('PIXAuctionSale', function () {
 
     it('revert if invalid signature', async () => {
       const data = await getDigest(auctionSale, alice, minPrice, BigNumber.from(tokenId));
-      await auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, minPrice);
+      await auctionSale
+        .connect(alice)
+        .requestSale(pixNFT.address, [tokenId], endTime, minPrice, 86400);
       await increaseTime(auctionPeriod.add(auctionPeriod));
       await expect(
         auctionSale.endAuction(await bob.getAddress(), minPrice, tokenId, data.v, data.r, data.s),
       ).to.revertedWith('Sale: INVALID_SIGNATURE');
+    });
+
+    it('revert if expiration time reached', async () => {
+      await auctionSale.setTreasury(treasury, 50, 50, false);
+      const bidAmount = minPrice.add(utils.parseEther('0.5'));
+
+      const data = await getDigest(auctionSale, bob, bidAmount, BigNumber.from(tokenId));
+      await auctionSale
+        .connect(alice)
+        .requestSale(pixNFT.address, [tokenId], endTime, minPrice, 86400);
+      await increaseTime(BigNumber.from('86500'));
+      await increaseTime(auctionPeriod.add(auctionPeriod));
+      await expect(
+        auctionSale.endAuction(await bob.getAddress(), bidAmount, tokenId, data.v, data.r, data.s),
+      ).to.revertedWith('Sale: EXPIRED');
     });
 
     it('should end auction and send PIX to top bidder and send PIXT to seller and treasury', async () => {
@@ -222,7 +247,9 @@ describe('PIXAuctionSale', function () {
 
       const data = await getDigest(auctionSale, bob, bidAmount, BigNumber.from(tokenId));
 
-      await auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, minPrice);
+      await auctionSale
+        .connect(alice)
+        .requestSale(pixNFT.address, [tokenId], endTime, minPrice, 86400);
       await increaseTime(auctionPeriod.add(auctionPeriod));
 
       const aliceBalanceBefore = await pixtToken.balanceOf(await alice.getAddress());
@@ -259,7 +286,9 @@ describe('PIXAuctionSale', function () {
 
       const data = await getDigest(auctionSale, bob, bidAmount, BigNumber.from(tokenId));
 
-      await auctionSale.connect(alice).requestSale(pixNFT.address, [tokenId], endTime, minPrice);
+      await auctionSale
+        .connect(alice)
+        .requestSale(pixNFT.address, [tokenId], endTime, minPrice, 86400);
       await increaseTime(auctionPeriod.add(auctionPeriod));
 
       const aliceBalanceBefore = await pixtToken.balanceOf(await alice.getAddress());
@@ -338,14 +367,22 @@ describe('PIXAuctionSale', function () {
       await expect(
         auctionSale
           .connect(alice)
-          .requestSaleWithHash([], endTime, 0, alicePixes, merkleRoots, hexProofs),
+          .requestSaleWithHash([], endTime, 0, alicePixes, merkleRoots, hexProofs, 86400),
       ).to.revertedWith('Sale: PRICE_ZERO');
     });
 
     it('should request sale and emit SaleRequested event', async () => {
       const tx = await auctionSale
         .connect(alice)
-        .requestSaleWithHash([tokenId], endTime, minPrice, alicePixes, merkleRoots, hexProofs);
+        .requestSaleWithHash(
+          [tokenId],
+          endTime,
+          minPrice,
+          alicePixes,
+          merkleRoots,
+          hexProofs,
+          86400,
+        );
 
       const lastSaleId = 1;
       expect(await auctionSale.lastSaleId()).to.be.equal(lastSaleId);
