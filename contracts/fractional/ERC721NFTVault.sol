@@ -16,8 +16,8 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
     /// -------- BASIC INFORMATION --------
     /// -----------------------------------
 
-    /// @notice weth address
-    address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    /// @notice WETH address
+    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     /// -----------------------------------
     /// -------- TOKEN INFORMATION --------
@@ -49,10 +49,10 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
     address payable public winning;
 
     enum State {
-        inactive,
-        live,
-        ended,
-        redeemed
+        INACTIVE,
+        LIVE,
+        ENDED,
+        REDEEMED
     }
 
     State public auctionState;
@@ -62,7 +62,7 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
     /// -----------------------------------
 
     /// @notice the governance contract which gets paid in ETH
-    address public immutable settings;
+    address public settings;
 
     /// @notice the address who initially deposited the NFT
     address public curator;
@@ -110,11 +110,8 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
 
     event FeeClaimed(uint256 fee);
 
-    constructor(address _settings) {
-        settings = _settings;
-    }
-
     function initialize(
+        address _settings,
         address _curator,
         address[] memory _tokens,
         uint256[] memory _ids,
@@ -131,13 +128,14 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
         __ERC721Enumerable_init();
         __ERC721Holder_init();
         // set storage variables
+        settings = _settings;
         tokens = _tokens;
         ids = _ids;
         auctionLength = 3 days;
         curator = _curator;
         fee = _fee;
         lastClaimed = block.timestamp;
-        auctionState = State.inactive;
+        auctionState = State.INACTIVE;
         userPrices[_curator] = _listPrice;
 
         for (uint256 i = 0; i < _supply; i++) {
@@ -168,7 +166,7 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
     /// @notice allow governance to remove bad reserve prices
     function removeReserve(address _user) external {
         require(msg.sender == Ownable(settings).owner(), "remove:not gov");
-        require(auctionState == State.inactive, "update:auction live cannot update price");
+        require(auctionState == State.INACTIVE, "update:auction live cannot update price");
 
         uint256 old = userPrices[_user];
         require(0 != old, "update:not an update");
@@ -231,7 +229,7 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
 
     /// @dev interal fuction to calculate and mint fees
     function _claimFees() internal {
-        require(auctionState != State.ended, "claim:cannot claim after auction ends");
+        require(auctionState != State.ENDED, "claim:cannot claim after auction ends");
 
         // get how much in fees the curator would make in a year
         uint256 currentAnnualFee = (fee * totalSupply()) / 1000;
@@ -274,7 +272,7 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
     /// @notice a function for an end user to update their desired sale price
     /// @param _new the desired price in ETH
     function updateUserPrice(uint256 _new) external {
-        require(auctionState == State.inactive, "update:auction live cannot update price");
+        require(auctionState == State.INACTIVE, "update:auction live cannot update price");
         uint256 old = userPrices[msg.sender];
         require(_new != old, "update:not an update");
         uint256 weight = balanceOf(msg.sender);
@@ -334,7 +332,7 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
         address _to,
         uint256 _tokenId
     ) internal virtual override {
-        if (auctionState == State.inactive) {
+        if (auctionState == State.INACTIVE) {
             uint256 fromPrice = userPrices[_from];
             uint256 toPrice = userPrices[_to];
 
@@ -361,7 +359,7 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
 
     /// @notice kick off an auction. Must send reservePrice in ETH
     function start() external payable {
-        require(auctionState == State.inactive, "start:no auction starts");
+        require(auctionState == State.INACTIVE, "start:no auction starts");
         require(msg.value >= reservePrice(), "start:too low bid");
         require(
             votingTokens * 1000 >=
@@ -370,7 +368,7 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
         );
 
         auctionEnd = block.timestamp + auctionLength;
-        auctionState = State.live;
+        auctionState = State.LIVE;
 
         livePrice = msg.value;
         winning = payable(msg.sender);
@@ -380,7 +378,7 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
 
     /// @notice an external function to bid on purchasing the vaults NFT. The msg.value is the bid amount
     function bid() external payable {
-        require(auctionState == State.live, "bid:auction is not live");
+        require(auctionState == State.LIVE, "bid:auction is not live");
         uint256 increase = IFractionalSettings(settings).minBidIncrease() + 1000;
         require(msg.value * 1000 >= livePrice * increase, "bid:too low bid");
         require(block.timestamp < auctionEnd, "bid:auction ended");
@@ -400,7 +398,7 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
 
     /// @notice an external function to end an auction after the timer has run out
     function end() external {
-        require(auctionState == State.live, "end:vault has already closed");
+        require(auctionState == State.LIVE, "end:vault has already closed");
         require(block.timestamp >= auctionEnd, "end:auction live");
 
         _claimFees();
@@ -411,14 +409,14 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
             IERC721(tokens[i]).transferFrom(address(this), winning, ids[i]);
         }
 
-        auctionState = State.ended;
+        auctionState = State.ENDED;
 
         emit Won(winning, livePrice);
     }
 
     /// @notice an external function to burn all ERC721 tokens to receive the ERC721 token
     function redeem() external {
-        require(auctionState == State.inactive, "redeem:no redeeming");
+        require(auctionState == State.INACTIVE, "redeem:no redeeming");
 
         uint256 tot = totalSupply();
         for (uint256 tokenId = 0; tokenId < tot; tokenId++) {
@@ -431,14 +429,14 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
             IERC721(tokens[i]).transferFrom(address(this), msg.sender, ids[i]);
         }
 
-        auctionState = State.redeemed;
+        auctionState = State.REDEEMED;
 
         emit Redeem(msg.sender);
     }
 
     /// @notice an external function to burn ERC721 tokens to receive ETH from ERC721 token purchase
     function cash() external {
-        require(auctionState == State.ended, "cash:vault not closed yet");
+        require(auctionState == State.ENDED, "cash:vault not closed yet");
         uint256 bal = balanceOf(msg.sender);
         require(bal > 0, "cash:no tokens to cash out");
         uint256 share = (bal * address(this).balance) / totalSupply();
@@ -460,8 +458,8 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
             // If the transfer fails, wrap and send as WETH, so that
             // the auction is not impeded and the recipient still
             // can claim ETH via the WETH contract (similar to escrow).
-            IWETH(weth).deposit{value: value}();
-            IWETH(weth).transfer(to, value);
+            IWETH(WETH).deposit{value: value}();
+            IWETH(WETH).transfer(to, value);
             // At this point, the recipient can unwrap WETH.
         }
     }

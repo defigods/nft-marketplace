@@ -26,7 +26,7 @@ contract ERC721NFTVaultFactory is Ownable, Pausable {
 
     constructor(address _settings) {
         settings = _settings;
-        logic = address(new ERC721NFTVault(_settings));
+        logic = address(new ERC721NFTVault());
     }
 
     /// @notice the function to mint a new vault
@@ -46,7 +46,8 @@ contract ERC721NFTVaultFactory is Ownable, Pausable {
         uint256 _fee
     ) external whenNotPaused returns (uint256) {
         bytes memory _initializationCalldata = abi.encodeWithSignature(
-            "initialize(address,address[],uint256[],uint256,uint256,uint256,string,string)",
+            "initialize(address,address,address[],uint256[],uint256,uint256,uint256,string,string)",
+            settings,
             msg.sender,
             _tokens,
             _ids,
