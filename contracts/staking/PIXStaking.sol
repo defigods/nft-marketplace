@@ -5,12 +5,9 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "../interfaces/IPIX.sol";
 
 contract PIXStaking is OwnableUpgradeable, ERC721HolderUpgradeable {
-    using SafeMathUpgradeable for uint256;
-
     event StakedPixNFT(uint256 tokenId, address indexed recipient);
     event WithdrawnPixNFT(uint256 tokenId, address indexed recipient);
     event ClaimPixNFT(uint256 pending, address indexed recipient);
@@ -22,7 +19,6 @@ contract PIXStaking is OwnableUpgradeable, ERC721HolderUpgradeable {
     }
 
     mapping(address => UserInfo) public userInfo;
-    mapping(uint256 => uint256) public tierInfo;
 
     IERC20Upgradeable public rewardToken;
 
@@ -36,9 +32,7 @@ contract PIXStaking is OwnableUpgradeable, ERC721HolderUpgradeable {
     modifier updateRewardPool() {
         if (totalTiers > 0) {
             uint256 reward = _calculateReward();
-            accPixNFTPerShare = accPixNFTPerShare.add(
-                reward.mul(ACC_PIX_PRECISION).div(totalTiers)
-            );
+            accPixNFTPerShare = accPixNFTPerShare + (reward * ACC_PIX_PRECISION) / totalTiers;
         }
         lastUpdateBlock = block.number;
         _;
@@ -60,26 +54,25 @@ contract PIXStaking is OwnableUpgradeable, ERC721HolderUpgradeable {
 
     function stake(uint256 _tokenId) external updateRewardPool {
         require(_tokenId > 0, "Staking: INVALID_TOKEN_ID");
-        require(tierInfo[_tokenId] > 0, "Staking: INVALID_TIER");
         require(IPIX(pixNFT).isTerritory(_tokenId), "Staking: TERRITORY_ONLY");
 
         UserInfo storage user = userInfo[msg.sender];
 
-        uint256 tiers = tierInfo[_tokenId];
+        uint256 tiers = IPIX(pixNFT).getTier(_tokenId);
 
         if (user.tiers > 0) {
-            uint256 pending = user.tiers.mul(accPixNFTPerShare).div(ACC_PIX_PRECISION).sub(
-                user.rewardDebt
-            );
+            uint256 pending = (user.tiers * accPixNFTPerShare) /
+                ACC_PIX_PRECISION -
+                user.rewardDebt;
             rewardToken.transfer(msg.sender, pending);
         }
 
         IERC721Upgradeable(pixNFT).safeTransferFrom(msg.sender, address(this), _tokenId);
-        totalTiers = totalTiers.add(tiers);
+        totalTiers = totalTiers + tiers;
 
         // Update User Info
-        user.tiers = user.tiers.add(tiers);
-        user.rewardDebt = user.tiers.mul(accPixNFTPerShare).div(ACC_PIX_PRECISION);
+        user.tiers = user.tiers + tiers;
+        user.rewardDebt = (user.tiers * accPixNFTPerShare) / ACC_PIX_PRECISION;
         user.isStaked[_tokenId] = true;
 
         emit StakedPixNFT(_tokenId, address(this));
@@ -91,16 +84,14 @@ contract PIXStaking is OwnableUpgradeable, ERC721HolderUpgradeable {
         require(user.tiers > 0, "Staking: NO_WITHDRAWALS");
         require(user.isStaked[_tokenId], "Staking: NO_STAKES");
 
-        uint256 pending = user.tiers.mul(accPixNFTPerShare).div(ACC_PIX_PRECISION).sub(
-            user.rewardDebt
-        );
+        uint256 pending = (user.tiers * accPixNFTPerShare) / ACC_PIX_PRECISION - user.rewardDebt;
         rewardToken.transfer(msg.sender, pending);
 
         IERC721Upgradeable(pixNFT).safeTransferFrom(address(this), msg.sender, _tokenId);
-        totalTiers = totalTiers.sub(tierInfo[_tokenId]);
+        totalTiers = totalTiers - IPIX(pixNFT).getTier(_tokenId);
         // Update UserInfo
-        user.tiers = user.tiers.sub(tierInfo[_tokenId]);
-        user.rewardDebt = user.tiers.mul(accPixNFTPerShare).div(ACC_PIX_PRECISION);
+        user.tiers = user.tiers - IPIX(pixNFT).getTier(_tokenId);
+        user.rewardDebt = (user.tiers * accPixNFTPerShare) / ACC_PIX_PRECISION;
         user.isStaked[_tokenId] = false;
 
         emit WithdrawnPixNFT(_tokenId, msg.sender);
@@ -110,29 +101,21 @@ contract PIXStaking is OwnableUpgradeable, ERC721HolderUpgradeable {
         UserInfo storage user = userInfo[msg.sender];
         require(user.tiers > 0, "Staking: NO_WITHDRAWALS");
 
-        uint256 pending = user.tiers.mul(accPixNFTPerShare).div(ACC_PIX_PRECISION).sub(
-            user.rewardDebt
-        );
+        uint256 pending = (user.tiers * accPixNFTPerShare) / ACC_PIX_PRECISION - user.rewardDebt;
         if (pending > 0) {
             rewardToken.transfer(msg.sender, pending);
             emit ClaimPixNFT(pending, msg.sender);
         }
         // Update UserInfo
-        user.rewardDebt = user.tiers.mul(accPixNFTPerShare).div(ACC_PIX_PRECISION);
+        user.rewardDebt = (user.tiers * accPixNFTPerShare) / ACC_PIX_PRECISION;
     }
 
     function setRewardPerBlock(uint256 _amount) external onlyOwner {
         rewardPerBlock = _amount;
     }
 
-    function setTierInfo(uint256 _tokenId, uint256 _tiers) external onlyOwner {
-        require(_tiers > 0, "Staking: INVALID_TIERS");
-
-        tierInfo[_tokenId] = _tiers;
-    }
-
     function _calculateReward() internal view returns (uint256) {
-        uint256 blocksPassed = block.number.sub(lastUpdateBlock);
-        return rewardPerBlock.mul(blocksPassed);
+        uint256 blocksPassed = block.number - lastUpdateBlock;
+        return rewardPerBlock * blocksPassed;
     }
 }

@@ -39,19 +39,13 @@ describe('PIXStaking', function () {
     await pixToken.transfer(pixStaking.address, ethers.utils.parseEther('1000000'));
     await pixToken.transfer(await alice.getAddress(), BigNumber.from(10000));
     await pixToken.transfer(await bob.getAddress(), BigNumber.from(10000));
+    await pixNFT.setTier(PIXCategory.Common, PIXSize.Area, 2);
   });
 
   describe('setRewardPerBlock', () => {
     it('it should set reward amount correctly', async () => {
       await pixStaking.connect(owner).setRewardPerBlock(ethers.utils.parseEther('2.0'));
       expect(await pixStaking.rewardPerBlock()).to.equal(ethers.utils.parseEther('2.0'));
-    });
-  });
-
-  describe('setTierInfo', () => {
-    it('it should set tier amount correctly', async () => {
-      await pixStaking.setTierInfo('1', '2');
-      expect(await pixStaking.tierInfo(1)).to.equal('2');
     });
   });
 
@@ -62,12 +56,7 @@ describe('PIXStaking', function () {
       );
     });
 
-    it("revert if tier didn't set", async function () {
-      await expect(pixStaking.connect(alice).stake(1)).to.revertedWith('Staking: INVALID_TIER');
-    });
-
     it('should stake an NFT', async function () {
-      await pixStaking.setTierInfo('1', '2');
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
       expect(await pixStaking.totalTiers()).to.equal('2');
@@ -77,7 +66,6 @@ describe('PIXStaking', function () {
   describe('claim', () => {
     beforeEach(async function () {
       // Stake an NFT from Alice
-      await pixStaking.setTierInfo('1', '2');
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
 
@@ -105,7 +93,6 @@ describe('PIXStaking', function () {
   describe('withdraw', () => {
     beforeEach(async function () {
       // Stake an NFT from Alice
-      await pixStaking.setTierInfo('1', '2');
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
 

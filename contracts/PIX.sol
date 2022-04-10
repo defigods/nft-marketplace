@@ -61,6 +61,8 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     mapping(uint256 => uint256) public dropPrices;
     mapping(uint256 => bool) public dropUseIXT;
 
+    mapping(PIXCategory => mapping(PIXSize => uint256)) public tiers;
+
     modifier onlyMod() {
         require(moderators[msg.sender], "Pix: NON_MODERATOR");
         _;
@@ -424,5 +426,18 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
 
     function setBlacklistedAddress(address account, bool blacklisted) external onlyOwner {
         blacklistedAddresses[account] = blacklisted;
+    }
+
+    function setTier(
+        PIXCategory category,
+        PIXSize size,
+        uint256 tier
+    ) external onlyOwner {
+        tiers[category][size] = tier;
+    }
+
+    function getTier(uint256 tokenId) external view override returns (uint256) {
+        PIXInfo memory info = pixInfos[tokenId];
+        return tiers[info.category][info.size];
     }
 }

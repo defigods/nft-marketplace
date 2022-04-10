@@ -2,10 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "./interfaces/IPIX.sol";
 
 contract PIXLandmark is ERC721EnumerableUpgradeable, OwnableUpgradeable {
+    using StringsUpgradeable for uint256;
+
     event LandmarkMinted(
         address indexed account,
         uint256 indexed tokenId,
@@ -73,17 +76,16 @@ contract PIXLandmark is ERC721EnumerableUpgradeable, OwnableUpgradeable {
         emit LandmarkMinted(to, lastTokenId, info.category, info.landmarkType);
     }
 
-    function safeBurn(uint256 tokenId) external {
-        address owner = ownerOf(tokenId);
-        require(
-            msg.sender == owner || isApprovedForAll(owner, msg.sender),
-            "Landmark: NON_APPROVED"
-        );
-        _burn(tokenId);
+    function batchMint(PIXCategory[] calldata categories, uint256[] calldata landTypes) external {
+        require(categories.length == landTypes.length, "Landmark: INVALID_ARGUMENTS");
+        for (uint256 i; i < categories.length; i += 1)
+            this.safeMint(msg.sender, LandmarkInfo(categories[i], landTypes[i]));
     }
 
-    function _baseURI() internal view override returns (string memory) {
-        return _baseURIExtended;
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        uint256 landType = landInfos[tokenId].landmarkType;
+        require(landType > 0, "Landmark: NOT_EXISTING");
+        return string(abi.encodePacked(_baseURIExtended, landType.toString()));
     }
 
     function setBaseURI(string memory baseURI_) external onlyOwner {
