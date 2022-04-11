@@ -80,7 +80,7 @@ contract PIXLending is OwnableUpgradeable, ERC721HolderUpgradeable, ReentrancyGu
         info[_tokenId].lendTime = block.timestamp;
         info[_tokenId].lender = msg.sender;
         IERC721Upgradeable(pixNFT).safeTransferFrom(address(this), msg.sender, _tokenId);
-        pixt.safeTransferFrom(msg.sender, info[_tokenId].lender, info[_tokenId].amount);
+        pixt.safeTransferFrom(msg.sender, info[_tokenId].borrower, info[_tokenId].amount);
     }
 
     function payDebt(uint256 _tokenId) external {
