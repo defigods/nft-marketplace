@@ -84,6 +84,10 @@ contract PIXTStakingLottery is OwnableUpgradeable {
         emit RewardPaid(msg.sender, earned[msg.sender]);
     }
 
+    function setPeriod(uint256 _period) external onlyOwner {
+        period = _period;
+    }
+
     function setReward(address _winner) external onlyOwner {
         require(block.timestamp - lastUpdateBlock >= period, "SetWinner: Already set winner");
 

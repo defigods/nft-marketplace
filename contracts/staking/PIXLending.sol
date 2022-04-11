@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -19,7 +19,7 @@ contract PIXLending is OwnableUpgradeable, ERC721HolderUpgradeable, ReentrancyGu
     enum Status {
         None,
         Listed,
-        Lended
+        Borrowed
     }
 
     struct NFTInfo {
@@ -58,7 +58,7 @@ contract PIXLending is OwnableUpgradeable, ERC721HolderUpgradeable, ReentrancyGu
 
         info[_tokenId].status = Status.Listed;
         info[_tokenId].amount = _amount;
-        info[_tokenId].lender = msg.sender;
+        info[_tokenId].borrower = msg.sender;
         info[_tokenId].duration = _duration;
 
         IERC721Upgradeable(pixNFT).safeTransferFrom(msg.sender, address(this), _tokenId);
@@ -66,7 +66,7 @@ contract PIXLending is OwnableUpgradeable, ERC721HolderUpgradeable, ReentrancyGu
 
     function cancelRequest(uint256 _tokenId) external {
         require(info[_tokenId].status == Status.Listed, "cancelRequest: INVALID_PIX");
-        require(info[_tokenId].lender == msg.sender, "cancelRequest: INVALID lister");
+        require(info[_tokenId].borrower == msg.sender, "cancelRequest: INVALID lister");
 
         info[_tokenId].status = Status.None;
 
@@ -75,16 +75,16 @@ contract PIXLending is OwnableUpgradeable, ERC721HolderUpgradeable, ReentrancyGu
 
     function acceptRequest(uint256 _tokenId) external {
         require(info[_tokenId].status == Status.Listed, "acceptRequest: INVALID_PIX");
-        info[_tokenId].status = Status.Lended;
+        info[_tokenId].status = Status.Borrowed;
 
         info[_tokenId].lendTime = block.timestamp;
-        info[_tokenId].borrower = msg.sender;
+        info[_tokenId].lender = msg.sender;
         IERC721Upgradeable(pixNFT).safeTransferFrom(address(this), msg.sender, _tokenId);
         pixt.safeTransferFrom(msg.sender, info[_tokenId].lender, info[_tokenId].amount);
     }
 
     function payDebt(uint256 _tokenId) external {
-        require(info[_tokenId].status == Status.Lended, "Paying: INVALID_PIX");
+        require(info[_tokenId].status == Status.Borrowed, "Paying: INVALID_PIX");
 
         if (block.timestamp - info[_tokenId].lendTime > info[_tokenId].duration) {
             info[_tokenId].status = Status.None;
@@ -93,16 +93,10 @@ contract PIXLending is OwnableUpgradeable, ERC721HolderUpgradeable, ReentrancyGu
 
         require(info[_tokenId].borrower == msg.sender, "Paying: INVALID Borrower");
 
-        if (info[_tokenId].borrower == msg.sender) {
-            uint256 amount = info[_tokenId].amount.add(calculateFee(info[_tokenId].lendTime));
+        uint256 amount = info[_tokenId].amount.add(calculateFee(info[_tokenId].lendTime));
 
-            IERC721Upgradeable(pixNFT).safeTransferFrom(
-                msg.sender,
-                info[_tokenId].lender,
-                _tokenId
-            );
-            pixt.safeTransferFrom(msg.sender, info[_tokenId].lender, amount);
-        }
+        IERC721Upgradeable(pixNFT).safeTransferFrom(msg.sender, info[_tokenId].lender, _tokenId);
+        pixt.safeTransferFrom(msg.sender, info[_tokenId].lender, amount);
     }
 
     function calculateFee(uint256 _lendTime) public view returns (uint256) {

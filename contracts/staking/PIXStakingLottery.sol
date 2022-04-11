@@ -19,7 +19,8 @@ contract PIXStakingLottery is
 
     event StakedPixNFT(uint256 tokenId, address indexed recipient);
     event WithdrawnPixNFT(uint256 tokenId, address indexed recipient);
-    event RewardPaid(uint256 pending, address indexed recipient);
+    event RewardPaid(uint256 amount, address indexed recipient);
+    event SetWinner(uint256 time, uint256 amount, address indexed recipient);
 
     struct UserInfo {
         mapping(uint256 => bool) isStaked;
@@ -33,7 +34,7 @@ contract PIXStakingLottery is
     IERC20Upgradeable public rewardToken;
 
     address public pixNFT;
-    uint256 public lastUpdateBlock;
+    uint256 public lastUpdateTime;
     uint256 public rewardPerBlock;
     uint256 public totalTiers;
     uint256 public period;
@@ -72,8 +73,8 @@ contract PIXStakingLottery is
         user.tiers = user.tiers.add(tiers);
         user.isStaked[_tokenId] = true;
 
-        if (lastUpdateBlock == 0) {
-            lastUpdateBlock = block.number;
+        if (lastUpdateTime == 0) {
+            lastUpdateTime = block.timestamp;
         }
 
         emit StakedPixNFT(_tokenId, address(this));
@@ -103,7 +104,7 @@ contract PIXStakingLottery is
     }
 
     function setReward(address _winner) external onlyOwner {
-        require(block.timestamp - lastUpdateBlock >= period, "SetWinner: Already set winner");
+        require(block.timestamp - lastUpdateTime >= period, "SetWinner: Already set winner");
 
         UserInfo storage user = userInfo[_winner];
         require(user.tiers > 0, "SetReward: INV_WINNER");
@@ -111,7 +112,9 @@ contract PIXStakingLottery is
         uint256 pending = _calculateReward();
         require(pending > 0, "setReward: no tokens to set");
         earned[_winner] += pending;
-        lastUpdateBlock = block.timestamp;
+        lastUpdateTime = block.timestamp;
+
+        emit SetWinner(block.timestamp, pending, msg.sender);
     }
 
     function setRewardPerBlock(uint256 _amount) external onlyOwner {
@@ -125,7 +128,7 @@ contract PIXStakingLottery is
     }
 
     function _calculateReward() internal view returns (uint256) {
-        uint256 blocksPassed = block.number.sub(lastUpdateBlock);
+        uint256 blocksPassed = block.timestamp.sub(lastUpdateTime);
         return rewardPerBlock.mul(blocksPassed);
     }
 }
