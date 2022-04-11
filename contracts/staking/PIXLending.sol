@@ -68,7 +68,7 @@ contract PIXLending is OwnableUpgradeable, ERC721HolderUpgradeable, ReentrancyGu
         require(info[_tokenId].status == Status.Listed, "cancelRequest: INVALID_PIX");
         require(info[_tokenId].borrower == msg.sender, "cancelRequest: INVALID lister");
 
-        info[_tokenId].status = Status.None;
+        delete info[_tokenId];
 
         IERC721Upgradeable(pixNFT).safeTransferFrom(address(this), msg.sender, _tokenId);
     }
@@ -79,7 +79,6 @@ contract PIXLending is OwnableUpgradeable, ERC721HolderUpgradeable, ReentrancyGu
 
         info[_tokenId].lendTime = block.timestamp;
         info[_tokenId].lender = msg.sender;
-        IERC721Upgradeable(pixNFT).safeTransferFrom(address(this), msg.sender, _tokenId);
         pixt.safeTransferFrom(msg.sender, info[_tokenId].borrower, info[_tokenId].amount);
     }
 
@@ -87,7 +86,12 @@ contract PIXLending is OwnableUpgradeable, ERC721HolderUpgradeable, ReentrancyGu
         require(info[_tokenId].status == Status.Borrowed, "Paying: INVALID_PIX");
 
         if (block.timestamp - info[_tokenId].lendTime > info[_tokenId].duration) {
-            info[_tokenId].status = Status.None;
+            delete info[_tokenId];
+            IERC721Upgradeable(pixNFT).safeTransferFrom(
+                address(this),
+                info[_tokenId].lender,
+                _tokenId
+            );
             return;
         }
 
@@ -95,7 +99,11 @@ contract PIXLending is OwnableUpgradeable, ERC721HolderUpgradeable, ReentrancyGu
 
         uint256 amount = info[_tokenId].amount.add(calculateFee(info[_tokenId].lendTime));
 
-        IERC721Upgradeable(pixNFT).safeTransferFrom(msg.sender, info[_tokenId].lender, _tokenId);
+        IERC721Upgradeable(pixNFT).safeTransferFrom(
+            address(this),
+            info[_tokenId].borrower,
+            _tokenId
+        );
         pixt.safeTransferFrom(msg.sender, info[_tokenId].lender, amount);
     }
 
