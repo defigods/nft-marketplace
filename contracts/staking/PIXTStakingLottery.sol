@@ -25,6 +25,7 @@ contract PIXTStakingLottery is OwnableUpgradeable {
     event Staked(address indexed user, uint256 amount);
     event Unstaked(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
+    event SetReward(address indexed user, uint256 reward);
 
     function initialize(
         address token,
@@ -49,7 +50,7 @@ contract PIXTStakingLottery is OwnableUpgradeable {
         stakedAmounts[msg.sender] += amount;
         pixToken.safeTransferFrom(msg.sender, address(this), amount);
         if (lastUpdateBlock == 0) {
-            lastUpdateBlock = block.number;
+            lastUpdateBlock = block.timestamp;
         }
         emit Staked(msg.sender, amount);
     }
@@ -96,10 +97,12 @@ contract PIXTStakingLottery is OwnableUpgradeable {
         require(pending > 0, "setReward: no tokens to set");
         earned[_winner] += pending;
         lastUpdateBlock = block.timestamp;
+
+        emit SetReward(_winner, pending);
     }
 
     function _calculateReward() internal view returns (uint256) {
-        uint256 blocksPassed = block.number.sub(lastUpdateBlock);
+        uint256 blocksPassed = block.timestamp.sub(lastUpdateBlock);
         return rewardPerBlock.mul(blocksPassed);
     }
 }
