@@ -10,6 +10,7 @@ type SaleInfo = {
   executeBySeller: boolean;
   nftToken: string;
   tokenIds: BigNumber[];
+  hashes: string[];
   minPrice: BigNumber;
   validUntil: BigNumber;
 };
@@ -52,23 +53,6 @@ describe('PIXSaleV2.test', function () {
       await pixNFT.connect(alice).setApprovalForAll(saleV2.address, true);
     });
 
-    // it('revert if signature invalid', async () => {
-    //   const data = await getDigest(saleV2, alice, price, pixNFT, BigNumber.from(tokenId));
-    //   await expect(
-    //     saleV2
-    //       .connect(alice)
-    //       .sellNFTWithSignature(
-    //         bob.address,
-    //         price,
-    //         pixNFT.address,
-    //         tokenId,
-    //         data.v,
-    //         data.r,
-    //         data.s,
-    //       ),
-    //   ).to.revertedWith('Sale: INVALID_SIGNATURE');
-    // });
-
     it.only('should purchase PIX and send to seller and treasury', async () => {
       await saleV2.setTreasury(treasury, 100, 0, false);
       await pixtToken.connect(bob).approve(saleV2.address, price);
@@ -81,38 +65,23 @@ describe('PIXSaleV2.test', function () {
           executeBySeller: false,
           nftToken: pixNFT.address,
           tokenIds: [BigNumber.from(tokenId)],
+          hashes: [],
           minPrice: price,
           validUntil: BigNumber.from('7777777777'),
         },
       ];
 
-      const saleInfos1: any[] = [
-        {
-          executeBySeller: false,
-          nftToken: pixNFT.address,
-          tokenIds: [BigNumber.from(tokenId)],
-          minPrice: price,
-          validUntil: BigNumber.from('7777777777'),
-        },
-      ];
+      const { sig, saleSignatures } = await getDigest(saleV2, alice, saleInfos);
 
-      console.log('#$#$#');
-      const { data, signatures } = await getDigest(saleV2, alice, saleInfos);
-
-      console.log('#$#$#!!');
-      const tx = await saleV2
+      await saleV2
         .connect(bob)
-        // .buy(alice.address, saleInfos1, [0], price, data.v, data.r, data.s);
-        .buy(alice.address, signatures, [0], saleInfos, price, data.v, data.r, data.s);
+        .buy(alice.address, saleSignatures, [0], saleInfos, [], [], [], price, sig);
       expect(await pixNFT.ownerOf(tokenId)).to.be.equal(bob.address);
       const fee = price.mul(BigNumber.from('100')).div(DENOMINATOR);
       expect(await pixtToken.balanceOf(alice.address)).to.be.equal(
         aliceBalanceBefore.add(price).sub(fee),
       );
       expect(await pixtToken.balanceOf(treasury)).to.be.equal(treasuryBalanceBefore.add(fee));
-      expect(tx)
-        .to.emit(saleV2, 'PurchasedWithSignature')
-        .withArgs(alice.address, bob.address, pixNFT.address, tokenId, price);
     });
   });
 });
@@ -129,42 +98,36 @@ const getDigest = async (sale: Contract, seller: SignerWithAddress, saleInfos: S
     SaleInfos: [
       { name: 'seller', type: 'address' },
       { name: 'signatures', type: 'bytes32[]' },
-      // { name: 'info', type: 'SaleInfo[]' },
     ],
-    // SaleInfo: [
-    //   { name: 'executeBySeller', type: 'bool' },
-    //   { name: 'nftToken', type: 'address' },
-    //   // { name: 'tokenIds', type: 'uint256[]' },
-    //   { name: 'minPrice', type: 'uint256' },
-    //   { name: 'validUntil', type: 'uint64' },
-    // ],
   };
 
-  // utils.solidityKeccak256()
   const signatures = saleInfos.map((info) =>
     utils.solidityKeccak256(
-      ['bool', 'address', 'uint256[]', 'uint256', 'uint64'],
-      [info.executeBySeller, info.nftToken, info.tokenIds, info.minPrice, info.validUntil],
+      ['bool', 'address', 'uint256[]', 'bytes32[]', 'uint256', 'uint64'],
+      [
+        info.executeBySeller,
+        info.nftToken,
+        info.tokenIds,
+        info.hashes,
+        info.minPrice,
+        info.validUntil,
+      ],
     ),
   );
 
   const value = {
     seller: seller.address,
     signatures,
-    // info: saleInfos,
-
-    // info: saleInfos[0],
-    // info: {
-    //   executeBySeller: saleInfos[0].executeBySeller,
-    //   nftToken: saleInfos[0].nftToken,
-    //   minPrice: saleInfos[0].minPrice,
-    //   validUntil: saleInfos[0].validUntil,
-    // },
   };
 
   const signature = await seller._signTypedData(domain, types, value);
+  const split = utils.splitSignature(signature);
+  const sig = utils.defaultAbiCoder.encode(
+    ['uint8', 'bytes32', 'bytes32'],
+    [split.v, split.r, split.s],
+  );
   return {
-    data: utils.splitSignature(signature),
-    signatures,
+    sig,
+    saleSignatures: signatures,
   };
 };
