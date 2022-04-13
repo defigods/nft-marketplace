@@ -1,8 +1,7 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
-import { Signer, Contract, BigNumber } from 'ethers';
-import { PIXCategory, PIXSize } from './utils';
-import { time } from '@openzeppelin/test-helpers';
+import { Signer, Contract, BigNumber, constants } from 'ethers';
+import { PIXCategory, PIXSize, increaseTime } from './utils';
 
 describe('PIXLandStaking', function () {
   let owner: Signer;
@@ -12,7 +11,7 @@ describe('PIXLandStaking', function () {
   let usdc: Contract;
   let pixNFT: Contract;
   let pixLandmark: Contract;
-  let pixStaking: Contract;
+  let pixLandStaking: Contract;
 
   const rewardPerBlock = BigNumber.from(10);
 
@@ -32,110 +31,108 @@ describe('PIXLandStaking', function () {
     pixLandmark = await upgrades.deployProxy(PIXLandmarkFactory, [pixNFT.address]);
 
     const PIXLandStakingFactory = await ethers.getContractFactory('PIXLandStaking');
-    pixStaking = await upgrades.deployProxy(PIXLandStakingFactory, [
+    pixLandStaking = await upgrades.deployProxy(PIXLandStakingFactory, [
       pixToken.address,
       pixLandmark.address,
-      rewardPerBlock,
     ]);
 
-    await pixLandmark.safeMint(await alice.getAddress(), [1, 1, PIXCategory.Common]);
-    await pixToken.transfer(pixStaking.address, ethers.utils.parseEther('1000000'));
+    await pixLandmark.setTrader(pixLandStaking.address, true);
+    await pixLandmark.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Area]);
+    await pixToken.transfer(pixLandStaking.address, ethers.utils.parseEther('1000000'));
     await pixToken.transfer(await alice.getAddress(), BigNumber.from(10000));
     await pixToken.transfer(await bob.getAddress(), BigNumber.from(10000));
+
+    await pixLandStaking.connect(owner).setRewardDistributor(await owner.getAddress());
+    await pixLandStaking.connect(owner).notifyRewardAmount(BigNumber.from(864000));
+    await pixLandmark.setTier(PIXCategory.Common, PIXSize.Area, 2);
   });
 
-  describe('setRewardPerBlock', () => {
+  describe('setRewardDistributor', () => {
     it('it should set reward amount correctly', async () => {
-      await pixStaking.connect(owner).setRewardPerBlock(ethers.utils.parseEther('2.0'));
-      expect(await pixStaking.rewardPerBlock()).to.equal(ethers.utils.parseEther('2.0'));
+      await pixLandStaking.connect(owner).setRewardDistributor(await alice.getAddress());
+      expect(await pixLandStaking.rewardDistributor()).to.equal(await alice.getAddress());
     });
-  });
 
-  describe('setTierInfo', () => {
-    it('it should set tier amount correctly', async () => {
-      await pixStaking.setTierInfo(1, 2);
-      expect(await pixStaking.tierInfo(1)).to.equal(2);
+    it('it should revert if the caller is not a owner', async () => {
+      await expect(
+        pixLandStaking.connect(alice).setRewardDistributor(await bob.getAddress()),
+      ).to.revertedWith('Ownable: caller is not the owner');
+    });
+
+    it('it should revert if the distributor address is zero address', async () => {
+      await expect(
+        pixLandStaking.connect(owner).setRewardDistributor(constants.AddressZero),
+      ).to.revertedWith('LandStaking: INVALID_DISTRIBUTOR');
     });
   });
 
   describe('stake', () => {
     it('revert if nftId is zero', async function () {
-      await expect(pixStaking.connect(alice).stake(0)).to.revertedWith('Staking: INVALID_TOKEN_ID');
+      await expect(pixLandStaking.connect(alice).stake('0')).to.revertedWith(
+        'LandStaking: INVALID_TOKEN_ID',
+      );
     });
 
     it("revert if tier didn't set", async function () {
-      await expect(pixStaking.connect(alice).stake(1)).to.revertedWith('Staking: INVALID_TIER');
+      await expect(pixLandStaking.connect(alice).stake(1)).to.revertedWith(
+        'LandStaking: INVALID_TIER',
+      );
     });
 
     it('should stake an NFT', async function () {
-      await pixStaking.setTierInfo(1, 2);
-      await pixLandmark.connect(alice).setApprovalForAll(pixStaking.address, true);
-      await pixStaking.connect(alice).stake(1);
-      expect(await pixStaking.totalTiers()).to.equal(2);
+      await pixLandmark.connect(alice).approve(pixLandStaking.address, 1);
+      await pixLandStaking.connect(alice).stake(1);
+      expect(await pixLandStaking.totalTiers()).to.equal('2');
     });
   });
 
   describe('claim', () => {
     beforeEach(async function () {
       // Stake an NFT from Alice
-      await pixStaking.setTierInfo(1, 2);
-      await pixLandmark.connect(alice).setApprovalForAll(pixStaking.address, true);
-      await pixStaking.connect(alice).stake(1);
+      await pixLandmark.connect(alice).approve(pixLandStaking.address, 1);
+      await pixLandStaking.connect(alice).stake(1);
 
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
+      await increaseTime(BigNumber.from(50));
     });
 
-    it('should provide correct rewards', async function () {
-      await pixStaking.connect(alice).claim();
-      expect(await pixToken.balanceOf(await alice.getAddress())).to.closeTo(
-        BigNumber.from(10050),
-        10,
+    it('should return correct rewards amount', async function () {
+      expect(await pixLandStaking.earned(await alice.getAddress())).to.closeTo(
+        BigNumber.from(50),
+        1,
         '',
       );
     });
 
-    it('should revert if didnt stake', async function () {
-      await expect(pixStaking.connect(bob).claim()).to.revertedWith('Staking: NO_WITHDRAWALS');
+    it('should provide correct rewards', async function () {
+      await pixLandStaking.connect(alice).claim();
+      expect(await pixToken.balanceOf(await alice.getAddress())).to.closeTo(
+        BigNumber.from(10050),
+        1,
+        '',
+      );
     });
   });
 
   describe('withdraw', () => {
     beforeEach(async function () {
       // Stake an NFT from Alice
-      await pixStaking.setTierInfo(1, 2);
-      await pixLandmark.connect(alice).setApprovalForAll(pixStaking.address, true);
-      await pixStaking.connect(alice).stake(1);
-
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-    });
-
-    it('revert if nftId is zero', async function () {
-      await expect(pixStaking.connect(alice).withdraw(0)).to.revertedWith(
-        'Staking: INVALID_TOKEN_ID',
-      );
+      await pixLandmark.connect(alice).approve(pixLandStaking.address, 1);
+      await pixLandStaking.connect(alice).stake(1);
     });
 
     it('should provide correct rewards', async function () {
-      await pixStaking.connect(alice).withdraw(1);
+      await pixLandStaking.connect(alice).withdraw(1);
       expect(await pixToken.balanceOf(await alice.getAddress())).to.closeTo(
-        BigNumber.from(10050),
-        10,
+        BigNumber.from(10000),
+        1,
         '',
       );
     });
 
     it('should stake again', async function () {
-      await pixStaking.connect(alice).withdraw(1);
-      await pixLandmark.connect(alice).setApprovalForAll(pixStaking.address, true);
-      await pixStaking.connect(alice).stake(1);
+      await pixLandStaking.connect(alice).withdraw(1);
+      await pixLandmark.connect(alice).approve(pixLandStaking.address, 1);
+      await pixLandStaking.connect(alice).stake(1);
     });
   });
 });

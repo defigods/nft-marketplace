@@ -1,5 +1,4 @@
 const { ethers, upgrades } = require('hardhat');
-const { BigNumber } = require('ethers');
 
 async function main() {
   const pixt = '0xE06Bd4F5aAc8D0aA337D13eC88dB6defC6eAEefE';
@@ -9,7 +8,7 @@ async function main() {
   const pixtStaking = await upgrades.deployProxy(PIXTStaking, [pixt]);
 
   const PIXStaking = await ethers.getContractFactory('PIXStaking');
-  const pixStaking = await upgrades.deployProxy(PIXStaking, [pixt, pix, BigNumber.from(10)]);
+  const pixStaking = await upgrades.deployProxy(PIXStaking, [pixt, pix]);
 
   console.log('PIXT Staking at', pixtStaking.address);
   console.log('PIX Staking at', pixStaking.address);
