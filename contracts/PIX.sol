@@ -134,7 +134,6 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     }
 
     function setCombinePrice(uint256 price) external onlyOwner {
-        require(price > 0, "Pix: ZERO_PRICE");
         combinePrice = price;
         emit CombinePriceUpdated(price);
     }
@@ -286,15 +285,9 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         delete packRequestCounts[to];
     }
 
-    function combine(uint256[] calldata tokenIds) external {
+    function combine(uint256[] calldata tokenIds) external onlyMod {
         require(tokenIds.length > 0, "Pix: NO_TOKENS");
-
-        _proceedCombine(msg.sender, tokenIds);
-
-        pixToken.safeTransferFrom(msg.sender, address(this), combinePrice);
-    }
-
-    function _proceedCombine(address account, uint256[] calldata tokenIds) private {
+        address account = ownerOf(tokenIds[0]);
         PIXInfo storage firstPix = pixInfos[tokenIds[0]];
         uint256 combineCount = combineCounts[firstPix.size];
         if (firstPix.size == PIXSize.Pix) {
