@@ -124,8 +124,8 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
         require(_tokens.length == _ids.length, "init:invalid tokens and ids");
 
         // initialize inherited contracts
-        __ERC721_init(_name, _symbol);
         __ERC721Enumerable_init();
+        __ERC721_init(_name, _symbol);
         __ERC721Holder_init();
         // set storage variables
         settings = _settings;
@@ -332,6 +332,8 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
         address _to,
         uint256 _tokenId
     ) internal virtual override {
+        super._beforeTokenTransfer(_from, _to, _tokenId);
+
         if (auctionState == State.INACTIVE) {
             uint256 fromPrice = userPrices[_from];
             uint256 toPrice = userPrices[_to];
@@ -442,7 +444,7 @@ contract ERC721NFTVault is ERC721EnumerableUpgradeable, ERC721HolderUpgradeable 
         uint256 share = (bal * address(this).balance) / totalSupply();
 
         for (uint256 i = 0; i < bal; i++) {
-            uint256 tokenId = tokenOfOwnerByIndex(msg.sender, i);
+            uint256 tokenId = tokenOfOwnerByIndex(msg.sender, 0);
             _burn(tokenId);
         }
 
