@@ -32,12 +32,13 @@ describe('PIX', function () {
     await usdc.transfer(await alice.getAddress(), utils.parseUnits('20000', 6));
     await usdc.connect(alice).approve(pixNFT.address, constants.MaxUint256);
 
-    await pixNFT.setDropInfo(
-      1,
-      [100, 0, 10, (await getCurrentTime()).sub(100), (await getCurrentTime()).add(1000000000)],
-      5000000,
-      false,
-    );
+    await pixNFT.setDropInfo(1, [
+      100,
+      0,
+      10,
+      (await getCurrentTime()).sub(100),
+      (await getCurrentTime()).add(1000000000),
+    ]);
   });
 
   describe('#initialize', () => {

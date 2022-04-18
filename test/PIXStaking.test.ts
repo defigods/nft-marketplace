@@ -67,6 +67,7 @@ describe('PIXStaking', function () {
     });
 
     it("revert if tier didn't set", async function () {
+      await pixNFT.setTier(PIXCategory.Common, PIXSize.Area, 0);
       await expect(pixStaking.connect(alice).stake(1)).to.revertedWith('Staking: INVALID_TIER');
     });
 
@@ -104,15 +105,19 @@ describe('PIXStaking', function () {
     });
   });
 
-  describe('withdraw', () => {
+  describe('unstake', () => {
     beforeEach(async function () {
       // Stake an NFT from Alice
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
     });
 
+    it('revert if msg.sender is not staker', async function () {
+      await expect(pixStaking.unstake(1)).to.revertedWith('Staking: NOT_STAKER');
+    });
+
     it('should provide correct rewards', async function () {
-      await pixStaking.connect(alice).withdraw(1);
+      await pixStaking.connect(alice).unstake(1);
       expect(await pixToken.balanceOf(await alice.getAddress())).to.closeTo(
         BigNumber.from(10000),
         1,
@@ -121,7 +126,7 @@ describe('PIXStaking', function () {
     });
 
     it('should stake again', async function () {
-      await pixStaking.connect(alice).withdraw(1);
+      await pixStaking.connect(alice).unstake(1);
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
     });

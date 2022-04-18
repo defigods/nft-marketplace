@@ -11,18 +11,13 @@ import "../interfaces/IPIX.sol";
 contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    event StakedPixNFT(uint256 tokenId, address indexed recipient);
-    event WithdrawnPixNFT(uint256 tokenId, address indexed recipient);
-    event ClaimPixNFT(uint256 pending, address indexed recipient);
+    event PIXStaked(uint256 tokenId, address indexed recipient);
+    event PIXUnstaked(uint256 tokenId, address indexed recipient);
+    event RewardClaimed(uint256 pending, address indexed recipient);
     event RewardAdded(uint256 reward);
 
-    struct UserInfo {
-        mapping(uint256 => bool) isStaked;
-        uint256 rewardDebt;
-        uint256 tiers;
-    }
-
-    mapping(address => UserInfo) public userInfo;
+    mapping(address => uint256) public tiers;
+    mapping(uint256 => address) public stakers;
 
     IERC20Upgradeable public rewardToken;
 
@@ -87,7 +82,7 @@ contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721Hol
      */
     function earned(address account) public view returns (uint256) {
         return
-            (userInfo[account].tiers * (rewardPerTier() - userRewardPerTierPaid[account])) /
+            (tiers[account] * (rewardPerTier() - userRewardPerTierPaid[account])) /
             1e18 +
             rewards[account];
     }
@@ -104,35 +99,31 @@ contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721Hol
     }
 
     function stake(uint256 _tokenId) external updateReward(msg.sender) nonReentrant {
-        uint256 tiers = IPIX(pixNFT).getTier(_tokenId);
+        uint256 tier = IPIX(pixNFT).getTier(_tokenId);
         require(_tokenId > 0, "Staking: INVALID_TOKEN_ID");
-        require(tiers > 0, "Staking: INVALID_TIER");
+        require(tier > 0, "Staking: INVALID_TIER");
         require(IPIX(pixNFT).isTerritory(_tokenId), "Staking: TERRITORY_ONLY");
 
-        totalTiers += tiers;
-
-        UserInfo storage user = userInfo[msg.sender];
-        user.tiers += tiers;
-        user.isStaked[_tokenId] = true;
+        totalTiers += tier;
+        stakers[_tokenId] = msg.sender;
+        tiers[msg.sender] += tier;
 
         IERC721Upgradeable(pixNFT).safeTransferFrom(msg.sender, address(this), _tokenId);
-        emit StakedPixNFT(_tokenId, address(this));
+        emit PIXStaked(_tokenId, address(this));
     }
 
-    function withdraw(uint256 _tokenId) external updateReward(msg.sender) nonReentrant {
-        UserInfo storage user = userInfo[msg.sender];
-        uint256 tiers = IPIX(pixNFT).getTier(_tokenId);
+    function unstake(uint256 _tokenId) external updateReward(msg.sender) nonReentrant {
+        uint256 tier = IPIX(pixNFT).getTier(_tokenId);
         require(_tokenId > 0, "Staking: INVALID_TOKEN_ID");
-        require(user.tiers > 0, "Staking: NO_WITHDRAWALS");
-        require(user.isStaked[_tokenId], "Staking: NO_STAKES");
+        require(stakers[_tokenId] == msg.sender, "Staking: NOT_STAKER");
+        require(tiers[msg.sender] > 0, "Staking: NO_WITHDRAWALS");
 
-        totalTiers -= tiers;
-
-        user.tiers -= tiers;
-        user.isStaked[_tokenId] = false;
+        totalTiers -= tier;
+        tiers[msg.sender] -= tier;
+        delete stakers[_tokenId];
 
         IERC721Upgradeable(pixNFT).safeTransferFrom(address(this), msg.sender, _tokenId);
-        emit WithdrawnPixNFT(_tokenId, msg.sender);
+        emit PIXUnstaked(_tokenId, msg.sender);
     }
 
     /**
@@ -144,7 +135,7 @@ contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721Hol
         if (reward > 0) {
             rewards[msg.sender] = 0;
             rewardToken.safeTransfer(msg.sender, reward);
-            emit ClaimPixNFT(reward, msg.sender);
+            emit RewardClaimed(reward, msg.sender);
         }
     }
 
@@ -168,5 +159,9 @@ contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721Hol
         lastUpdateTime = block.timestamp;
         periodFinish = block.timestamp + DURATION;
         emit RewardAdded(reward);
+    }
+
+    function isStaked(uint256 tokenId) external view returns (bool) {
+        return stakers[tokenId] != address(0);
     }
 }

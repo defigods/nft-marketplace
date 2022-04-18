@@ -97,21 +97,6 @@ describe('PIXLandmark', function () {
     });
   });
 
-  describe('#safeBurn', () => {
-    beforeEach(async () => {
-      await pixLandmark.safeMint(await alice.getAddress(), [PIXCategory.Common, 1]);
-    });
-
-    it('revert if sender is not approved', async () => {
-      await expect(pixLandmark.safeBurn(1)).to.revertedWith('Landmark: NON_APPROVED');
-    });
-
-    it('should safe burn', async () => {
-      await pixLandmark.connect(alice).safeBurn(1);
-      expect(await pixLandmark.totalSupply()).to.equal(0);
-    });
-  });
-
   describe('#setBaseURI', () => {
     const uri = 'https://planetix.com/land-nfts/';
 

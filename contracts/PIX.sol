@@ -58,9 +58,6 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     uint256[] public packIXTPrices;
     mapping(address => uint256) public packRequestCounts;
 
-    mapping(uint256 => uint256) public dropPrices;
-    mapping(uint256 => bool) public dropUseIXT;
-
     mapping(PIXCategory => mapping(PIXSize => uint256)) public tiers;
 
     modifier onlyMod() {
@@ -133,6 +130,26 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         emit ModeratorUpdated(moderator, approved);
     }
 
+    function setPackPrice(uint256 mode, uint256 price) external onlyOwner {
+        require(price > 0, "Pix: ZERO_PRICE");
+        if (mode == 0) {
+            packPrices.push(price);
+            emit PackPriceUpdated(packPrices.length, price);
+        } else if (mode <= packPrices.length) {
+            packPrices[mode - 1] = price;
+            emit PackPriceUpdated(mode, price);
+        }
+    }
+
+    function setPackIXTPrice(uint256 mode, uint256 price) external onlyOwner {
+        require(price > 0, "Pix: ZERO_PRICE");
+        if (mode == 0) {
+            packIXTPrices.push(price);
+        } else if (mode <= packIXTPrices.length) {
+            packIXTPrices[mode - 1] = price;
+        }
+    }
+
     function setCombinePrice(uint256 price) external onlyOwner {
         combinePrice = price;
         emit CombinePriceUpdated(price);
@@ -179,19 +196,11 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             "!Pix: DROP_SALE_TIME"
         );
         require(paymentTokens[token], "Pix: TOKEN_NOT_APPROVED");
-        if (dropUseIXT[dropId]) {
-            require(token == address(pixToken), "Pix: DROP_TOKEN_MISMATCH");
-        }
 
-        uint256 price = dropPrices[dropId];
-        if (!dropUseIXT[dropId]) {
-            if (address(oracleManager) == address(0)) {
-                require(token == tokenForPrice, "Pix: UNSUPPORTED_ORACLE");
-            }
-            if (token != tokenForPrice) {
-                price = oracleManager.getAmountOut(tokenForPrice, token, dropPrices[dropId]);
-            }
-        }
+        uint256 price = token == tokenForPrice
+            ? packPrices[mode - 1]
+            : oracleManager.getAmountOut(tokenForPrice, token, packPrices[mode - 1]);
+
         _registerRequest(token, dropId, playerId, mode, price, count);
     }
 
@@ -212,9 +221,8 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             drop.startTime <= block.timestamp && drop.endTime >= block.timestamp,
             "!Pix: DROP_SALE_TIME"
         );
-        require(dropUseIXT[dropId], "Pix: DROP_TOKEN_MISMATCH");
 
-        _registerRequest(address(pixToken), dropId, playerId, mode, dropPrices[dropId], count);
+        _registerRequest(address(pixToken), dropId, playerId, mode, packIXTPrices[mode - 1], count);
     }
 
     function _registerRequest(
@@ -390,20 +398,13 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         tokenForPrice = _tokenForPrice;
     }
 
-    function setDropInfo(
-        uint256 dropId,
-        DropInfo calldata drop,
-        uint256 price,
-        bool useIXT
-    ) external onlyOwner {
+    function setDropInfo(uint256 dropId, DropInfo calldata drop) external onlyOwner {
         DropInfo storage dropInfo = dropInfos[dropId];
         dropInfo.maxCount = drop.maxCount;
         dropInfo.requestCount = drop.requestCount;
         dropInfo.limitForPlayer = drop.limitForPlayer;
         dropInfo.startTime = drop.startTime;
         dropInfo.endTime = drop.endTime;
-        dropPrices[dropId] = price;
-        dropUseIXT[dropId] = useIXT;
     }
 
     function setRelationForDrops(uint256 drop1, uint256 drop2) external onlyOwner {
