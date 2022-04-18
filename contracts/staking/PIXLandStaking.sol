@@ -4,10 +4,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
+contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     event StakedPixNFT(uint256 tokenId, address indexed recipient);
@@ -15,13 +14,8 @@ contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC72
     event ClaimPixNFT(uint256 pending, address indexed recipient);
     event RewardAdded(uint256 reward);
 
-    struct UserInfo {
-        mapping(uint256 => bool) isStaked;
-        uint256 rewardDebt;
-        uint256 tiers;
-    }
-
-    mapping(address => UserInfo) public userInfo;
+    mapping(uint256 => bool) public isStaked;
+    mapping(address => uint256) public tiers;
 
     IERC20Upgradeable public rewardToken;
 
@@ -58,7 +52,6 @@ contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC72
 
         __Ownable_init();
         __ReentrancyGuard_init();
-        __ERC721Holder_init();
 
         rewardToken = IERC20Upgradeable(_pixt);
         pixLandmark = _pixLandmark;
@@ -86,7 +79,7 @@ contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC72
      */
     function earned(address account) public view returns (uint256) {
         return
-            (userInfo[account].tiers * (rewardPerTier() - userRewardPerTierPaid[account])) /
+            (tiers[account] * (rewardPerTier() - userRewardPerTierPaid[account])) /
             1e18 +
             rewards[account];
     }
@@ -105,21 +98,17 @@ contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC72
     function stake(uint256 _tokenId) external updateReward(msg.sender) nonReentrant {
         require(_tokenId > 0, "LandStaking: INVALID_TOKEN_ID");
 
-        UserInfo storage user = userInfo[msg.sender];
-        user.isStaked[_tokenId] = true;
+        isStaked[_tokenId] = true;
 
-        IERC721Upgradeable(pixLandmark).safeTransferFrom(msg.sender, address(this), _tokenId);
         emit StakedPixNFT(_tokenId, address(this));
     }
 
     function withdraw(uint256 _tokenId) external updateReward(msg.sender) nonReentrant {
-        UserInfo storage user = userInfo[msg.sender];
         require(_tokenId > 0, "LandStaking: INVALID_TOKEN_ID");
-        require(user.isStaked[_tokenId], "LandStaking: NO_STAKES");
+        require(isStaked[_tokenId], "LandStaking: NO_STAKES");
 
-        user.isStaked[_tokenId] = false;
+        isStaked[_tokenId] = false;
 
-        IERC721Upgradeable(pixLandmark).safeTransferFrom(address(this), msg.sender, _tokenId);
         emit WithdrawnPixNFT(_tokenId, msg.sender);
     }
 

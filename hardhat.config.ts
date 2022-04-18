@@ -36,16 +36,6 @@ export default {
       chainId: 137,
       accounts: [process.env.IXT_DROP_KEY],
     },
-    vestdrop: {
-      url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
-      chainId: 137,
-      accounts: [process.env.VEST_DROP_KEY],
-    },
-    liqdrop: {
-      url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
-      chainId: 137,
-      accounts: [process.env.LIQ_DROP_KEY],
-    },
   },
   namedAccounts: {
     deployer: {
