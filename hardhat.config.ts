@@ -26,16 +26,6 @@ export default {
       chainId: 80001,
       accounts: [process.env.PRIVATE_KEY],
     },
-    maticdrop: {
-      url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
-      chainId: 137,
-      accounts: [process.env.PRIVATE_KEY],
-    },
-    ixtdrop: {
-      url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
-      chainId: 137,
-      accounts: [process.env.PRIVATE_KEY],
-    },
   },
   namedAccounts: {
     deployer: {

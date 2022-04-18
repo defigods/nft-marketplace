@@ -17,7 +17,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       execute: {
         init: {
           methodName: 'initialize',
-          args: [deployer, ixtToken, ixtUsdtLpToken, 86400 * 30],
+          args: [deployer, ixtToken, ixtUsdtLpToken, 86400 * 30, 86400 * 30],
         },
       },
     },
