@@ -62,10 +62,10 @@ export default {
     currency: 'ETH',
   },
   etherscan: {
-    apiKey: process.env.API_KEY,
+    apiKey: process.env.POLYSCAN_KEY,
   },
   solidity: {
-    version: '0.8.4',
+    version: '0.8.2',
     settings: {
       optimizer: {
         enabled: true,

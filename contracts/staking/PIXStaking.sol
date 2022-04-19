@@ -51,7 +51,6 @@ contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721Hol
     function initialize(address _pixt, address _pixNFT) external initializer {
         require(_pixt != address(0), "Staking: INVALID_PIXT");
         require(_pixNFT != address(0), "Staking: INVALID_PIX");
-
         __Ownable_init();
         __ReentrancyGuard_init();
         __ERC721Holder_init();

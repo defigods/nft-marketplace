@@ -3,6 +3,7 @@ import { time } from '@openzeppelin/test-helpers';
 import { MerkleTree } from 'merkletreejs';
 import keccak256 from 'keccak256';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+const { web3 } = require('@openzeppelin/test-helpers/src/setup');
 
 export const DENOMINATOR = BigNumber.from('10000');
 
@@ -74,4 +75,23 @@ export const getMerkleTree = (accounts: (SignerWithAddress | Wallet)[] | undefin
     leafNodes,
     pixes,
   };
+};
+
+export const advanceTime = (time) => {
+  return new Promise((resolve, reject) => {
+    web3.currentProvider.send(
+      {
+        jsonrpc: '2.0',
+        method: 'evm_increaseTime',
+        params: [time],
+        id: new Date().getTime(),
+      },
+      (err, result) => {
+        if (err) {
+          return reject(err);
+        }
+        return resolve(result);
+      },
+    );
+  });
 };
