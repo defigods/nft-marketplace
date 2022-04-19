@@ -17,10 +17,10 @@ contract PIXStakingLottery is
     using SafeMathUpgradeable for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    event StakedPixNFT(uint256 tokenId, address indexed recipient);
-    event WithdrawnPixNFT(uint256 tokenId, address indexed recipient);
-    event RewardPaid(uint256 amount, address indexed recipient);
-    event SetWinner(uint256 time, uint256 amount, address indexed recipient);
+    event PIXStaked(uint256 tokenId, address indexed account);
+    event PIXUnstaked(uint256 tokenId, address indexed account);
+    event RewardClaimed(uint256 amount, address indexed account);
+    event SetWinner(uint256 time, uint256 amount, address indexed account);
 
     struct UserInfo {
         mapping(uint256 => bool) isStaked;
@@ -28,7 +28,6 @@ contract PIXStakingLottery is
     }
 
     mapping(address => UserInfo) public userInfo;
-    mapping(uint256 => uint256) public tierInfo;
     mapping(address => uint256) public earned;
 
     IERC20Upgradeable public rewardToken;
@@ -59,40 +58,38 @@ contract PIXStakingLottery is
 
     function stake(uint256 _tokenId) external {
         require(_tokenId > 0, "Staking: INVALID_TOKEN_ID");
-        require(tierInfo[_tokenId] > 0, "Staking: INVALID_TIER");
+        require(IPIX(pixNFT).getTier(_tokenId) > 0, "Staking: INVALID_TIER");
         require(IPIX(pixNFT).isTerritory(_tokenId), "Staking: TERRITORY_ONLY");
 
         UserInfo storage user = userInfo[msg.sender];
 
-        uint256 tiers = tierInfo[_tokenId];
-
         IERC721Upgradeable(pixNFT).safeTransferFrom(msg.sender, address(this), _tokenId);
-        totalTiers = totalTiers.add(tiers);
+        totalTiers = totalTiers.add(IPIX(pixNFT).getTier(_tokenId));
 
         // Update User Info
-        user.tiers = user.tiers.add(tiers);
+        user.tiers = user.tiers.add(IPIX(pixNFT).getTier(_tokenId));
         user.isStaked[_tokenId] = true;
 
         if (lastUpdateTime == 0) {
             lastUpdateTime = block.timestamp;
         }
 
-        emit StakedPixNFT(_tokenId, address(this));
+        emit PIXStaked(_tokenId, address(this));
     }
 
-    function withdraw(uint256 _tokenId) external nonReentrant {
+    function unstake(uint256 _tokenId) external nonReentrant {
         require(_tokenId > 0, "Staking: INVALID_TOKEN_ID");
         UserInfo storage user = userInfo[msg.sender];
         require(user.tiers > 0, "Staking: NO_WITHDRAWALS");
         require(user.isStaked[_tokenId], "Staking: NO_STAKES");
 
         IERC721Upgradeable(pixNFT).safeTransferFrom(address(this), msg.sender, _tokenId);
-        totalTiers = totalTiers.sub(tierInfo[_tokenId]);
+        totalTiers = totalTiers.sub(IPIX(pixNFT).getTier(_tokenId));
         // Update UserInfo
-        user.tiers = user.tiers.sub(tierInfo[_tokenId]);
+        user.tiers = user.tiers.sub(IPIX(pixNFT).getTier(_tokenId));
         user.isStaked[_tokenId] = false;
 
-        emit WithdrawnPixNFT(_tokenId, msg.sender);
+        emit PIXUnstaked(_tokenId, msg.sender);
     }
 
     function claim() external {
@@ -100,7 +97,7 @@ contract PIXStakingLottery is
 
         rewardToken.safeTransfer(msg.sender, earned[msg.sender]);
         earned[msg.sender] = 0;
-        emit RewardPaid(earned[msg.sender], msg.sender);
+        emit RewardClaimed(earned[msg.sender], msg.sender);
     }
 
     function setReward(address _winner) external onlyOwner {
@@ -119,12 +116,6 @@ contract PIXStakingLottery is
 
     function setRewardPerBlock(uint256 _amount) external onlyOwner {
         rewardPerBlock = _amount;
-    }
-
-    function setTierInfo(uint256 _tokenId, uint256 _tiers) external onlyOwner {
-        require(_tiers > 0, "Staking: INVALID_TIERS");
-
-        tierInfo[_tokenId] = _tiers;
     }
 
     function _calculateReward() internal view returns (uint256) {
