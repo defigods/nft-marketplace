@@ -46,6 +46,7 @@ async function main() {
 
     const receipt = await response.wait(1);
     console.log(receipt);
+    console.log('============================', index);
   }
 }
 

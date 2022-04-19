@@ -23,21 +23,14 @@ describe('PIXLandmark', function () {
     pixNFT = await upgrades.deployProxy(PIXFactory, [pixToken.address, usdc.address]);
 
     const PIXLandmarkFactory = await ethers.getContractFactory('PIXLandmark');
-    pixLandmark = await upgrades.deployProxy(PIXLandmarkFactory, [pixNFT.address, 'a']);
+    pixLandmark = await upgrades.deployProxy(PIXLandmarkFactory, [pixNFT.address]);
   });
 
   describe('#initialize', () => {
     it('revert if pixNFT is zero address', async function () {
       const PIXLandmark = await ethers.getContractFactory('PIXLandmark');
-      await expect(upgrades.deployProxy(PIXLandmark, [constants.AddressZero, 'a'])).to.revertedWith(
+      await expect(upgrades.deployProxy(PIXLandmark, [constants.AddressZero])).to.revertedWith(
         'Landmark: INVALID_PIX',
-      );
-    });
-
-    it('revert if pixNFT is zero address', async function () {
-      const PIXLandmark = await ethers.getContractFactory('PIXLandmark');
-      await expect(upgrades.deployProxy(PIXLandmark, [pixNFT.address, ''])).to.revertedWith(
-        'Landmark: INVALID_URI',
       );
     });
 
@@ -68,19 +61,19 @@ describe('PIXLandmark', function () {
     });
   });
 
-  describe('#addPixesInLandmark', () => {
+  describe('#addLandmarkType', () => {
     it('revert if type is invalid', async () => {
-      await expect(pixLandmark.addPixesInLandmark(0, [])).to.revertedWith('Landmark: INVALID_ID');
+      await expect(pixLandmark.addLandmarkType(0, [])).to.revertedWith('Landmark: INVALID_TYPE');
     });
 
     it('revert if sender is not moderator', async () => {
-      await expect(pixLandmark.addPixesInLandmark(1, [1, 2])).to.revertedWith('Pix: NON_MODERATOR');
+      await expect(pixLandmark.addLandmarkType(1, [1, 2])).to.revertedWith('Pix: NON_MODERATOR');
     });
 
     it('should add type', async () => {
       await pixNFT.setModerator(pixLandmark.address, true);
       await pixNFT.safeMint(await alice.getAddress(), [1, PIXCategory.Legendary, PIXSize.Pix]);
-      await pixLandmark.addPixesInLandmark(1, [1, 2]);
+      await pixLandmark.addLandmarkType(1, [1, 2]);
       expect(await pixNFT.pixesInLand([1])).to.equal(true);
     });
   });
@@ -88,25 +81,19 @@ describe('PIXLandmark', function () {
   describe('#safeMint', () => {
     it('revert if sender is not moderator', async () => {
       await expect(
-        pixLandmark.connect(alice).safeMint(await alice.getAddress(), 0, 0, PIXCategory.Common),
+        pixLandmark.connect(alice).safeMint(await alice.getAddress(), [PIXCategory.Common, 0]),
       ).to.revertedWith('Landmark: NON_MODERATOR');
     });
 
-    it('revert if id is invalid', async () => {
+    it('revert if type is invalid', async () => {
       await expect(
-        pixLandmark.safeMint(await alice.getAddress(), 0, 0, PIXCategory.Common),
-      ).to.revertedWith('Landmark: INVALID_ID');
-    });
-
-    it('revert if amount is invalid', async () => {
-      await expect(
-        pixLandmark.safeMint(await alice.getAddress(), 1, 0, PIXCategory.Common),
-      ).to.revertedWith('Landmark: INVALID_AMOUNT');
+        pixLandmark.safeMint(await alice.getAddress(), [PIXCategory.Common, 0]),
+      ).to.revertedWith('Landmark: INVALID_TYPE');
     });
 
     it('should safe mint', async () => {
-      await pixLandmark.safeMint(await alice.getAddress(), 1, 1, PIXCategory.Common);
-      expect(await pixLandmark.totalSupply(1)).to.equal(1);
+      await pixLandmark.safeMint(await alice.getAddress(), [PIXCategory.Common, 1]);
+      expect(await pixLandmark.totalSupply()).to.equal(1);
     });
   });
 
@@ -121,8 +108,8 @@ describe('PIXLandmark', function () {
 
     it('should set base uri by owner', async () => {
       await pixLandmark.setBaseURI(uri);
-      await pixLandmark.safeMint(await alice.getAddress(), 1, 1, PIXCategory.Common);
-      expect(await pixLandmark.uri(1)).to.equal(uri + '1');
+      await pixLandmark.safeMint(await alice.getAddress(), [PIXCategory.Common, 1]);
+      expect(await pixLandmark.tokenURI(1)).to.equal(uri + '1');
     });
   });
 });

@@ -58,6 +58,8 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     uint256[] public packIXTPrices;
     mapping(address => uint256) public packRequestCounts;
 
+    mapping(PIXCategory => mapping(PIXSize => uint256)) public tiers;
+
     modifier onlyMod() {
         require(moderators[msg.sender], "Pix: NON_MODERATOR");
         _;
@@ -149,7 +151,6 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     }
 
     function setCombinePrice(uint256 price) external onlyOwner {
-        require(price > 0, "Pix: ZERO_PRICE");
         combinePrice = price;
         emit CombinePriceUpdated(price);
     }
@@ -195,11 +196,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             "!Pix: DROP_SALE_TIME"
         );
         require(paymentTokens[token], "Pix: TOKEN_NOT_APPROVED");
-        require(mode > 0 && mode <= packPrices.length, "Pix: INVALID_PRICE_MODE");
 
-        if (address(oracleManager) == address(0)) {
-            require(token == tokenForPrice, "Pix: UNSUPPORTED_ORACLE");
-        }
         uint256 price = token == tokenForPrice
             ? packPrices[mode - 1]
             : oracleManager.getAmountOut(tokenForPrice, token, packPrices[mode - 1]);
@@ -224,7 +221,6 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
             drop.startTime <= block.timestamp && drop.endTime >= block.timestamp,
             "!Pix: DROP_SALE_TIME"
         );
-        require(mode > 0 && mode <= packIXTPrices.length, "Pix: INVALID_PRICE_MODE");
 
         _registerRequest(address(pixToken), dropId, playerId, mode, packIXTPrices[mode - 1], count);
     }
@@ -297,15 +293,9 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         delete packRequestCounts[to];
     }
 
-    function combine(uint256[] calldata tokenIds) external {
+    function combine(uint256[] calldata tokenIds) external onlyMod {
         require(tokenIds.length > 0, "Pix: NO_TOKENS");
-
-        _proceedCombine(msg.sender, tokenIds);
-
-        pixToken.safeTransferFrom(msg.sender, address(this), combinePrice);
-    }
-
-    function _proceedCombine(address account, uint256[] calldata tokenIds) private {
+        address account = ownerOf(tokenIds[0]);
         PIXInfo storage firstPix = pixInfos[tokenIds[0]];
         uint256 combineCount = combineCounts[firstPix.size];
         if (firstPix.size == PIXSize.Pix) {
@@ -430,5 +420,18 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
 
     function setBlacklistedAddress(address account, bool blacklisted) external onlyOwner {
         blacklistedAddresses[account] = blacklisted;
+    }
+
+    function setTier(
+        PIXCategory category,
+        PIXSize size,
+        uint256 tier
+    ) external onlyOwner {
+        tiers[category][size] = tier;
+    }
+
+    function getTier(uint256 tokenId) external view override returns (uint256) {
+        PIXInfo memory info = pixInfos[tokenId];
+        return tiers[info.category][info.size];
     }
 }
