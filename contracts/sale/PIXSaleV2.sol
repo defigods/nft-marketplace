@@ -6,11 +6,11 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
-import "../libraries/DecimalMath.sol";
+import "../core/PIXT.sol";
+import "./PIXBaseSale.sol";
 import "../interfaces/IPIX.sol";
 import "../interfaces/IPIXMerkleMinter.sol";
-import "../PIXT.sol";
-import "./PIXBaseSale.sol";
+import "../libraries/DecimalMath.sol";
 
 contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;

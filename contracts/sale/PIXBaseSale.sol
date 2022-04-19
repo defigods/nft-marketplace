@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
-import "../libraries/DecimalMath.sol";
+import "../core/PIXT.sol";
 import "../interfaces/IPIX.sol";
-import "../PIXT.sol";
+import "../libraries/DecimalMath.sol";
 
 abstract contract PIXBaseSale is OwnableUpgradeable, ERC721HolderUpgradeable {
     using DecimalMath for uint256;
