@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
 import { Signer, Contract, BigNumber } from 'ethers';
-import { PIXCategory, PIXSize } from './utils';
+import { PIXCategory, PIXSize, advanceTime } from './utils';
 import { time } from '@openzeppelin/test-helpers';
 
 describe('PIXStakingLottery', function () {
@@ -38,6 +38,7 @@ describe('PIXStakingLottery', function () {
 
     await pixNFT.setTrader(pixStaking.address, true);
     await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Area]);
+    await pixNFT.setTier(PIXCategory.Common, PIXSize.Area, 2);
     await pixToken.transfer(pixStaking.address, ethers.utils.parseEther('1000000'));
     await pixToken.transfer(await alice.getAddress(), BigNumber.from(10000));
     await pixToken.transfer(await bob.getAddress(), BigNumber.from(10000));
@@ -70,19 +71,15 @@ describe('PIXStakingLottery', function () {
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
 
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-
+      await pixStaking.connect(owner).startLottery();
+      await advanceTime(2000);
       await pixStaking.connect(owner).setReward(await alice.getAddress());
     });
 
     it('should provide correct rewards', async function () {
       await pixStaking.connect(alice).claim();
       expect(await pixToken.balanceOf(await alice.getAddress())).to.closeTo(
-        BigNumber.from(10050),
+        BigNumber.from(30000),
         10,
         '',
       );
@@ -95,14 +92,14 @@ describe('PIXStakingLottery', function () {
     });
   });
 
-  describe('withdraw', () => {
+  describe('unstake', () => {
     beforeEach(async function () {
       // Stake an NFT from Alice
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
     });
     it('should stake again', async function () {
-      await pixStaking.connect(alice).withdraw(1);
+      await pixStaking.connect(alice).unstake(1);
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
     });

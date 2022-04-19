@@ -1,11 +1,7 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
 import { Signer, Contract, BigNumber, constants, utils } from 'ethers';
-import { time } from '@openzeppelin/test-helpers';
-
-const getCurrentTime = async () => {
-  return BigNumber.from((await time.latest()).toString());
-};
+import { advanceTime } from './utils';
 
 const rewardPerBlock = BigNumber.from(10);
 const period = BigNumber.from(1000);
@@ -110,17 +106,13 @@ describe('PIXTStakingLottery', function () {
       await ownerStaking.setRewardPerBlock(rewardPerBlock);
 
       await aliceStaking.stake(10);
+      await ownerStaking.startLottery();
+      await advanceTime(2000);
       await ownerStaking.setReward(await alice.getAddress());
-
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
-      await time.advanceBlock();
 
       const prevBalance = await pixt.balanceOf(aliceAddress);
       const tx = await aliceStaking.claim();
-      expect(await pixt.balanceOf(aliceAddress)).to.closeTo(prevBalance, 80, '');
+      expect(await pixt.balanceOf(aliceAddress)).to.closeTo(prevBalance, 20000, '');
     });
   });
 });

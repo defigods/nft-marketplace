@@ -33,10 +33,11 @@ contract PIXStakingLottery is
     IERC20Upgradeable public rewardToken;
 
     address public pixNFT;
-    uint256 public lastUpdateTime;
+    uint256 public lastLotteryTime;
     uint256 public rewardPerBlock;
     uint256 public totalTiers;
     uint256 public period;
+    bool public isLotteryStarted;
 
     function initialize(
         address _pixt,
@@ -70,10 +71,6 @@ contract PIXStakingLottery is
         user.tiers = user.tiers.add(IPIX(pixNFT).getTier(_tokenId));
         user.isStaked[_tokenId] = true;
 
-        if (lastUpdateTime == 0) {
-            lastUpdateTime = block.timestamp;
-        }
-
         emit PIXStaked(_tokenId, address(this));
     }
 
@@ -100,8 +97,14 @@ contract PIXStakingLottery is
         emit RewardClaimed(earned[msg.sender], msg.sender);
     }
 
+    function startLottery() external onlyOwner {
+        lastLotteryTime = block.timestamp;
+        isLotteryStarted = true;
+    }
+
     function setReward(address _winner) external onlyOwner {
-        require(block.timestamp - lastUpdateTime >= period, "SetWinner: Already set winner");
+        require(block.timestamp - lastLotteryTime >= period, "SetWinner: Already set winner");
+        require(isLotteryStarted, "SetWinner: lottery not started yet");
 
         UserInfo storage user = userInfo[_winner];
         require(user.tiers > 0, "SetReward: INV_WINNER");
@@ -109,7 +112,7 @@ contract PIXStakingLottery is
         uint256 pending = _calculateReward();
         require(pending > 0, "setReward: no tokens to set");
         earned[_winner] += pending;
-        lastUpdateTime = block.timestamp;
+        lastLotteryTime = block.timestamp;
 
         emit SetWinner(block.timestamp, pending, msg.sender);
     }
@@ -119,7 +122,7 @@ contract PIXStakingLottery is
     }
 
     function _calculateReward() internal view returns (uint256) {
-        uint256 blocksPassed = block.timestamp.sub(lastUpdateTime);
-        return rewardPerBlock.mul(blocksPassed);
+        uint256 timesPassed = block.timestamp.sub(lastLotteryTime);
+        return rewardPerBlock.mul(timesPassed);
     }
 }

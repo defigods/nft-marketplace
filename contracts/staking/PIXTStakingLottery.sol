@@ -18,7 +18,7 @@ contract PIXTStakingLottery is OwnableUpgradeable {
     mapping(address => uint256) public stakedAmounts;
     mapping(address => uint256) public earned;
 
-    uint256 public lastUpdateBlock;
+    uint256 public lastLotteryTime;
     uint256 public rewardPerBlock;
     uint256 public period;
 
@@ -49,10 +49,12 @@ contract PIXTStakingLottery is OwnableUpgradeable {
         totalStaked += amount;
         stakedAmounts[msg.sender] += amount;
         pixToken.safeTransferFrom(msg.sender, address(this), amount);
-        if (lastUpdateBlock == 0) {
-            lastUpdateBlock = block.timestamp;
-        }
+
         emit Staked(msg.sender, amount);
+    }
+
+    function startLottery() external onlyOwner {
+        lastLotteryTime = block.timestamp;
     }
 
     function setRewardPerBlock(uint256 _amount) external onlyOwner {
@@ -90,19 +92,19 @@ contract PIXTStakingLottery is OwnableUpgradeable {
     }
 
     function setReward(address _winner) external onlyOwner {
-        require(block.timestamp - lastUpdateBlock >= period, "SetWinner: Already set winner");
+        require(block.timestamp - lastLotteryTime >= period, "SetWinner: Already set winner");
 
         require(stakedAmounts[_winner] > 0, "SetReward: INV_WINNER");
         uint256 pending = _calculateReward();
         require(pending > 0, "setReward: no tokens to set");
         earned[_winner] += pending;
-        lastUpdateBlock = block.timestamp;
+        lastLotteryTime = block.timestamp;
 
         emit SetReward(_winner, pending);
     }
 
     function _calculateReward() internal view returns (uint256) {
-        uint256 blocksPassed = block.timestamp.sub(lastUpdateBlock);
+        uint256 blocksPassed = block.timestamp.sub(lastLotteryTime);
         return rewardPerBlock.mul(blocksPassed);
     }
 }
