@@ -11,8 +11,6 @@ describe('PIXStaking', function () {
   let pixNFT: Contract;
   let pixStaking: Contract;
 
-  const rewardPerBlock = BigNumber.from(10);
-
   beforeEach(async function () {
     [owner, alice, bob] = await ethers.getSigners();
 
@@ -36,6 +34,7 @@ describe('PIXStaking', function () {
 
     await pixStaking.connect(owner).setRewardDistributor(await owner.getAddress());
     await pixStaking.connect(owner).notifyRewardAmount(BigNumber.from(864000));
+    await pixNFT.setTier(PIXCategory.Common, PIXSize.Area, 2);
   });
 
   describe('setRewardDistributor', () => {
