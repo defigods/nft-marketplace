@@ -2,7 +2,6 @@ import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
 import { Signer, Contract, BigNumber, constants } from 'ethers';
 import { PIXCategory, PIXSize, increaseTime } from './utils';
-import { time } from '@openzeppelin/test-helpers';
 describe('PIXStaking', function () {
   let owner: Signer;
   let alice: Signer;
@@ -66,11 +65,11 @@ describe('PIXStaking', function () {
     });
 
     it("revert if tier didn't set", async function () {
+      await pixNFT.setTier(PIXCategory.Common, PIXSize.Area, 0);
       await expect(pixStaking.connect(alice).stake(1)).to.revertedWith('Staking: INVALID_TIER');
     });
 
     it('should stake an NFT', async function () {
-      await pixStaking.setTierInfo('1', '2');
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
       expect(await pixStaking.totalTiers()).to.equal('2');
@@ -80,7 +79,6 @@ describe('PIXStaking', function () {
   describe('claim', () => {
     beforeEach(async function () {
       // Stake an NFT from Alice
-      await pixStaking.setTierInfo('1', '2');
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
 
@@ -105,16 +103,19 @@ describe('PIXStaking', function () {
     });
   });
 
-  describe('withdraw', () => {
+  describe('unstake', () => {
     beforeEach(async function () {
       // Stake an NFT from Alice
-      await pixStaking.setTierInfo('1', '2');
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
     });
 
+    it('revert if msg.sender is not staker', async function () {
+      await expect(pixStaking.unstake(1)).to.revertedWith('Staking: NOT_STAKER');
+    });
+
     it('should provide correct rewards', async function () {
-      await pixStaking.connect(alice).withdraw(1);
+      await pixStaking.connect(alice).unstake(1);
       expect(await pixToken.balanceOf(await alice.getAddress())).to.closeTo(
         BigNumber.from(10000),
         1,
@@ -123,7 +124,7 @@ describe('PIXStaking', function () {
     });
 
     it('should stake again', async function () {
-      await pixStaking.connect(alice).withdraw(1);
+      await pixStaking.connect(alice).unstake(1);
       await pixNFT.connect(alice).approve(pixStaking.address, 1);
       await pixStaking.connect(alice).stake(1);
     });

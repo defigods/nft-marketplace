@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
-import "./interfaces/IPIX.sol";
+import "../interfaces/IPIX.sol";
 
 contract PIXMerkleMinter is OwnableUpgradeable {
     mapping(bytes32 => bool) public merkleRoots;

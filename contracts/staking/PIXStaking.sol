@@ -3,32 +3,21 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "../interfaces/IPIX.sol";
 
 contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
-    using SafeMathUpgradeable for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    event StakedPixNFT(uint256 tokenId, address indexed recipient);
-    event WithdrawnPixNFT(uint256 tokenId, address indexed recipient);
-    event ClaimPixNFT(uint256 pending, address indexed recipient);
+    event PIXStaked(uint256 tokenId, address indexed account);
+    event PIXUnstaked(uint256 tokenId, address indexed account);
+    event RewardClaimed(uint256 reward, address indexed account);
     event RewardAdded(uint256 reward);
 
-    struct UserInfo {
-        mapping(uint256 => bool) isStaked;
-        uint256 rewardDebt;
-        uint256 tiers;
-    }
-
-    mapping(address => UserInfo) public userInfo;
-    mapping(uint256 => uint256) public tierInfo;
+    mapping(address => uint256) public tiers;
+    mapping(uint256 => address) public stakers;
 
     IERC20Upgradeable public rewardToken;
 
@@ -62,16 +51,17 @@ contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721Hol
     function initialize(address _pixt, address _pixNFT) external initializer {
         require(_pixt != address(0), "Staking: INVALID_PIXT");
         require(_pixNFT != address(0), "Staking: INVALID_PIX");
-        rewardToken = IERC20Upgradeable(_pixt);
-        pixNFT = _pixNFT;
         __Ownable_init();
         __ReentrancyGuard_init();
         __ERC721Holder_init();
+
+        rewardToken = IERC20Upgradeable(_pixt);
+        pixNFT = _pixNFT;
     }
 
     /// @dev validation reward period
     function lastTimeRewardApplicable() public view returns (uint256) {
-        return MathUpgradeable.min(block.timestamp, periodFinish);
+        return block.timestamp < periodFinish ? block.timestamp : periodFinish;
     }
 
     /// @dev reward rate per staked token
@@ -91,7 +81,7 @@ contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721Hol
      */
     function earned(address account) public view returns (uint256) {
         return
-            (userInfo[account].tiers * (rewardPerTier() - userRewardPerTierPaid[account])) /
+            (tiers[account] * (rewardPerTier() - userRewardPerTierPaid[account])) /
             1e18 +
             rewards[account];
     }
@@ -107,50 +97,44 @@ contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721Hol
         rewardDistributor = distributor;
     }
 
-    function stake(uint256 _tokenId) external updateReward(msg.sender) {
+    function stake(uint256 _tokenId) external updateReward(msg.sender) nonReentrant {
+        uint256 tier = IPIX(pixNFT).getTier(_tokenId);
         require(_tokenId > 0, "Staking: INVALID_TOKEN_ID");
-        require(tierInfo[_tokenId] > 0, "Staking: INVALID_TIER");
+        require(tier > 0, "Staking: INVALID_TIER");
         require(IPIX(pixNFT).isTerritory(_tokenId), "Staking: TERRITORY_ONLY");
 
-        UserInfo storage user = userInfo[msg.sender];
-
-        uint256 tiers = tierInfo[_tokenId];
+        totalTiers += tier;
+        stakers[_tokenId] = msg.sender;
+        tiers[msg.sender] += tier;
 
         IERC721Upgradeable(pixNFT).safeTransferFrom(msg.sender, address(this), _tokenId);
-        totalTiers = totalTiers.add(tiers);
-
-        // Update User Info
-        user.tiers = user.tiers.add(tiers);
-        user.isStaked[_tokenId] = true;
-
-        emit StakedPixNFT(_tokenId, address(this));
+        emit PIXStaked(_tokenId, address(this));
     }
 
-    function withdraw(uint256 _tokenId) external updateReward(msg.sender) nonReentrant {
+    function unstake(uint256 _tokenId) external updateReward(msg.sender) nonReentrant {
+        uint256 tier = IPIX(pixNFT).getTier(_tokenId);
         require(_tokenId > 0, "Staking: INVALID_TOKEN_ID");
-        UserInfo storage user = userInfo[msg.sender];
-        require(user.tiers > 0, "Staking: NO_WITHDRAWALS");
-        require(user.isStaked[_tokenId], "Staking: NO_STAKES");
+        require(stakers[_tokenId] == msg.sender, "Staking: NOT_STAKER");
+        require(tiers[msg.sender] > 0, "Staking: NO_WITHDRAWALS");
+
+        totalTiers -= tier;
+        tiers[msg.sender] -= tier;
+        delete stakers[_tokenId];
 
         IERC721Upgradeable(pixNFT).safeTransferFrom(address(this), msg.sender, _tokenId);
-        totalTiers = totalTiers.sub(tierInfo[_tokenId]);
-        // Update UserInfo
-        user.tiers = user.tiers.sub(tierInfo[_tokenId]);
-        user.isStaked[_tokenId] = false;
-
-        emit WithdrawnPixNFT(_tokenId, msg.sender);
+        emit PIXUnstaked(_tokenId, msg.sender);
     }
 
     /**
      * @dev claim reward and update reward related arguments
-     * @notice emit {RewardPaid} event
+     * @notice emit {RewardClaimed} event
      */
     function claim() public updateReward(msg.sender) {
         uint256 reward = earned(msg.sender);
         if (reward > 0) {
             rewards[msg.sender] = 0;
             rewardToken.safeTransfer(msg.sender, reward);
-            emit ClaimPixNFT(reward, msg.sender);
+            emit RewardClaimed(reward, msg.sender);
         }
     }
 
@@ -176,8 +160,7 @@ contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721Hol
         emit RewardAdded(reward);
     }
 
-    function setTierInfo(uint256 _tokenId, uint256 _tier) external onlyOwner {
-        require(_tier > 0, "Staking: INVALID_TIERS");
-        tierInfo[_tokenId] = _tier;
+    function isStaked(uint256 tokenId) external view returns (bool) {
+        return stakers[tokenId] != address(0);
     }
 }

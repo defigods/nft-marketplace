@@ -81,4 +81,6 @@ interface IPIX {
     function safeMint(address to, PIXInfo memory info) external;
 
     function lastTokenId() external view returns (uint256);
+
+    function getTier(uint256 tokenId) external view returns (uint256);
 }

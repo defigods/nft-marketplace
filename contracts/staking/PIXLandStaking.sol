@@ -2,147 +2,77 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-contract PIXLandStaking is OwnableUpgradeable, ERC1155HolderUpgradeable {
-    using SafeMathUpgradeable for uint256;
+contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    event StakedPixLandNFT(address indexed account, uint256 tokenId, uint256 amount);
-    event WithdrawnPixLandNFT(address indexed account, uint256 tokenId, uint256 amount);
-    event ClaimPixLandNFT(address indexed account, uint256 pending);
-
-    struct UserInfo {
-        mapping(uint256 => uint256) stakedAmount;
-        uint256 rewardDebt;
-        uint256 tiers;
-    }
-
-    mapping(address => UserInfo) public userInfo;
-    mapping(uint256 => uint256) public tierInfo;
-
-    IERC20Upgradeable public rewardToken;
+    event PIXLandStaked(uint256 tokenId, address indexed account);
+    event PIXLandUnstaked(uint256 tokenId, address indexed account);
+    event RewardClaimed(uint256 reward, address indexed account);
 
     address public pixLandmark;
-    uint256 public lastUpdateBlock;
-    uint256 public rewardPerBlock;
-    uint256 public totalTiers;
-    uint256 public accPixLandNFTPerShare;
-    uint256 constant ACC_PIX_PRECISION = 1e12;
+    address public moderator;
 
-    modifier updateRewardPool() {
-        if (totalTiers > 0) {
-            uint256 reward = _calculateReward();
-            accPixLandNFTPerShare = accPixLandNFTPerShare.add(
-                reward.mul(ACC_PIX_PRECISION).div(totalTiers)
-            );
-        }
-        lastUpdateBlock = block.number;
-        _;
-    }
+    IERC20Upgradeable public rewardToken;
+    mapping(uint256 => address) public stakers;
+    mapping(address => uint256) public rewards;
 
-    function initialize(
-        address _pixt,
-        address _pixLandmark,
-        uint256 _rewardPerBlock
-    ) external initializer {
+    function initialize(address _pixt, address _pixLandmark) external initializer {
         require(_pixt != address(0), "LandStaking: INVALID_PIXT");
         require(_pixLandmark != address(0), "LandStaking: INVALID_PIX_LAND");
+
+        __Ownable_init();
+        __ReentrancyGuard_init();
+
         rewardToken = IERC20Upgradeable(_pixt);
         pixLandmark = _pixLandmark;
-        rewardPerBlock = _rewardPerBlock;
-        __Ownable_init();
-        __ERC1155Holder_init();
     }
 
-    function stake(uint256 _tokenId, uint256 _amount) external updateRewardPool {
+    function setModerator(address moderator_) external onlyOwner {
+        moderator = moderator_;
+    }
+
+    function stake(uint256 _tokenId) external nonReentrant {
         require(_tokenId > 0, "LandStaking: INVALID_TOKEN_ID");
-        require(_amount > 0, "LandStaking: INVALID_AMOUNT");
-        require(tierInfo[_tokenId] > 0, "LandStaking: INVALID_TIER");
 
-        UserInfo storage user = userInfo[msg.sender];
+        stakers[_tokenId] = msg.sender;
+        IERC721Upgradeable(pixLandmark).safeTransferFrom(msg.sender, address(this), _tokenId);
 
-        uint256 tiers = tierInfo[_tokenId];
-
-        if (user.tiers > 0) {
-            uint256 pending = user.tiers.mul(accPixLandNFTPerShare).div(ACC_PIX_PRECISION).sub(
-                user.rewardDebt
-            );
-            rewardToken.transfer(msg.sender, pending);
-        }
-
-        IERC1155Upgradeable(pixLandmark).safeTransferFrom(
-            msg.sender,
-            address(this),
-            _tokenId,
-            _amount,
-            ""
-        );
-        totalTiers = totalTiers.add(tiers);
-
-        // Update User Info
-        user.tiers = user.tiers.add(tiers);
-        user.rewardDebt = user.tiers.mul(accPixLandNFTPerShare).div(ACC_PIX_PRECISION);
-        user.stakedAmount[_tokenId] += _amount;
-
-        emit StakedPixLandNFT(msg.sender, _tokenId, _amount);
+        emit PIXLandStaked(_tokenId, address(this));
     }
 
-    function withdraw(uint256 _tokenId, uint256 _amount) external updateRewardPool {
+    function unstake(uint256 _tokenId) external nonReentrant {
         require(_tokenId > 0, "LandStaking: INVALID_TOKEN_ID");
-        require(_amount > 0, "LandStaking: INVALID_AMOUNT");
-        UserInfo storage user = userInfo[msg.sender];
-        require(user.tiers > 0, "LandStaking: NO_WITHDRAWALS");
+        require(stakers[_tokenId] == msg.sender, "LandStaking: NOT_STAKER");
 
-        uint256 pending = user.tiers.mul(accPixLandNFTPerShare).div(ACC_PIX_PRECISION).sub(
-            user.rewardDebt
-        );
-        rewardToken.transfer(msg.sender, pending);
+        delete stakers[_tokenId];
+        IERC721Upgradeable(pixLandmark).safeTransferFrom(address(this), msg.sender, _tokenId);
 
-        IERC1155Upgradeable(pixLandmark).safeTransferFrom(
-            address(this),
-            msg.sender,
-            _tokenId,
-            _amount,
-            ""
-        );
-        totalTiers = totalTiers.sub(tierInfo[_tokenId]);
-        // Update UserInfo
-        user.tiers = user.tiers.sub(tierInfo[_tokenId]);
-        user.rewardDebt = user.tiers.mul(accPixLandNFTPerShare).div(ACC_PIX_PRECISION);
-        user.stakedAmount[_tokenId] -= _amount;
-
-        emit WithdrawnPixLandNFT(msg.sender, _tokenId, _amount);
+        emit PIXLandUnstaked(_tokenId, msg.sender);
     }
 
-    function claim() external updateRewardPool {
-        UserInfo storage user = userInfo[msg.sender];
-        require(user.tiers > 0, "LandStaking: NO_WITHDRAWALS");
-
-        uint256 pending = user.tiers.mul(accPixLandNFTPerShare).div(ACC_PIX_PRECISION).sub(
-            user.rewardDebt
-        );
-        if (pending > 0) {
-            rewardToken.transfer(msg.sender, pending);
-            emit ClaimPixLandNFT(msg.sender, pending);
+    /**
+     * @dev claim reward and update reward related arguments
+     * @notice emit {RewardClaimed} event
+     */
+    function claim() public {
+        uint256 reward = rewards[msg.sender];
+        if (reward > 0) {
+            rewards[msg.sender] = 0;
+            rewardToken.safeTransfer(msg.sender, reward);
+            emit RewardClaimed(reward, msg.sender);
         }
-        // Update UserInfo
-        user.rewardDebt = user.tiers.mul(accPixLandNFTPerShare).div(ACC_PIX_PRECISION);
     }
 
-    function setRewardPerBlock(uint256 _amount) external onlyOwner {
-        rewardPerBlock = _amount;
+    function addReward(address account, uint256 reward) external {
+        require(msg.sender == moderator, "LandStaking: NOT_MODERATOR");
+        rewards[account] += reward;
     }
 
-    function setTierInfo(uint256 _tokenId, uint256 _tiers) external onlyOwner {
-        require(_tiers > 0, "LandStaking: INVALID_TIERS");
-        tierInfo[_tokenId] = _tiers;
-    }
-
-    function _calculateReward() internal view returns (uint256) {
-        uint256 blocksPassed = block.number.sub(lastUpdateBlock);
-        return rewardPerBlock.mul(blocksPassed);
+    function isStaked(uint256 tokenId) external view returns (bool) {
+        return stakers[tokenId] != address(0);
     }
 }
