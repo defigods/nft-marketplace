@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
@@ -14,6 +14,7 @@ contract TokenStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pausabl
 
     IERC20Upgradeable public rewardsToken;
     IERC20Upgradeable public stakingToken;
+    uint256 public lockPeriod;
     uint256 public periodFinish;
     uint256 public rewardRate;
     uint256 public rewardsDuration;
@@ -26,6 +27,7 @@ contract TokenStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pausabl
 
     uint256 private _totalSupply;
     mapping(address => uint256) private _balances;
+    mapping(address => uint256) public lastStakeTime;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -33,7 +35,8 @@ contract TokenStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pausabl
         address _rewardsDistribution,
         address _rewardsToken,
         address _stakingToken,
-        uint256 _rewardsDuration
+        uint256 _rewardsDuration,
+        uint256 _lockPeriod
     ) external initializer {
         require(_rewardsToken != address(0), "rewardToken must not 0x");
         require(_stakingToken != address(0), "stakingToken must not 0x");
@@ -48,6 +51,7 @@ contract TokenStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pausabl
         stakingToken = IERC20Upgradeable(_stakingToken);
         rewardsDistribution = _rewardsDistribution;
         rewardsDuration = _rewardsDuration;
+        lockPeriod = _lockPeriod;
     }
 
     /* ========== VIEWS ========== */
@@ -90,12 +94,14 @@ contract TokenStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pausabl
         require(amount > 0, "Cannot stake 0");
         _totalSupply += amount;
         _balances[msg.sender] += amount;
+        lastStakeTime[msg.sender] = block.timestamp;
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
         emit Staked(msg.sender, amount);
     }
 
     function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) {
         require(amount > 0, "Cannot withdraw 0");
+        require(lastStakeTime[msg.sender] + lockPeriod <= block.timestamp, "Still locked");
         _totalSupply -= amount;
         _balances[msg.sender] -= amount;
         stakingToken.safeTransfer(msg.sender, amount);
@@ -103,6 +109,7 @@ contract TokenStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pausabl
     }
 
     function getReward() public nonReentrant updateReward(msg.sender) {
+        require(lastStakeTime[msg.sender] + lockPeriod <= block.timestamp, "Still locked");
         uint256 reward = rewards[msg.sender];
         if (reward > 0) {
             rewards[msg.sender] = 0;
@@ -166,6 +173,10 @@ contract TokenStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pausabl
 
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    function setLockPeriod(uint256 _lockPeriod) external onlyOwner {
+        lockPeriod = _lockPeriod;
     }
 
     /* ========== MODIFIERS ========== */

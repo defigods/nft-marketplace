@@ -5,9 +5,9 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
-import "../libraries/DecimalMath.sol";
 import "./PIXBaseSale.sol";
 import "../interfaces/IPIXMerkleMinter.sol";
+import "../libraries/DecimalMath.sol";
 
 contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -65,6 +65,8 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
 
     IPIXMerkleMinter public pixMerkleMinter;
 
+    mapping(uint256 => uint256) public expirationTimes;
+
     function initialize(address _pixt, address _pix) external initializer {
         __PIXBaseSale_init(_pixt, _pix);
         __EIP712_init("PlanetIX", "1");
@@ -78,7 +80,8 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
     function requestSale(
         address _nftToken,
         uint256[] calldata _tokenIds,
-        uint256 _price
+        uint256 _price,
+        uint256 duration
     ) external onlyWhitelistedNFT(_nftToken) {
         require(_price > 0, "Sale: PRICE_ZERO");
         require(_tokenIds.length > 0, "Sale: NO_TOKENS");
@@ -87,7 +90,7 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
             IERC721Upgradeable(_nftToken).safeTransferFrom(msg.sender, address(this), _tokenIds[i]);
         }
 
-        _registerSaleRequest(msg.sender, _nftToken, _price, _tokenIds);
+        _registerSaleRequest(msg.sender, _nftToken, _price, _tokenIds, duration);
     }
 
     /** @notice update sale info
@@ -178,6 +181,7 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
         bytes32 hash = _hashTypedDataV4(structHash);
         address signer = ECDSA.recover(hash, v, r, s);
         require(signer == buyer, "Sale: INVALID_SIGNATURE");
+        require(block.timestamp <= expirationTimes[saleId], "Sale: EXPIRED");
 
         address _buyer = buyer;
         uint256 _price = price;
@@ -200,6 +204,7 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
     function purchaseNFT(uint256 _saleId) external {
         FixedSaleInfo memory _saleInfo = saleInfo[_saleId];
         require(_saleInfo.price > 0, "Sale: INVALID_ID");
+        require(block.timestamp <= expirationTimes[_saleId], "Sale: EXPIRED");
 
         _acceptPaymentForSell(
             _saleInfo.seller,
@@ -235,7 +240,8 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
         uint256 _price,
         IPIX.PIXInfo[] memory info,
         bytes32[] calldata merkleRoot,
-        bytes32[][] calldata merkleProofs
+        bytes32[][] calldata merkleProofs,
+        uint256 duration
     ) external onlyWhitelistedNFT(pixNFT) {
         require(_price > 0, "Sale: PRICE_ZERO");
 
@@ -258,7 +264,7 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
             saleTokenIds[i + tokenLength] = mintedTokenIds[i];
         }
 
-        _registerSaleRequest(msg.sender, pixNFT, _price, saleTokenIds);
+        _registerSaleRequest(msg.sender, pixNFT, _price, saleTokenIds, duration);
     }
 
     function _isValidV2Signature(
@@ -339,7 +345,8 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
         address seller,
         address nftToken,
         uint256 price,
-        uint256[] memory tokenIds
+        uint256[] memory tokenIds,
+        uint256 duration
     ) private {
         lastSaleId += 1;
         saleInfo[lastSaleId] = FixedSaleInfo({
@@ -348,6 +355,7 @@ contract PIXFixedSale is PIXBaseSale, EIP712Upgradeable {
             price: price,
             tokenIds: tokenIds
         });
+        expirationTimes[lastSaleId] = block.timestamp + duration;
 
         emit SaleRequested(seller, lastSaleId, nftToken, tokenIds, price);
     }

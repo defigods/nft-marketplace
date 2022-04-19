@@ -5,7 +5,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
   const { deployer, proxyAdmin, ixtToken } = await hre.getNamedAccounts();
 
-  await deploy('IXTStaking', {
+  await deploy('IXTStaking12months', {
     contract: 'TokenStaking',
     from: deployer,
     args: [],
@@ -17,7 +17,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       execute: {
         init: {
           methodName: 'initialize',
-          args: [deployer, ixtToken, ixtToken, 86400 * 30],
+          args: [deployer, ixtToken, ixtToken, 86400 * 30, 86400 * 360],
         },
       },
     },
