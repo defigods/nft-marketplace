@@ -9,9 +9,9 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    event PIXLandStaked(uint256 tokenId, address indexed recipient);
-    event PIXLandUnstaked(uint256 tokenId, address indexed recipient);
-    event RewardClaimed(uint256 reward, address indexed recipient);
+    event PIXLandStaked(uint256 tokenId, address indexed account);
+    event PIXLandUnstaked(uint256 tokenId, address indexed account);
+    event RewardClaimed(uint256 reward, address indexed account);
 
     address public pixLandmark;
     address public moderator;
@@ -56,7 +56,7 @@ contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
     /**
      * @dev claim reward and update reward related arguments
-     * @notice emit {RewardPaid} event
+     * @notice emit {RewardClaimed} event
      */
     function claim() public {
         uint256 reward = rewards[msg.sender];
@@ -67,9 +67,9 @@ contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable {
         }
     }
 
-    function addReward(address recipient, uint256 reward) external {
+    function addReward(address account, uint256 reward) external {
         require(msg.sender == moderator, "LandStaking: NOT_MODERATOR");
-        rewards[recipient] += reward;
+        rewards[account] += reward;
     }
 
     function isStaked(uint256 tokenId) external view returns (bool) {

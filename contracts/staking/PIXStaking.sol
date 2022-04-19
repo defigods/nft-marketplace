@@ -11,9 +11,9 @@ import "../interfaces/IPIX.sol";
 contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    event PIXStaked(uint256 tokenId, address indexed recipient);
-    event PIXUnstaked(uint256 tokenId, address indexed recipient);
-    event RewardClaimed(uint256 pending, address indexed recipient);
+    event PIXStaked(uint256 tokenId, address indexed account);
+    event PIXUnstaked(uint256 tokenId, address indexed account);
+    event RewardClaimed(uint256 reward, address indexed account);
     event RewardAdded(uint256 reward);
 
     mapping(address => uint256) public tiers;
@@ -128,7 +128,7 @@ contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721Hol
 
     /**
      * @dev claim reward and update reward related arguments
-     * @notice emit {RewardPaid} event
+     * @notice emit {RewardClaimed} event
      */
     function claim() public updateReward(msg.sender) {
         uint256 reward = earned(msg.sender);
