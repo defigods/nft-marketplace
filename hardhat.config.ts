@@ -70,7 +70,7 @@ export default {
     currency: 'ETH',
   },
   etherscan: {
-    apiKey: process.env.POLYSCAN_KEY,
+    apiKey: process.env.API_KEY,
   },
   solidity: {
     version: '0.8.2',
