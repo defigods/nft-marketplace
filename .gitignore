@@ -20,3 +20,5 @@ coverage.json
 .openzeppelin
 
 *.csv
+
+.DS_Store
