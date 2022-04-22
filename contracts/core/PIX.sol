@@ -262,7 +262,10 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         address account = ownerOf(tokenIds[0]);
         uint256 nonce = nonces[account]++;
         bytes32 data = keccak256(abi.encodePacked(account, nonce));
-        require(data.toEthSignedMessageHash().recover(signature) == account, "Pix: NON_APPROVED");
+        require(
+            data.toEthSignedMessageHash().recover(signature) == account,
+            "Pix: INVALID_SIGNATURE"
+        );
 
         PIXInfo storage firstPix = pixInfos[tokenIds[0]];
         uint256 combineCount = combineCounts[firstPix.size];
