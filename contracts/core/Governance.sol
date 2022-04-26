@@ -5,7 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-contract PIX is OwnableUpgradeable {
+contract Governance is OwnableUpgradeable {
     enum Status {
         InProduction,
         Active,
@@ -21,17 +21,20 @@ contract PIX is OwnableUpgradeable {
         uint256 isApproved;
         mapping(address => uint256) staked;
         uint256 replies;
+        bool isModerator;
     }
 
     event ProposalCreated(uint256 pid);
     event Voted(uint256 pid, bool status);
     event ProposalClosed(uint256 pid);
+    event ProposalCompleted(uint256 pid);
     event Withdrawn(uint256 indexed pid, uint256 amount, address account);
 
     uint256 public pid;
-    mapping(uint256 => Proposal) public proposal;
     IERC20Upgradeable public pixToken;
     uint256 public period;
+    mapping(uint256 => Proposal) public proposal;
+    mapping(address => bool) public moderators;
 
     function initialize(address _pixt, uint256 _period) public initializer {
         require(_pixt != address(0), "Pix: INVALID_PIXT");
@@ -40,9 +43,18 @@ contract PIX is OwnableUpgradeable {
         period = _period;
     }
 
+    function setModerator(address moderator, bool approved) external onlyOwner {
+        require(moderator != address(0), "setModerator: INVALID_MODERATOR");
+        moderators[moderator] = approved;
+    }
+
     function createProposal(string calldata _description) external {
         require(pixToken.balanceOf(msg.sender) >= 1e18, "createProposal: insufficiency balance");
+        require(bytes(_description).length > 0, "createProposal:INVALID_DESCRIPTION");
         Proposal storage _proposal = proposal[pid];
+        if (moderators[msg.sender]) {
+            _proposal.isModerator = true;
+        }
         _proposal.description = _description;
         _proposal.createdTime = block.timestamp;
 
@@ -81,10 +93,19 @@ contract PIX is OwnableUpgradeable {
     }
 
     function closeProposal(uint256 _pid) external onlyOwner {
+        require(pid > _pid, "INVALID PID");
         Proposal storage _proposal = proposal[_pid];
         _proposal.status = Status.Closed;
 
         emit ProposalClosed(_pid);
+    }
+
+    function completeProposal(uint256 _pid) external onlyOwner {
+        require(pid > _pid, "INVALID PID");
+        Proposal storage _proposal = proposal[_pid];
+        _proposal.status = Status.Completed;
+
+        emit ProposalCompleted(_pid);
     }
 
     function withdraw(uint256 _pid) external {
