@@ -27,6 +27,7 @@ describe('PIXStaking', function () {
     pixStaking = await upgrades.deployProxy(PIXStakingFactory, [pixToken.address, pixNFT.address]);
 
     await pixNFT.setTrader(pixStaking.address, true);
+    await pixNFT.setTier(PIXCategory.Common, PIXSize.Area, 2);
     await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Area]);
     await pixToken.transfer(pixStaking.address, ethers.utils.parseEther('1000000'));
     await pixToken.transfer(await alice.getAddress(), BigNumber.from(10000));
