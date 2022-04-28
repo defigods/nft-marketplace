@@ -65,7 +65,7 @@ describe('PIXStaking', function () {
 
     it("revert if tier didn't set", async function () {
       await pixNFT.setTier(PIXCategory.Common, PIXSize.Area, 0);
-      await expect(pixStaking.connect(alice).stake(1)).to.revertedWith('Staking: INVALID_TIER');
+      await expect(pixStaking.connect(alice).stake(1)).to.revertedWith('Staking: TIER_NOT_SET');
     });
 
     it('should stake an NFT', async function () {
