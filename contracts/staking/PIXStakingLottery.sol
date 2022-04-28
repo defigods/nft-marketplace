@@ -59,7 +59,7 @@ contract PIXStakingLottery is
 
     function stake(uint256 _tokenId) external {
         require(_tokenId > 0, "Staking: INVALID_TOKEN_ID");
-        require(IPIX(pixNFT).getTier(_tokenId) > 0, "Staking: INVALID_TIER");
+        require(IPIX(pixNFT).getTier(_tokenId) > 0, "Staking: TIER_NOT_SET");
         require(IPIX(pixNFT).isTerritory(_tokenId), "Staking: TERRITORY_ONLY");
 
         UserInfo storage user = userInfo[msg.sender];
@@ -71,7 +71,7 @@ contract PIXStakingLottery is
         user.tiers = user.tiers.add(IPIX(pixNFT).getTier(_tokenId));
         user.isStaked[_tokenId] = true;
 
-        emit PIXStaked(_tokenId, address(this));
+        emit PIXStaked(_tokenId, msg.sender);
     }
 
     function unstake(uint256 _tokenId) external nonReentrant {
@@ -114,7 +114,7 @@ contract PIXStakingLottery is
         earned[_winner] += pending;
         lastLotteryTime = block.timestamp;
 
-        emit SetWinner(block.timestamp, pending, msg.sender);
+        emit SetWinner(block.timestamp, pending, _winner);
     }
 
     function setRewardPerBlock(uint256 _amount) external onlyOwner {

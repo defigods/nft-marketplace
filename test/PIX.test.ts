@@ -8,7 +8,7 @@ describe('PIX', function () {
   let alice: Signer;
   let pixToken: Contract;
   let pixNFT: Contract;
-  let oracleManager: Contract;
+  // let oracleManager: Contract;
   let usdc: Contract;
   const price = utils.parseUnits('5', 6);
   const ZeroAddress = ethers.constants.AddressZero;
@@ -21,10 +21,10 @@ describe('PIX', function () {
 
     const MockTokenFactory = await ethers.getContractFactory('MockToken');
     usdc = await MockTokenFactory.deploy('Mock USDC', 'USDC', 6);
-
+    /*
     const OracleManagerFactory = await ethers.getContractFactory('OracleManager');
     oracleManager = await OracleManagerFactory.deploy();
-
+*/
     const PIXFactory = await ethers.getContractFactory('PIX');
     pixNFT = await upgrades.deployProxy(PIXFactory, [pixToken.address, usdc.address]);
     await pixToken.transfer(await alice.getAddress(), utils.parseEther('20000'));
@@ -101,7 +101,7 @@ describe('PIX', function () {
       expect(await pixNFT.moderators(await alice.getAddress())).to.equal(false);
     });
   });
-
+  /*
   describe('#setCombinePrice', () => {
     it('revert if msg.sender is not owner', async () => {
       await expect(pixNFT.connect(alice).setCombinePrice(price)).to.revertedWith(
@@ -114,7 +114,7 @@ describe('PIX', function () {
       expect(await pixNFT.combinePrice()).to.equal(price);
     });
   });
-
+*/
   describe('#setPaymentToken', () => {
     it('revert if msg.sender is not owner', async () => {
       await expect(pixNFT.connect(alice).setPaymentToken(pixToken.address, false)).to.revertedWith(
@@ -152,7 +152,7 @@ describe('PIX', function () {
       expect(treasury[1]).to.equal(25);
     });
   });
-
+  /*
   describe('#setOracleManager', () => {
     it('revert if msg.sender is not owner', async () => {
       await expect(pixNFT.connect(alice).setOracleManager(oracleManager.address)).to.revertedWith(
@@ -188,7 +188,7 @@ describe('PIX', function () {
       expect(await pixNFT.swapManager()).to.equal(await alice.getAddress());
     });
   });
-
+*/
   describe('#requestBatchMint', function () {
     it('revert if payment token is not approved', async function () {
       await expect(pixNFT.connect(alice).requestBatchMint(ZeroAddress, 1, 1, 1, 1)).to.revertedWith(
@@ -221,7 +221,7 @@ describe('PIX', function () {
       expect(await usdc.balanceOf(pixNFT.address)).equal(price);
     });
   });
-
+  /*
   describe('#mintTo', () => {
     it('revert if msg.sender is not moderator', async function () {
       await expect(pixNFT.connect(alice).mintTo(await alice.getAddress(), [], [])).to.revertedWith(
@@ -263,7 +263,7 @@ describe('PIX', function () {
       expect(await pixNFT.pendingPackType(await alice.getAddress())).to.equal(0);
     });
   });
-
+*/
   describe('#safeMint', () => {
     it('revert if pix info is invalid', async () => {
       await expect(
@@ -298,7 +298,7 @@ describe('PIX', function () {
       expect(await pixNFT.totalSupply()).to.equal(10);
     });
   });
-
+  /*
   describe('#updateTerritoryInfo', () => {
     beforeEach(async () => {
       await pixNFT.safeMint(await alice.getAddress(), [1, PIXCategory.Common, PIXSize.Pix]);
@@ -315,34 +315,54 @@ describe('PIX', function () {
       await expect(pixNFT.updateTerritoryInfo(2, 1)).to.revertedWith('Pix: TERRITORY_ALREADY_SET');
     });
   });
-
+*/
   describe('#combine', () => {
+    let signature;
+
+    beforeEach(async () => {
+      const message = utils.solidityKeccak256(
+        ['address', 'uint256'],
+        [await alice.getAddress(), 0],
+      );
+      signature = await alice.signMessage(ethers.utils.arrayify(message));
+    });
+
     it('revert if no tokens', async () => {
-      await expect(pixNFT.combine([])).to.revertedWith('Pix: NO_TOKENS');
+      await expect(pixNFT.combine([], '0x')).to.revertedWith('Pix: NO_TOKENS');
+    });
+
+    it('revert if signature is invalid', async () => {
+      const message = utils.solidityKeccak256(
+        ['address', 'uint256'],
+        [await alice.getAddress(), 0],
+      );
+      const signature = await owner.signMessage(ethers.utils.arrayify(message));
+      await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Domain]);
+      await expect(pixNFT.combine([1], signature)).to.revertedWith('Pix: INVALID_SIGNATURE');
     });
 
     it('revert if size is domain', async () => {
       await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Domain]);
       await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Domain]);
-      await expect(pixNFT.combine([1, 2])).to.revertedWith('Pix: MAX_NOT_ALLOWED');
+      await expect(pixNFT.combine([1, 2], signature)).to.revertedWith('Pix: MAX_NOT_ALLOWED');
     });
 
     it('revert if combine length is invalid', async () => {
       await pixNFT.safeMint(await alice.getAddress(), [1, PIXCategory.Rare, PIXSize.Pix]);
       await pixNFT.safeMint(await alice.getAddress(), [1, PIXCategory.Rare, PIXSize.Pix]);
-      await expect(pixNFT.combine([1, 2])).to.revertedWith('Pix: INVALID_ARGUMENTS');
+      await expect(pixNFT.combine([1, 2], signature)).to.revertedWith('Pix: INVALID_ARGUMENTS');
     });
 
     it('revert if to combine different size', async () => {
       await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Zone]);
       await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
-      await expect(pixNFT.combine([1, 2])).to.revertedWith('Pix: SAME_SIZE_ONLY');
+      await expect(pixNFT.combine([1, 2], signature)).to.revertedWith('Pix: SAME_SIZE_ONLY');
     });
 
     it('revert if to combine different categories', async () => {
       await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Rare, PIXSize.Sector]);
       await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Sector]);
-      await expect(pixNFT.combine([1, 2])).to.revertedWith('Pix: SAME_CATEGORY_ONLY');
+      await expect(pixNFT.combine([1, 2], signature)).to.revertedWith('Pix: SAME_CATEGORY_ONLY');
     });
 
     it('revert if not owner', async () => {
@@ -351,7 +371,7 @@ describe('PIX', function () {
       tokenIds.push(1);
       await pixNFT.safeMint(await owner.getAddress(), [0, PIXCategory.Rare, PIXSize.Zone]);
       tokenIds.push(2);
-      await expect(pixNFT.combine(tokenIds)).to.revertedWith('Pix: NON_APPROVED');
+      await expect(pixNFT.combine(tokenIds, signature)).to.revertedWith('Pix: NON_APPROVED');
     });
 
     it('should combine pixes to mint area', async () => {
@@ -364,7 +384,7 @@ describe('PIX', function () {
         ]);
         tokenIds.push(i + 1);
       }
-      const tx = await pixNFT.combine(tokenIds);
+      const tx = await pixNFT.combine(tokenIds, signature);
       expect(await pixNFT.ownerOf(51)).to.equal(await alice.getAddress());
       expect(tx).to.emit(pixNFT, 'Combined').withArgs(51, PIXCategory.Legendary, PIXSize.Area);
       expect(await pixNFT.totalSupply()).to.equal(1);
@@ -376,7 +396,7 @@ describe('PIX', function () {
         await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Area]);
         tokenIds.push(i + 1);
       }
-      const tx = await pixNFT.combine(tokenIds);
+      const tx = await pixNFT.combine(tokenIds, signature);
       expect(await pixNFT.ownerOf(6)).to.equal(await alice.getAddress());
       expect(tx).to.emit(pixNFT, 'Combined').withArgs(6, PIXCategory.Common, PIXSize.Sector);
       expect(await pixNFT.totalSupply()).to.equal(1);
@@ -388,7 +408,7 @@ describe('PIX', function () {
         await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Sector]);
         tokenIds.push(i + 1);
       }
-      const tx = await pixNFT.combine(tokenIds);
+      const tx = await pixNFT.combine(tokenIds, signature);
       expect(await pixNFT.ownerOf(3)).to.equal(await alice.getAddress());
       expect(tx).to.emit(pixNFT, 'Combined').withArgs(3, PIXCategory.Common, PIXSize.Zone);
       expect(await pixNFT.totalSupply()).to.equal(1);
@@ -400,7 +420,7 @@ describe('PIX', function () {
         await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Zone]);
         tokenIds.push(i + 1);
       }
-      const tx = await pixNFT.combine(tokenIds);
+      const tx = await pixNFT.combine(tokenIds, signature);
       expect(await pixNFT.ownerOf(3)).to.equal(await alice.getAddress());
       expect(tx).to.emit(pixNFT, 'Combined').withArgs(3, PIXCategory.Common, PIXSize.Domain);
       expect(await pixNFT.totalSupply()).to.equal(1);

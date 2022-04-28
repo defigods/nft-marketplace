@@ -103,7 +103,6 @@ describe('PIXLending', function () {
     it('should close a proposal successfully', async () => {
       await pixGovernance.connect(alice).createProposal(proposal);
       await pixGovernance.connect(owner).closeProposal('0');
-      console.log(await pixGovernance.proposal('0'));
       expect((await pixGovernance.proposal('0'))[1]).to.be.equal(3);
     });
   });
@@ -118,7 +117,6 @@ describe('PIXLending', function () {
     it('should close a proposal successfully', async () => {
       await pixGovernance.connect(alice).createProposal(proposal);
       await pixGovernance.connect(owner).completeProposal('0');
-      console.log(await pixGovernance.proposal('0'));
       expect((await pixGovernance.proposal('0'))[1]).to.be.equal(2);
     });
   });

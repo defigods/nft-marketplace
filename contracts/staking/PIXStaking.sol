@@ -100,7 +100,7 @@ contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721Hol
     function stake(uint256 _tokenId) external updateReward(msg.sender) nonReentrant {
         uint256 tier = IPIX(pixNFT).getTier(_tokenId);
         require(_tokenId > 0, "Staking: INVALID_TOKEN_ID");
-        require(tier > 0, "Staking: INVALID_TIER");
+        require(tier > 0, "Staking: TIER_NOT_SET");
         require(IPIX(pixNFT).isTerritory(_tokenId), "Staking: TERRITORY_ONLY");
 
         totalTiers += tier;
@@ -108,7 +108,7 @@ contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721Hol
         tiers[msg.sender] += tier;
 
         IERC721Upgradeable(pixNFT).safeTransferFrom(msg.sender, address(this), _tokenId);
-        emit PIXStaked(_tokenId, address(this));
+        emit PIXStaked(_tokenId, msg.sender);
     }
 
     function unstake(uint256 _tokenId) external updateReward(msg.sender) nonReentrant {

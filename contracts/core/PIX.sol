@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
@@ -15,6 +16,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using AddressUpgradeable for address;
     using DecimalMath for uint256;
+    using ECDSAUpgradeable for bytes32;
 
     IERC20Upgradeable public pixToken;
     string private _baseURIExtended;
@@ -60,6 +62,8 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
 
     mapping(PIXCategory => mapping(PIXSize => uint256)) public tiers;
 
+    mapping(address => uint256) public nonces;
+
     modifier onlyMod() {
         require(moderators[msg.sender], "Pix: NON_MODERATOR");
         _;
@@ -93,16 +97,6 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         packPrices.push(1000 * 1e6);
         paymentTokens[pixt] = true;
         paymentTokens[_tokenForPrice] = true;
-    }
-
-    function setOracleManager(address _oracleManager) external onlyOwner {
-        require(_oracleManager != address(0), "Pix: INVALID_ORACLE_MANAGER");
-        oracleManager = IOracleManager(_oracleManager);
-    }
-
-    function setSwapManager(address _swapManager) external onlyOwner {
-        require(_swapManager != address(0), "Pix: INVALID_SWAP_MANAGER");
-        swapManager = ISwapManager(_swapManager);
     }
 
     function withdraw(address[] calldata tokens) external onlyOwner {
@@ -148,11 +142,6 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         } else if (mode <= packIXTPrices.length) {
             packIXTPrices[mode - 1] = price;
         }
-    }
-
-    function setCombinePrice(uint256 price) external onlyOwner {
-        combinePrice = price;
-        emit CombinePriceUpdated(price);
     }
 
     function setPaymentToken(address token, bool approved) external onlyOwner {
@@ -267,35 +256,17 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         emit Requested(dropId, playerId, mode, packsPurchased[playerId][dropId] + 1, count);
     }
 
-    function mintTo(
-        address to,
-        uint256[] calldata pixIds,
-        PIXCategory[] calldata categories
-    ) external onlyMod {
-        require(pixIds.length == categories.length, "Pix: INVALID_LENGTH");
-
-        for (uint256 i; i < pixIds.length; i += 1) {
-            _safeMint(to, PIXInfo({pixId: pixIds[i], size: PIXSize.Pix, category: categories[i]}));
-        }
-    }
-
-    function completeRequest(address to) external onlyMod {
-        PackRequest storage request = packRequests[to];
-        require(request.playerId > 0, "Pix: INVALID_REQUEST");
-        packsPurchased[request.playerId][request.dropId] += packRequestCounts[to];
-        delete packRequests[to];
-        delete packRequestCounts[to];
-    }
-
-    function cancelRequest(address to) external onlyMod {
-        dropInfos[packRequests[to].dropId].requestCount -= packRequestCounts[to];
-        delete packRequests[to];
-        delete packRequestCounts[to];
-    }
-
-    function combine(uint256[] calldata tokenIds) external onlyMod {
+    function combine(uint256[] calldata tokenIds, bytes memory signature) external onlyMod {
         require(tokenIds.length > 0, "Pix: NO_TOKENS");
+
         address account = ownerOf(tokenIds[0]);
+        uint256 nonce = nonces[account]++;
+        bytes32 data = keccak256(abi.encodePacked(account, nonce));
+        require(
+            data.toEthSignedMessageHash().recover(signature) == account,
+            "Pix: INVALID_SIGNATURE"
+        );
+
         PIXInfo storage firstPix = pixInfos[tokenIds[0]];
         uint256 combineCount = combineCounts[firstPix.size];
         if (firstPix.size == PIXSize.Pix) {
@@ -319,13 +290,6 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         pixInLand[true][lastTokenId] = inside;
 
         emit Combined(lastTokenId, firstPix.category, newSize);
-    }
-
-    function updateTerritoryInfo(uint256 tokenId, uint256 pixId) external onlyMod {
-        PIXInfo storage info = pixInfos[tokenId];
-        require(info.size != PIXSize.Pix, "Pix: TERRITORIES_ONLY");
-        require(info.pixId == 0, "Pix: TERRITORY_ALREADY_SET");
-        info.pixId = pixId;
     }
 
     function safeMint(address to, PIXInfo memory info) external override onlyMod {

@@ -27,6 +27,7 @@ describe('PIXStaking', function () {
     pixStaking = await upgrades.deployProxy(PIXStakingFactory, [pixToken.address, pixNFT.address]);
 
     await pixNFT.setTrader(pixStaking.address, true);
+    await pixNFT.setTier(PIXCategory.Common, PIXSize.Area, 2);
     await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Area]);
     await pixToken.transfer(pixStaking.address, ethers.utils.parseEther('1000000'));
     await pixToken.transfer(await alice.getAddress(), BigNumber.from(10000));
@@ -65,7 +66,7 @@ describe('PIXStaking', function () {
 
     it("revert if tier didn't set", async function () {
       await pixNFT.setTier(PIXCategory.Common, PIXSize.Area, 0);
-      await expect(pixStaking.connect(alice).stake(1)).to.revertedWith('Staking: INVALID_TIER');
+      await expect(pixStaking.connect(alice).stake(1)).to.revertedWith('Staking: TIER_NOT_SET');
     });
 
     it('should stake an NFT', async function () {

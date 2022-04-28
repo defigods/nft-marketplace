@@ -72,7 +72,7 @@ describe('PIXLending', function () {
       expect(await pixNFT.ownerOf(1)).to.equal(pixLending.address);
     });
     it('it should lend PIX correctly', async () => {
-      await pixToken.connect(bob).approve(pixLending.address, (await pixLending.info(1))[1]); // amount
+      await pixToken.connect(bob).approve(pixLending.address, (await pixLending.pixInfo(1))[1]); // amount
       await pixLending.connect(bob).acceptRequest(1);
       expect(await pixNFT.ownerOf(1)).to.equal(pixLending.address);
     });
@@ -84,7 +84,7 @@ describe('PIXLending', function () {
       await pixNFT.connect(alice).approve(pixLending.address, 1);
       await pixLending.connect(alice).createRequest(1, BigNumber.from(1000), 10000);
 
-      await pixToken.connect(bob).approve(pixLending.address, (await pixLending.info(1))[1] * 2); // amount
+      await pixToken.connect(bob).approve(pixLending.address, (await pixLending.pixInfo(1))[1] * 2); // amount
       await pixLending.connect(bob).acceptRequest(1);
 
       await time.advanceBlock();
