@@ -47,6 +47,14 @@ export default {
       137: '0x304e57c752e854e9a233ae82fcc42f7568b81180',
       80001: '0xd391B55DbA3572033fCA80644071dBC5E0573b2B',
     },
+    pixNFT: {
+      137: '0xB2435253C71FcA27bE41206EB2793E44e1Df6b6D',
+      80001: '0x4BDcFa73220358b2072D58BD30ac565Ed1111B0c',
+    },
+    pixLandmark: {
+      137: '0x9AfB93F1E6D9b13546C4050BA39f0B48a4FB13A7',
+      80001: '0x86D5B7f00eF93244eC53A2Ae982F8E5AF47B4Fd7',
+    },
   },
   dependencyCompiler: {
     paths: [
@@ -62,7 +70,7 @@ export default {
     currency: 'ETH',
   },
   etherscan: {
-    apiKey: process.env.POLYSCAN_KEY,
+    apiKey: process.env.API_KEY,
   },
   solidity: {
     version: '0.8.2',
