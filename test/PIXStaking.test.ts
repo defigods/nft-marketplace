@@ -86,8 +86,18 @@ describe('PIXStaking', function () {
     });
 
     it('should return correct rewards amount', async function () {
-      expect(await pixStaking.earned(await alice.getAddress())).to.closeTo(
+      expect(await pixStaking.earned(1)).to.closeTo(BigNumber.from(50), 1, '');
+      expect(await pixStaking.earnedByAccount(await alice.getAddress())).to.closeTo(
         BigNumber.from(50),
+        1,
+        '',
+      );
+    });
+
+    it('should provide correct rewards', async function () {
+      await pixStaking.connect(alice).claimBatch([1]);
+      expect(await pixToken.balanceOf(await alice.getAddress())).to.closeTo(
+        BigNumber.from(10050),
         1,
         '',
       );
