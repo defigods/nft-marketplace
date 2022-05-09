@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
 import { Signer, Contract, BigNumber, constants } from 'ethers';
 import { PIXCategory, PIXSize, increaseTime } from './utils';
+
 describe('PIXStaking', function () {
   let owner: Signer;
   let alice: Signer;
@@ -29,18 +30,19 @@ describe('PIXStaking', function () {
     await pixNFT.setTrader(pixStaking.address, true);
     await pixNFT.setTier(PIXCategory.Common, PIXSize.Area, 2);
     await pixNFT.safeMint(await alice.getAddress(), [0, PIXCategory.Common, PIXSize.Area]);
+    await pixToken.approve(pixStaking.address, 10000000000000);
     await pixToken.transfer(pixStaking.address, ethers.utils.parseEther('1000000'));
     await pixToken.transfer(await alice.getAddress(), BigNumber.from(10000));
     await pixToken.transfer(await bob.getAddress(), BigNumber.from(10000));
 
-    await pixStaking.connect(owner).setRewardDistributor(await owner.getAddress());
-    await pixStaking.connect(owner).notifyRewardAmount(BigNumber.from(864000));
+    await pixStaking.setRewardDistributor(await owner.getAddress());
+    await pixStaking.notifyRewardAmount(BigNumber.from(864000));
     await pixNFT.setTier(PIXCategory.Common, PIXSize.Area, 2);
   });
 
   describe('setRewardDistributor', () => {
     it('it should set reward amount correctly', async () => {
-      await pixStaking.connect(owner).setRewardDistributor(await alice.getAddress());
+      await pixStaking.setRewardDistributor(await alice.getAddress());
       expect(await pixStaking.rewardDistributor()).to.equal(await alice.getAddress());
     });
 
@@ -51,9 +53,9 @@ describe('PIXStaking', function () {
     });
 
     it('it should revert if the distributor address is zero address', async () => {
-      await expect(
-        pixStaking.connect(owner).setRewardDistributor(constants.AddressZero),
-      ).to.revertedWith('Staking: INVALID_DISTRIBUTOR');
+      await expect(pixStaking.setRewardDistributor(constants.AddressZero)).to.revertedWith(
+        'Staking: INVALID_DISTRIBUTOR',
+      );
     });
   });
 
