@@ -3,18 +3,13 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155SupplyUpgradeable.sol";
 import "../interfaces/IPIX.sol";
 
-contract PIXLandmark is ERC721EnumerableUpgradeable, OwnableUpgradeable {
+contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
     using StringsUpgradeable for uint256;
 
-    event LandmarkMinted(
-        address indexed account,
-        uint256 indexed tokenId,
-        PIXCategory category,
-        uint256 indexed landmarkType
-    );
+    event LandmarkMinted(address indexed account, uint256 indexed tokenId, PIXCategory category);
 
     enum PIXCategory {
         Legendary,
@@ -24,18 +19,15 @@ contract PIXLandmark is ERC721EnumerableUpgradeable, OwnableUpgradeable {
         Outliers
     }
 
-    struct LandmarkInfo {
-        PIXCategory category;
-        uint256 landmarkType;
-    }
-
+    string private _name;
+    string private _symbol;
     string private _baseURIExtended;
     IPIX public pixNFT;
 
     mapping(address => bool) public moderators;
-    mapping(uint256 => LandmarkInfo) public landInfos;
+    mapping(uint256 => PIXCategory) public landCategories;
     mapping(uint256 => bool) public pixesInLandStatus;
-    mapping(uint256 => uint256[]) public pixesInLandType;
+    mapping(uint256 => uint256[]) public pixesInLandmark;
     uint256 public lastTokenId;
 
     modifier onlyMod() {
@@ -45,11 +37,22 @@ contract PIXLandmark is ERC721EnumerableUpgradeable, OwnableUpgradeable {
 
     function initialize(address pix) external initializer {
         require(pix != address(0), "Landmark: INVALID_PIX");
-        __ERC721Enumerable_init();
-        __ERC721_init("PIX Landmark", "PIXLand");
+        __ERC1155Supply_init();
+        __ERC1155_init("");
         __Ownable_init();
+
         pixNFT = IPIX(pix);
         moderators[msg.sender] = true;
+        _name = "PIX Landmark";
+        _symbol = "PIXLand";
+    }
+
+    function name() public view returns (string memory) {
+        return _name;
+    }
+
+    function symbol() public view returns (string memory) {
+        return _symbol;
     }
 
     function setModerator(address moderator, bool approved) external onlyOwner {
@@ -57,35 +60,47 @@ contract PIXLandmark is ERC721EnumerableUpgradeable, OwnableUpgradeable {
         moderators[moderator] = approved;
     }
 
-    function addLandmarkType(uint256 landmarkType, uint256[] calldata pixIds) external onlyMod {
-        require(landmarkType > 0, "Landmark: INVALID_TYPE");
+    function setPixesInLandmark(uint256 tokenId, uint256[] calldata pixIds) external onlyMod {
+        require(tokenId > 0, "Landmark: INVALID_TYPE");
 
         for (uint256 i; i < pixIds.length; i += 1) {
             pixesInLandStatus[pixIds[i]] = true;
-            pixesInLandType[landmarkType].push(pixIds[i]);
+            pixesInLandmark[tokenId].push(pixIds[i]);
             pixNFT.setPIXInLandStatus(pixIds);
         }
     }
 
-    function safeMint(address to, LandmarkInfo memory info) external onlyMod {
-        require(info.landmarkType > 0, "Landmark: INVALID_TYPE");
+    function safeMint(
+        address to,
+        uint256 amount,
+        PIXCategory category
+    ) external onlyMod {
+        _safeMint(to, amount, category);
+    }
 
+    function batchMint(
+        address to,
+        uint256[] calldata amounts,
+        PIXCategory[] calldata categories
+    ) external onlyMod {
+        require(amounts.length == categories.length, "Landmark: INVALID_ARGUMENTS");
+        for (uint256 i; i < categories.length; i += 1) _safeMint(to, amounts[i], categories[i]);
+    }
+
+    function _safeMint(
+        address to,
+        uint256 amount,
+        PIXCategory category
+    ) internal onlyMod {
         lastTokenId += 1;
-        _safeMint(to, lastTokenId);
-        landInfos[lastTokenId] = info;
-        emit LandmarkMinted(to, lastTokenId, info.category, info.landmarkType);
+        _mint(to, lastTokenId, amount, "");
+        landCategories[lastTokenId] = category;
+        emit LandmarkMinted(to, lastTokenId, category);
     }
 
-    function batchMint(PIXCategory[] calldata categories, uint256[] calldata landTypes) external {
-        require(categories.length == landTypes.length, "Landmark: INVALID_ARGUMENTS");
-        for (uint256 i; i < categories.length; i += 1)
-            this.safeMint(msg.sender, LandmarkInfo(categories[i], landTypes[i]));
-    }
-
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        uint256 landType = landInfos[tokenId].landmarkType;
-        require(landType > 0, "Landmark: NOT_EXISTING");
-        return string(abi.encodePacked(_baseURIExtended, landType.toString()));
+    function uri(uint256 id) public view override returns (string memory) {
+        require(id > 0, "Landmark: NOT_EXISTING");
+        return string(abi.encodePacked(_baseURIExtended, id.toString()));
     }
 
     function setBaseURI(string memory baseURI_) external onlyOwner {

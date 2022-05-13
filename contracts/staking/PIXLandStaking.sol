@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable {
@@ -17,7 +17,7 @@ contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable {
     address public moderator;
 
     IERC20Upgradeable public rewardToken;
-    mapping(uint256 => address) public stakers;
+    mapping(address => mapping(uint256 => uint256)) public stakeAmounts;
     mapping(address => uint256) public rewards;
 
     function initialize(address _pixt, address _pixLandmark) external initializer {
@@ -35,23 +35,35 @@ contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable {
         moderator = moderator_;
     }
 
-    function stake(uint256 _tokenId) external nonReentrant {
-        require(_tokenId > 0, "LandStaking: INVALID_TOKEN_ID");
+    function stake(uint256 tokenId, uint256 amount) external nonReentrant {
+        require(tokenId > 0, "LandStaking: INVALID_TOKEN_ID");
 
-        stakers[_tokenId] = msg.sender;
-        IERC721Upgradeable(pixLandmark).safeTransferFrom(msg.sender, address(this), _tokenId);
+        stakeAmounts[msg.sender][tokenId] += amount;
+        IERC1155Upgradeable(pixLandmark).safeTransferFrom(
+            msg.sender,
+            address(this),
+            tokenId,
+            amount,
+            ""
+        );
 
-        emit PIXLandStaked(_tokenId, address(this));
+        emit PIXLandStaked(tokenId, address(this));
     }
 
-    function unstake(uint256 _tokenId) external nonReentrant {
-        require(_tokenId > 0, "LandStaking: INVALID_TOKEN_ID");
-        require(stakers[_tokenId] == msg.sender, "LandStaking: NOT_STAKER");
+    function unstake(uint256 tokenId, uint256 amount) external nonReentrant {
+        require(tokenId > 0, "LandStaking: INVALID_TOKEN_ID");
+        require(stakeAmounts[msg.sender][tokenId] >= amount, "LandStaking: NOT_STAKER");
 
-        delete stakers[_tokenId];
-        IERC721Upgradeable(pixLandmark).safeTransferFrom(address(this), msg.sender, _tokenId);
+        stakeAmounts[msg.sender][tokenId] -= amount;
+        IERC1155Upgradeable(pixLandmark).safeTransferFrom(
+            address(this),
+            msg.sender,
+            tokenId,
+            amount,
+            ""
+        );
 
-        emit PIXLandUnstaked(_tokenId, msg.sender);
+        emit PIXLandUnstaked(tokenId, msg.sender);
     }
 
     /**
@@ -68,11 +80,11 @@ contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable {
     }
 
     function addReward(address account, uint256 reward) external {
-        require(msg.sender == moderator, "LandStaking: NOT_MODERATOR");
+        require(msg.sender == moderator || msg.sender == owner(), "LandStaking: NOT_MODERATOR");
         rewards[account] += reward;
     }
 
-    function isStaked(uint256 tokenId) external view returns (bool) {
-        return stakers[tokenId] != address(0);
+    function isStaked(address account, uint256 tokenId) external view returns (bool) {
+        return stakeAmounts[account][tokenId] > 0;
     }
 }
