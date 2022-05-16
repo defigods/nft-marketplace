@@ -1,18 +1,21 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
 import { Contract, BigNumber, utils, constants, Wallet, BigNumberish } from 'ethers';
-import { ecsign } from 'ethereumjs-util';
+import { Address, ecsign } from 'ethereumjs-util';
 import { DENOMINATOR, generateRandomAddress, getMerkleTree, PIXCategory, PIXSize } from './utils';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 const { keccak256, defaultAbiCoder, toUtf8Bytes, solidityPack } = utils;
 
 type SaleInfo = {
+  seller: string;
   executeBySeller: boolean;
   nftToken: string;
   tokenIds: BigNumber[];
+  tokenAmounts: BigNumber[];
   hashes: string[];
   minPrice: BigNumber;
   validUntil: BigNumber;
+  is721: boolean;
 };
 
 describe('PIXSaleV2.test', function () {
@@ -37,10 +40,18 @@ describe('PIXSaleV2.test', function () {
     const PIXFactory = await ethers.getContractFactory('PIX');
     pixNFT = await upgrades.deployProxy(PIXFactory, [pixtToken.address, usdc.address]);
 
+    const PIXMerkleMinterFactory = await ethers.getContractFactory('PIXMerkleMinter');
+    merkleMinter = await upgrades.deployProxy(PIXMerkleMinterFactory, [pixNFT.address]);
+
     const PIXSaleV2Factory = await ethers.getContractFactory('PIXSaleV2');
-    saleV2 = await upgrades.deployProxy(PIXSaleV2Factory, [pixtToken.address, pixNFT.address]);
+    saleV2 = await upgrades.deployProxy(PIXSaleV2Factory, [
+      pixtToken.address,
+      pixNFT.address,
+      merkleMinter.address,
+    ]);
 
     await pixNFT.setTrader(saleV2.address, true);
+    await pixNFT.setTrader(merkleMinter.address, true);
     await saleV2.setWhitelistedNFTs(pixNFT.address, true);
   });
 
@@ -62,20 +73,21 @@ describe('PIXSaleV2.test', function () {
 
       const saleInfos: SaleInfo[] = [
         {
+          seller: alice.address,
           executeBySeller: false,
           nftToken: pixNFT.address,
           tokenIds: [BigNumber.from(tokenId)],
+          tokenAmounts: [BigNumber.from(0)],
           hashes: [],
           minPrice: price,
           validUntil: BigNumber.from('7777777777'),
+          is721: true,
         },
       ];
 
       const { sig, saleSignatures } = await getDigest(saleV2, alice, saleInfos);
 
-      await saleV2
-        .connect(bob)
-        .buy(alice.address, saleSignatures, [0], saleInfos, [], [], [], price, sig);
+      await saleV2.connect(bob).buy([saleSignatures, 0, saleInfos[0], [], [], [], sig], price);
       expect(await pixNFT.ownerOf(tokenId)).to.be.equal(bob.address);
       const fee = price.mul(BigNumber.from('100')).div(DENOMINATOR);
       expect(await pixtToken.balanceOf(alice.address)).to.be.equal(
@@ -95,22 +107,32 @@ const getDigest = async (sale: Contract, seller: SignerWithAddress, saleInfos: S
   };
 
   const types = {
-    SaleInfos: [
-      { name: 'seller', type: 'address' },
-      { name: 'signatures', type: 'bytes32[]' },
-    ],
+    Sales: [{ name: 'signatures', type: 'bytes32[]' }],
   };
 
   const signatures = saleInfos.map((info) =>
     utils.solidityKeccak256(
-      ['bool', 'address', 'uint256[]', 'bytes32[]', 'uint256', 'uint64'],
       [
+        'address',
+        'bool',
+        'address',
+        'uint256[]',
+        'uint256[]',
+        'bytes32[]',
+        'uint256',
+        'uint64',
+        'bool',
+      ],
+      [
+        info.seller,
         info.executeBySeller,
         info.nftToken,
         info.tokenIds,
+        info.tokenAmounts,
         info.hashes,
         info.minPrice,
         info.validUntil,
+        info.is721,
       ],
     ),
   );

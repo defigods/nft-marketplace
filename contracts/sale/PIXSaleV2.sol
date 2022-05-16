@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 import "../core/PIXT.sol";
 import "./PIXBaseSale.sol";
 import "../interfaces/IPIX.sol";
@@ -21,8 +22,10 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
         address indexed buyer,
         address nftToken,
         uint256[] tokenIds,
+        uint256[] tokenAmounts,
         bytes32[] hashes,
-        uint256 price
+        uint256 price,
+        bool is721
     );
 
     struct SaleInfo {
@@ -30,9 +33,11 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
         bool executeBySeller;
         address nftToken;
         uint256[] tokenIds;
+        uint256[] tokenAmounts;
         bytes32[] hashes;
         uint256 minPrice;
         uint64 validUntil;
+        bool is721;
     }
 
     struct SaleOfferInfo {
@@ -47,9 +52,11 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
         address buyer;
         address nftToken;
         uint256[] tokenIds;
+        uint256[] tokenAmounts;
         bytes32[] hashes;
         uint256 price;
         uint64 validUntil;
+        bool is721;
     }
 
     struct SaleParam {
@@ -85,7 +92,7 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
 
     address public burnHolder;
     IPIXMerkleMinter public pixMerkleMinter;
-    mapping(address => bool) public keepers;
+    mapping(address => bool) public moderators;
 
     function initialize(
         address _pixt,
@@ -109,29 +116,38 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
 
         _verifySaleParam(_saleParam, false);
 
-        bool isLandNft = _takeNFTs(_seller, _buyer, _saleInfo.nftToken, _saleInfo.tokenIds);
+        bool isInsideLand = _takeNFTs(
+            _seller,
+            _buyer,
+            _saleInfo.nftToken,
+            _saleInfo.tokenIds,
+            _saleInfo.tokenAmounts,
+            _saleInfo.is721
+        );
 
-        isLandNft = _takeNFTsWithMerkleTree(
+        isInsideLand = _takeNFTsWithMerkleTree(
             _seller,
             _buyer,
             _saleInfo.hashes,
             _saleParam.merklePixInfos,
             _saleParam.merkleRoot,
             _saleParam.merkleProofs,
-            isLandNft
+            isInsideLand
         );
 
-        require(_price >= _saleInfo.minPrice, "SaleV2: invalid price");
+        require(_price >= _saleInfo.minPrice, "SaleV2: INVALID_PRICE");
 
-        _acceptPayment(_seller, _buyer, _price, isLandNft);
+        _acceptPayment(_seller, _buyer, _price, isInsideLand);
 
         emit PurchasedV2(
             _seller,
             _buyer,
             _saleInfo.nftToken,
             _saleInfo.tokenIds,
+            _saleInfo.tokenAmounts,
             _saleInfo.hashes,
-            _price
+            _price,
+            _saleInfo.is721
         );
     }
 
@@ -140,7 +156,7 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
         nonReentrant
     {
         uint256 len = price.length;
-        for (uint256 i = 0; i < len; i += 1) {
+        for (uint256 i; i < len; i += 1) {
             buy(saleParam[i], price[i]);
         }
     }
@@ -157,32 +173,41 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
 
         _verifySaleParam(_saleParam, true);
         _verifySaleOfferParam(_saleOfferParam);
-        require(msg.sender == _seller || keepers[msg.sender], "SaleV2: invalid sender");
+        require(msg.sender == _seller || moderators[msg.sender], "SaleV2: INVALID_SENDER");
 
-        bool isLandNft = _takeNFTs(_seller, _buyer, _saleInfo.nftToken, _saleInfo.tokenIds);
+        bool isInsideLand = _takeNFTs(
+            _seller,
+            _buyer,
+            _saleInfo.nftToken,
+            _saleInfo.tokenIds,
+            _saleInfo.tokenAmounts,
+            _saleInfo.is721
+        );
 
-        isLandNft = _takeNFTsWithMerkleTree(
+        isInsideLand = _takeNFTsWithMerkleTree(
             _seller,
             _buyer,
             _saleInfo.hashes,
             _saleParam.merklePixInfos,
             _saleParam.merkleRoot,
             _saleParam.merkleProofs,
-            isLandNft
+            isInsideLand
         );
 
         uint256 _price = _saleOfferParam.saleOfferInfo.price;
-        require(_price >= _saleInfo.minPrice, "SaleV2: invalid price");
+        require(_price >= _saleInfo.minPrice, "SaleV2: INVALID_PRICE");
 
-        _acceptPayment(_seller, _buyer, _price, isLandNft);
+        _acceptPayment(_seller, _buyer, _price, isInsideLand);
 
         emit PurchasedV2(
             _seller,
             _buyer,
             _saleInfo.nftToken,
             _saleInfo.tokenIds,
+            _saleInfo.tokenAmounts,
             _saleInfo.hashes,
-            _price
+            _price,
+            _saleInfo.is721
         );
     }
 
@@ -193,37 +218,46 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
         address _buyer = _offerInfo.buyer;
         uint256 _price = _offerInfo.price;
 
-        require(msg.sender == _seller, "SaleV2: invalid seller");
+        require(msg.sender == _seller, "SaleV2: INVALID_SELLER");
 
         _verifyOfferParam(_offerParam);
 
-        bool isLandNft = _takeNFTs(_seller, _buyer, _offerInfo.nftToken, _offerInfo.tokenIds);
+        bool isInsideLand = _takeNFTs(
+            _seller,
+            _buyer,
+            _offerInfo.nftToken,
+            _offerInfo.tokenIds,
+            _offerInfo.tokenAmounts,
+            _offerInfo.is721
+        );
 
-        isLandNft = _takeNFTsWithMerkleTree(
+        isInsideLand = _takeNFTsWithMerkleTree(
             _seller,
             _buyer,
             _offerInfo.hashes,
             _offerParam.merklePixInfos,
             _offerParam.merkleRoot,
             _offerParam.merkleProofs,
-            isLandNft
+            isInsideLand
         );
 
-        _acceptPayment(_seller, _buyer, _price, isLandNft);
+        _acceptPayment(_seller, _buyer, _price, isInsideLand);
 
         emit PurchasedV2(
             _seller,
             _buyer,
             _offerInfo.nftToken,
             _offerInfo.tokenIds,
+            _offerInfo.tokenAmounts,
             _offerInfo.hashes,
-            _price
+            _price,
+            _offerInfo.is721
         );
     }
 
     function acceptOfferInBatch(OfferParam[] memory offerParam) external nonReentrant {
         uint256 len = offerParam.length;
-        for (uint256 i = 0; i < len; i += 1) {
+        for (uint256 i; i < len; i += 1) {
             acceptOffer(offerParam[i]);
         }
     }
@@ -235,7 +269,7 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
     ) public {
         bytes32 signature = _verifySignature(msg.sender, signatures, sig);
 
-        require(invalidSales[signature][idx] == false, "SaleV2: cancelled or executed");
+        require(invalidSales[signature][idx] == false, "SaleV2: INVALID_SALE_STATUS");
 
         invalidSales[signature][idx] == true;
     }
@@ -246,7 +280,7 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
         bytes[] memory sig
     ) external {
         uint256 len = idx.length;
-        for (uint256 i = 0; i < len; i += 1) {
+        for (uint256 i; i < len; i += 1) {
             cancel(signatures[i], idx[i], sig[i]);
         }
     }
@@ -256,7 +290,7 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
         SaleOfferParam[] memory saleOfferParam
     ) external nonReentrant {
         uint256 len = saleParam.length;
-        for (uint256 i = 0; i < len; i += 1) {
+        for (uint256 i; i < len; i += 1) {
             executeSale(saleParam[i], saleOfferParam[i]);
         }
     }
@@ -272,23 +306,35 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
         );
         signature = _hashTypedDataV4(structHash);
         address signer = ECDSA.recover(signature, v, r, s);
-        require(signer == user, "SaleV2: invalid signature");
+        require(signer == user, "SaleV2: INVALID_SIGNATURE");
     }
 
     function _takeNFTs(
         address seller,
         address buyer,
         address nftToken,
-        uint256[] memory tokenIds
-    ) private returns (bool isLandNft) {
-        uint256 tokenLength = tokenIds.length;
+        uint256[] memory tokenIds,
+        uint256[] memory tokenAmounts,
+        bool is721
+    ) private returns (bool isInsideLand) {
+        if (is721) {
+            uint256 len = tokenIds.length;
+            for (uint256 j; j < len; j += 1) {
+                IERC721Upgradeable(nftToken).safeTransferFrom(seller, buyer, tokenIds[j]);
+            }
 
-        for (uint256 j = 0; j < tokenLength; j += 1) {
-            IERC721Upgradeable(nftToken).safeTransferFrom(seller, buyer, tokenIds[j]);
-        }
-
-        if (nftToken == pixNFT && IPIX(pixNFT).pixesInLand(tokenIds)) {
-            isLandNft = true;
+            if (nftToken == pixNFT && IPIX(pixNFT).pixesInLand(tokenIds)) {
+                isInsideLand = true;
+            }
+        } else {
+            IERC1155Upgradeable(nftToken).safeBatchTransferFrom(
+                seller,
+                buyer,
+                tokenIds,
+                tokenAmounts,
+                ""
+            );
+            isInsideLand = true;
         }
     }
 
@@ -299,20 +345,20 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
         IPIX.PIXInfo[] memory merklePixInfos,
         bytes32[] memory merkleRoot,
         bytes32[][] memory merkleProofs,
-        bool _isLandNft
-    ) private returns (bool isLandNft) {
+        bool _isInsideLand
+    ) private returns (bool isInsideLand) {
         uint256 len = merkleHashes.length;
         address _seller = seller;
         address _buyer = buyer;
 
         uint256[] memory tokenIds = new uint256[](len);
 
-        for (uint256 i = 0; i < len; i += 1) {
+        for (uint256 i; i < len; i += 1) {
             IPIX.PIXInfo memory info = merklePixInfos[i];
             require(
                 merkleHashes[i] ==
                     keccak256(abi.encode(_seller, info.pixId, info.category, info.size)),
-                "SaleV2: invalid pix info"
+                "SaleV2: INVALID_PIX_INFO"
             );
 
             tokenIds[i] = pixMerkleMinter.mintToNewOwner(
@@ -324,8 +370,8 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
             );
         }
 
-        if (!_isLandNft && IPIX(pixNFT).pixesInLand(tokenIds)) {
-            isLandNft = true;
+        if (!_isInsideLand && IPIX(pixNFT).pixesInLand(tokenIds)) {
+            isInsideLand = true;
         }
     }
 
@@ -333,10 +379,10 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
         address seller,
         address buyer,
         uint256 price,
-        bool isLandNft
+        bool isInsideLand
     ) private {
         Treasury memory treasury;
-        if (isLandNft) {
+        if (isInsideLand) {
             treasury = landTreasury;
         } else {
             treasury = pixtTreasury;
@@ -373,18 +419,20 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
                         info.executeBySeller,
                         info.nftToken,
                         info.tokenIds,
+                        info.tokenAmounts,
                         info.hashes,
                         info.minPrice,
-                        info.validUntil
+                        info.validUntil,
+                        info.is721
                     )
                 ),
-            "SaleV2: invalid sale info"
+            "SaleV2: INVALID_SALE_INFO"
         );
 
-        require(invalidSales[signature][_idx] == false, "SaleV2: cancelled or executed");
+        require(invalidSales[signature][_idx] == false, "SaleV2: INVALID_SALE_STATUS");
         require(whitelistedNFTs[info.nftToken], "SaleV2: NOT_WHITELISTED_NFT");
-        require(info.validUntil >= block.timestamp, "SaleV2: expired");
-        require(info.executeBySeller == executeBySeller, "SaleV2: invalid executor");
+        require(info.validUntil >= block.timestamp, "SaleV2: EXPIRED_SALE");
+        require(info.executeBySeller == executeBySeller, "SaleV2: INVALID_EXECUTOR");
 
         invalidSales[signature][_idx] = true;
     }
@@ -408,11 +456,11 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
                 keccak256(
                     abi.encodePacked(info.buyer, info.saleSignatures, info.price, info.validUntil)
                 ),
-            "SaleV2: invalid sale offer info"
+            "SaleV2: INVALID_SALE_OFFER_INFO"
         );
 
-        require(invalidSales[signature][_idx] == false, "SaleV2: cancelled or executed");
-        require(info.validUntil >= block.timestamp, "SaleV2: expired");
+        require(invalidSales[signature][_idx] == false, "SaleV2: INVALID_SALE_STATUS");
+        require(info.validUntil >= block.timestamp, "SaleV2: EXPIRED_SALE");
 
         invalidSales[signature][_idx] = true;
     }
@@ -432,21 +480,23 @@ contract PIXSaleV2 is PIXBaseSale, EIP712Upgradeable, ReentrancyGuardUpgradeable
                         info.buyer,
                         info.nftToken,
                         info.tokenIds,
+                        info.tokenAmounts,
                         info.hashes,
                         info.price,
-                        info.validUntil
+                        info.validUntil,
+                        info.is721
                     )
                 ),
-            "SaleV2: invalid sale offer info"
+            "SaleV2: INVALID_SALE_OFFER_INFO"
         );
 
-        require(invalidSales[signature][_idx] == false, "SaleV2: cancelled or executed");
-        require(info.validUntil >= block.timestamp, "SaleV2: expired");
+        require(invalidSales[signature][_idx] == false, "SaleV2: INVALID_SALE_STATUS");
+        require(info.validUntil >= block.timestamp, "SaleV2: EXPIRED_SALE");
 
         invalidSales[signature][_idx] = true;
     }
 
-    function setKeeper(address keeper, bool add) external onlyOwner {
-        keepers[keeper] = add;
+    function setModerator(address moderator, bool approved) external onlyOwner {
+        moderators[moderator] = approved;
     }
 }
