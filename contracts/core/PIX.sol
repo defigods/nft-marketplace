@@ -398,4 +398,15 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         PIXInfo memory info = pixInfos[tokenId];
         return tiers[info.category][info.size];
     }
+
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] calldata tokenIds
+    ) external {
+        uint256 len = tokenIds.length;
+        for (uint256 i; i < len; i += 1) {
+            _transfer(from, to, tokenIds[i]);
+        }
+    }
 }
