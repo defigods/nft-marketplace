@@ -22,21 +22,35 @@ contract PIXTStakingLottery is OwnableUpgradeable {
     uint256 public rewardPerBlock;
     uint256 public period;
 
+    mapping(address => bool) public moderators;
+
     event Staked(address indexed user, uint256 amount);
     event Unstaked(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
     event SetReward(address indexed user, uint256 reward);
+
+    modifier onlyMod() {
+        require(moderators[msg.sender], "PIXTStakingLottery: NON_MODERATOR");
+        _;
+    }
 
     function initialize(
         address token,
         uint256 _rewardPerBlock,
         uint256 _period
     ) external initializer {
-        require(token != address(0), "Staking: INVALID_PIXT");
+        require(token != address(0), "PIXTStakingLottery: INVALID_PIXT");
         pixToken = IERC20Upgradeable(token);
         rewardPerBlock = _rewardPerBlock;
         period = _period;
         __Ownable_init();
+
+        moderators[msg.sender] = true;
+    }
+
+    function setModerator(address moderator, bool approved) external onlyOwner {
+        require(moderator != address(0), "PIXTStakingLottery: INVALID_MODERATOR");
+        moderators[moderator] = approved;
     }
 
     /**
@@ -45,7 +59,7 @@ contract PIXTStakingLottery is OwnableUpgradeable {
      * @notice emit {Staked} event
      */
     function stake(uint256 amount) external {
-        require(amount > 0, "Staking: STAKE_ZERO");
+        require(amount > 0, "PIXTStakingLottery: ZERO_AMOUNT");
         totalStaked += amount;
         stakedAmounts[msg.sender] += amount;
         pixToken.safeTransferFrom(msg.sender, address(this), amount);
@@ -53,7 +67,7 @@ contract PIXTStakingLottery is OwnableUpgradeable {
         emit Staked(msg.sender, amount);
     }
 
-    function startLottery() external onlyOwner {
+    function startLottery() external onlyMod {
         lastLotteryTime = block.timestamp;
     }
 
@@ -67,8 +81,8 @@ contract PIXTStakingLottery is OwnableUpgradeable {
      * @notice emit {Unstaked} event
      */
     function unstake(uint256 amount) external {
-        require(amount > 0, "Staking: UNSTAKE_ZERO");
-        require(stakedAmounts[msg.sender] >= amount, "Staking: No Tokens to Withdraw");
+        require(amount > 0, "PIXTStakingLottery: ZERO_AMOUNT");
+        require(stakedAmounts[msg.sender] >= amount, "PIXTStakingLottery: NO_WITHDRAWALS");
         totalStaked -= amount;
         stakedAmounts[msg.sender] -= amount;
         pixToken.safeTransfer(msg.sender, amount);
@@ -80,7 +94,7 @@ contract PIXTStakingLottery is OwnableUpgradeable {
      * @notice emit {RewardPaid} event
      */
     function claim() external {
-        require(earned[msg.sender] > 0, "Claiming: NO_Tokens to withdraw");
+        require(earned[msg.sender] > 0, "PIXTStakingLottery: NO_WITHDRAWALS");
 
         pixToken.safeTransfer(msg.sender, earned[msg.sender]);
         earned[msg.sender] = 0;
@@ -91,12 +105,12 @@ contract PIXTStakingLottery is OwnableUpgradeable {
         period = _period;
     }
 
-    function setReward(address _winner) external onlyOwner {
-        require(block.timestamp - lastLotteryTime >= period, "SetWinner: Already set winner");
+    function setReward(address _winner) external onlyMod {
+        require(block.timestamp - lastLotteryTime >= period, "PIXTStakingLottery: WINNER_SET");
 
-        require(stakedAmounts[_winner] > 0, "SetReward: INV_WINNER");
+        require(stakedAmounts[_winner] > 0, "PIXTStakingLottery: NO_STAKES");
         uint256 pending = _calculateReward();
-        require(pending > 0, "setReward: no tokens to set");
+        require(pending > 0, "PIXTStakingLottery: NO_PENDING");
         earned[_winner] += pending;
         lastLotteryTime = block.timestamp;
 

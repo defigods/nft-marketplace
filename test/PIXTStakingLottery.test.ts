@@ -49,14 +49,16 @@ describe('PIXTStakingLottery', function () {
     await pixt.transfer(pixtStaking.address, reward);
     await pixt.connect(alice).approve(pixtStaking.address, reward);
     await pixt.connect(bob).approve(pixtStaking.address, reward);
+
+    await pixtStaking.setModerator(await owner.getAddress());
   });
 
   describe('#initialize', () => {
     it('revert if pixt is zero address', async function () {
-      const PIXTStaking = await ethers.getContractFactory('PIXTStaking');
-      await expect(upgrades.deployProxy(PIXTStaking, [constants.AddressZero])).to.revertedWith(
-        'Staking: INVALID_PIXT',
-      );
+      const PIXTStaking = await ethers.getContractFactory('PIXTStakingLottery');
+      await expect(
+        upgrades.deployProxy(PIXTStaking, [constants.AddressZero, rewardPerBlock, period]),
+      ).to.revertedWith('PIXTStakingLottery: INVALID_PIXT');
     });
 
     it('check initial values', async function () {
@@ -66,7 +68,7 @@ describe('PIXTStakingLottery', function () {
 
   describe('#stake', () => {
     it('revert if amount is zero', async () => {
-      await expect(aliceStaking.stake(0)).to.revertedWith('Staking: STAKE_ZERO');
+      await expect(aliceStaking.stake(0)).to.revertedWith('PIXTStakingLottery: ZERO_AMOUNT');
     });
 
     it('alice stakes 10 pixt', async () => {
@@ -92,7 +94,7 @@ describe('PIXTStakingLottery', function () {
 
   describe('#unstake', () => {
     it('revert if amount is zero', async () => {
-      await expect(aliceStaking.unstake(0)).to.revertedWith('Staking: UNSTAKE_ZERO');
+      await expect(aliceStaking.unstake(0)).to.revertedWith('PIXTStakingLottery: ZERO_AMOUNT');
     });
 
     it('alice unstakes 10 pixt', async () => {
