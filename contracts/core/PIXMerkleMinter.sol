@@ -12,6 +12,8 @@ contract PIXMerkleMinter is OwnableUpgradeable {
     IPIX public pix;
 
     mapping(address => bool) public delegateMinters;
+    address public moderator;
+    mapping(address => address) public alternatives;
 
     function initialize(address _pix) external initializer {
         require(_pix != address(0), "Pix: INVALID_PIX");
@@ -22,6 +24,15 @@ contract PIXMerkleMinter is OwnableUpgradeable {
 
     function setMerkleRoot(bytes32 _merkleRoot, bool add) external onlyOwner {
         merkleRoots[_merkleRoot] = add;
+    }
+
+    function setModerator(address mod) external onlyOwner {
+        moderator = mod;
+    }
+
+    function setAlternative(address before_, address after_) external {
+        require(msg.sender == moderator || msg.sender == owner(), "Pix: NOT_OWNER_MODERATOR");
+        alternatives[before_] = after_;
     }
 
     function mintByProof(
@@ -38,7 +49,7 @@ contract PIXMerkleMinter is OwnableUpgradeable {
             MerkleProofUpgradeable.verify(merkleProofs, merkleRoot, leaf),
             "Pix: invalid proof"
         );
-        pix.safeMint(to, info);
+        pix.safeMint(alternatives[to] != address(0) ? alternatives[to] : to, info);
     }
 
     function mintByProofInBatch(

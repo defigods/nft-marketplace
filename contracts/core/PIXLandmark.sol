@@ -26,8 +26,6 @@ contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
 
     mapping(address => bool) public moderators;
     mapping(uint256 => PIXCategory) public landCategories;
-    mapping(uint256 => bool) public pixesInLandStatus;
-    mapping(uint256 => uint256[]) public pixesInLandmark;
     uint256 public lastTokenId;
 
     modifier onlyMod() {
@@ -58,16 +56,6 @@ contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
     function setModerator(address moderator, bool approved) external onlyOwner {
         require(moderator != address(0), "Landmark: INVALID_MODERATOR");
         moderators[moderator] = approved;
-    }
-
-    function setPixesInLandmark(uint256 tokenId, uint256[] calldata pixIds) external onlyMod {
-        require(tokenId > 0, "Landmark: INVALID_TYPE");
-
-        for (uint256 i; i < pixIds.length; i += 1) {
-            pixesInLandStatus[pixIds[i]] = true;
-            pixesInLandmark[tokenId].push(pixIds[i]);
-            pixNFT.setPIXInLandStatus(pixIds);
-        }
     }
 
     function safeMint(
