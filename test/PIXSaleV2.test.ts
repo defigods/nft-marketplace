@@ -16,6 +16,7 @@ type SaleInfo = {
   minPrice: BigNumber;
   validUntil: BigNumber;
   is721: boolean;
+  inLandmark: boolean;
 };
 
 describe('PIXSaleV2.test', function () {
@@ -82,6 +83,7 @@ describe('PIXSaleV2.test', function () {
           minPrice: price,
           validUntil: BigNumber.from('7777777777'),
           is721: true,
+          inLandmark: false,
         },
       ];
 
@@ -122,6 +124,7 @@ const getDigest = async (sale: Contract, seller: SignerWithAddress, saleInfos: S
         'uint256',
         'uint64',
         'bool',
+        'bool',
       ],
       [
         info.seller,
@@ -133,6 +136,7 @@ const getDigest = async (sale: Contract, seller: SignerWithAddress, saleInfos: S
         info.minPrice,
         info.validUntil,
         info.is721,
+        info.inLandmark,
       ],
     ),
   );

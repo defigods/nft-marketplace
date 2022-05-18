@@ -38,7 +38,7 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
      * if is territory => tokenId
      * unless territory => pixId
      */
-    mapping(bool => mapping(uint256 => bool)) public pixInLand;
+    mapping(bool => mapping(uint256 => bool)) public pixInLand; // disabled
     mapping(address => bool) public traders;
 
     mapping(address => uint256) public pendingPackDropId; // disabled
@@ -275,7 +275,6 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         require(firstPix.size < PIXSize.Domain, "Pix: MAX_NOT_ALLOWED");
         require(tokenIds.length == combineCount, "Pix: INVALID_ARGUMENTS");
 
-        bool inside = this.pixesInLand(tokenIds);
         for (uint256 i; i < tokenIds.length; i += 1) {
             uint256 tokenId = tokenIds[i];
 
@@ -287,7 +286,6 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
 
         PIXSize newSize = PIXSize(uint8(firstPix.size) + 1);
         _safeMint(account, PIXInfo({pixId: 0, size: newSize, category: firstPix.category}));
-        pixInLand[true][lastTokenId] = inside;
 
         emit Combined(lastTokenId, firstPix.category, newSize);
     }
@@ -323,18 +321,8 @@ contract PIX is IPIX, ERC721EnumerableUpgradeable, OwnableUpgradeable {
         return pixInfos[tokenId].size != PIXSize.Pix;
     }
 
-    function pixesInLand(uint256[] calldata tokenIds) external view override returns (bool inside) {
-        for (uint256 i; i < tokenIds.length; i += 1) {
-            PIXInfo memory info = pixInfos[tokenIds[i]];
-            if (info.size == PIXSize.Pix)
-                inside = inside || pixInLand[false][pixInfos[tokenIds[i]].pixId];
-            else inside = inside || pixInLand[true][tokenIds[i]];
-            if (inside) break;
-        }
-    }
-
-    function setPIXInLandStatus(uint256[] calldata pixIds) external override onlyMod {
-        for (uint256 i; i < pixIds.length; i += 1) pixInLand[false][pixIds[i]] = true;
+    function pixesInLand(uint256[] calldata tokenIds) external view override returns (bool) {
+        return false;
     }
 
     function approve(address to, uint256 tokenId) public virtual override {

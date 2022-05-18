@@ -79,9 +79,11 @@ contract PIXLandStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable {
         }
     }
 
-    function addReward(address account, uint256 reward) external {
+    function addReward(address[] calldata accounts_, uint256[] calldata rewards_) external {
         require(msg.sender == moderator || msg.sender == owner(), "LandStaking: NOT_MODERATOR");
-        rewards[account] += reward;
+        require(accounts_.length == rewards_.length, "LandStaking: INVALID_ARGUMENTS");
+
+        for (uint256 i; i < accounts_.length; i += 1) rewards[accounts_[i]] += rewards_[i];
     }
 
     function isStaked(address account, uint256 tokenId) external view returns (bool) {

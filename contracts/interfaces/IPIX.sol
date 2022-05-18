@@ -76,8 +76,6 @@ interface IPIX {
 
     function pixesInLand(uint256[] calldata tokenIds) external view returns (bool);
 
-    function setPIXInLandStatus(uint256[] calldata pixIds) external;
-
     function safeMint(address to, PIXInfo memory info) external;
 
     function lastTokenId() external view returns (uint256);
