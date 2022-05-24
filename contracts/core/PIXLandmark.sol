@@ -9,7 +9,12 @@ import "../interfaces/IPIX.sol";
 contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
     using StringsUpgradeable for uint256;
 
-    event LandmarkMinted(address indexed account, uint256 indexed tokenId, PIXCategory category);
+    event LandmarkMinted(
+        address indexed account,
+        uint256 indexed tokenId,
+        uint256 amount,
+        PIXCategory category
+    );
 
     enum PIXCategory {
         Legendary,
@@ -80,7 +85,7 @@ contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
         lastTokenId += 1;
         _mint(to, lastTokenId, amount, "");
         landCategories[lastTokenId] = category;
-        emit LandmarkMinted(to, lastTokenId, category);
+        emit LandmarkMinted(to, lastTokenId, amount, category);
     }
 
     function uri(uint256 id) public view override returns (string memory) {
