@@ -7,34 +7,16 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 describe('PIXLandmark', function () {
   let owner: SignerWithAddress;
   let alice: SignerWithAddress;
-  let pixToken: Contract;
-  let pixNFT: Contract;
   let pixLandmark: Contract;
 
   beforeEach(async function () {
     [owner, alice] = await ethers.getSigners();
 
-    const PIXTFactory = await ethers.getContractFactory('PIXT');
-    pixToken = await PIXTFactory.deploy();
-
-    const MockTokenFactory = await ethers.getContractFactory('MockToken');
-    const usdc = await MockTokenFactory.deploy('Mock USDC', 'USDC', 6);
-
-    const PIXFactory = await ethers.getContractFactory('PIX');
-    pixNFT = await upgrades.deployProxy(PIXFactory, [pixToken.address, usdc.address]);
-
     const PIXLandmarkFactory = await ethers.getContractFactory('PIXLandmark');
-    pixLandmark = await upgrades.deployProxy(PIXLandmarkFactory, [pixNFT.address]);
+    pixLandmark = await upgrades.deployProxy(PIXLandmarkFactory);
   });
 
   describe('#initialize', () => {
-    it('revert if pixNFT is zero address', async function () {
-      const PIXLandmark = await ethers.getContractFactory('PIXLandmark');
-      await expect(upgrades.deployProxy(PIXLandmark, [constants.AddressZero])).to.revertedWith(
-        'Landmark: INVALID_PIX',
-      );
-    });
-
     it('check initial values', async function () {
       expect(await pixLandmark.moderators(owner.address)).equal(true);
       expect(await pixLandmark.name()).equal('PIX Landmark');
