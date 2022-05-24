@@ -258,6 +258,26 @@ describe('PIXFixedSale', function () {
       ).to.revertedWith('Sale: INVALID_SIGNATURE');
     });
 
+    it('revert if not seller', async () => {
+      await fixedSale.setTreasury(treasury, 100, 0, false);
+      await pixtToken.connect(bob).approve(fixedSale.address, price);
+
+      const data = await getDigest(fixedSale, bob, price, pixNFT, BigNumber.from(tokenId));
+      await expect(
+        fixedSale
+          .connect(bob)
+          .sellNFTWithSignature(
+            bob.address,
+            price,
+            pixNFT.address,
+            tokenId,
+            data.v,
+            data.r,
+            data.s,
+          ),
+      ).to.revertedWith('Sale: NOT_SELLER');
+    });
+
     it('should purchase PIX and send to seller and treasury', async () => {
       await fixedSale.setTreasury(treasury, 100, 0, false);
       await pixtToken.connect(bob).approve(fixedSale.address, price);

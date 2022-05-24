@@ -39,17 +39,34 @@ describe('PIXMerkleMinter', function () {
     });
 
     it('should set merkle root by owner', async () => {
-      await merkleMinter.connect(owner).setMerkleRoot(merkleTree.getRoot(), true);
+      await merkleMinter.setMerkleRoot(merkleTree.getRoot(), true);
       expect(await merkleMinter.merkleRoots(merkleTree.getHexRoot())).to.equal(true);
 
-      await merkleMinter.connect(owner).setMerkleRoot(merkleTree.getRoot(), false);
+      await merkleMinter.setMerkleRoot(merkleTree.getRoot(), false);
       expect(await merkleMinter.merkleRoots(merkleTree.getHexRoot())).to.equal(false);
+    });
+  });
+
+  describe('#setAlternative', () => {
+    it('revert if msg.sender is not owner or moderator', async () => {
+      await expect(
+        merkleMinter
+          .connect(alice)
+          .setAlternative(await alice.getAddress(), await minter.getAddress()),
+      ).to.revertedWith('Pix: NOT_OWNER_MODERATOR');
+    });
+
+    it('should set alternative', async () => {
+      await merkleMinter.setAlternative(await alice.getAddress(), await minter.getAddress());
+      expect(await merkleMinter.alternatives(await alice.getAddress())).to.equal(
+        await minter.getAddress(),
+      );
     });
   });
 
   describe('#mintByProof', () => {
     beforeEach(async () => {
-      await merkleMinter.connect(owner).setMerkleRoot(merkleTree.getRoot(), true);
+      await merkleMinter.setMerkleRoot(merkleTree.getRoot(), true);
     });
 
     it('revert if merkle root is not registered', async () => {
@@ -118,15 +135,15 @@ describe('PIXMerkleMinter', function () {
     });
 
     it('should set delegate minter by owner', async () => {
-      await merkleMinter.connect(owner).setDelegateMinter(await minter.getAddress(), true);
+      await merkleMinter.setDelegateMinter(await minter.getAddress(), true);
       expect(await merkleMinter.delegateMinters(await minter.getAddress())).to.equal(true);
     });
   });
 
   describe('#mintToNewOwner', () => {
     beforeEach(async () => {
-      await merkleMinter.connect(owner).setMerkleRoot(merkleTree.getRoot(), true);
-      await merkleMinter.connect(owner).setDelegateMinter(await minter.getAddress(), true);
+      await merkleMinter.setMerkleRoot(merkleTree.getRoot(), true);
+      await merkleMinter.setDelegateMinter(await minter.getAddress(), true);
     });
 
     it('revert if msg.sender is not delegate minter', async () => {
@@ -241,8 +258,8 @@ describe('PIXMerkleMinter', function () {
 
   describe('#mintToNewOwnerInBatch', () => {
     beforeEach(async () => {
-      await merkleMinter.connect(owner).setMerkleRoot(merkleTree.getRoot(), true);
-      await merkleMinter.connect(owner).setDelegateMinter(await minter.getAddress(), true);
+      await merkleMinter.setMerkleRoot(merkleTree.getRoot(), true);
+      await merkleMinter.setDelegateMinter(await minter.getAddress(), true);
     });
 
     it('revert if msg.sender is not delegate minter', async () => {
