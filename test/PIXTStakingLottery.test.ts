@@ -50,7 +50,7 @@ describe('PIXTStakingLottery', function () {
     await pixt.connect(alice).approve(pixtStaking.address, reward);
     await pixt.connect(bob).approve(pixtStaking.address, reward);
 
-    await pixtStaking.setModerator(await owner.getAddress());
+    await pixtStaking.setModerator(await owner.getAddress(), true);
   });
 
   describe('#initialize', () => {
@@ -63,6 +63,28 @@ describe('PIXTStakingLottery', function () {
 
     it('check initial values', async function () {
       expect(await pixtStaking.pixToken()).equal(pixt.address);
+    });
+  });
+
+  describe('#setModerator', () => {
+    it('revert if msg.sender is not owner', async () => {
+      await expect(
+        pixtStaking.connect(alice).setModerator(await alice.getAddress(), true),
+      ).to.revertedWith('Ownable: caller is not the owner');
+    });
+
+    it('revert if moderator is zero address', async () => {
+      await expect(pixtStaking.setModerator(constants.AddressZero, true)).to.revertedWith(
+        'PIXTStakingLottery: INVALID_MODERATOR',
+      );
+    });
+
+    it('should set moderator by owner', async () => {
+      await pixtStaking.setModerator(await alice.getAddress(), true);
+      expect(await pixtStaking.moderators(await alice.getAddress())).to.be.equal(true);
+
+      await pixtStaking.setModerator(await alice.getAddress(), false);
+      expect(await pixtStaking.moderators(await alice.getAddress())).to.be.equal(false);
     });
   });
 

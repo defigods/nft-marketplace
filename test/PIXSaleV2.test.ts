@@ -19,7 +19,7 @@ type SaleInfo = {
   inLandmark: boolean;
 };
 
-describe('PIXSaleV2.test', function () {
+describe('PIXSaleV2', function () {
   let owner: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
@@ -65,7 +65,7 @@ describe('PIXSaleV2.test', function () {
       await pixNFT.connect(alice).setApprovalForAll(saleV2.address, true);
     });
 
-    it.only('should purchase PIX and send to seller and treasury', async () => {
+    it('should purchase PIX and send to seller and treasury', async () => {
       await saleV2.setTreasury(treasury, 100, 0, false);
       await pixtToken.connect(bob).approve(saleV2.address, price);
 
