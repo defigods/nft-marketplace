@@ -1,8 +1,8 @@
 const { ethers, upgrades } = require('hardhat');
 
 async function main() {
-  const ContractFactory = await ethers.getContractFactory('PIXFixedSale');
-  const contract = await ContractFactory.deploy();
+  const ContractFactory = await ethers.getContractFactory('PIXLandmark');
+  const contract = await upgrades.deployProxy(ContractFactory);
   await contract.deployed();
 
   console.log('Deployed at', contract.address);

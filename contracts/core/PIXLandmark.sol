@@ -9,7 +9,12 @@ import "../interfaces/IPIX.sol";
 contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
     using StringsUpgradeable for uint256;
 
-    event LandmarkMinted(address indexed account, uint256 indexed tokenId, PIXCategory category);
+    event LandmarkMinted(
+        address indexed account,
+        uint256 indexed tokenId,
+        uint256 amount,
+        PIXCategory category
+    );
 
     enum PIXCategory {
         Legendary,
@@ -22,7 +27,6 @@ contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
     string private _name;
     string private _symbol;
     string private _baseURIExtended;
-    IPIX public pixNFT;
 
     mapping(address => bool) public moderators;
     mapping(uint256 => PIXCategory) public landCategories;
@@ -33,13 +37,11 @@ contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
         _;
     }
 
-    function initialize(address pix) external initializer {
-        require(pix != address(0), "Landmark: INVALID_PIX");
+    function initialize() external initializer {
         __ERC1155Supply_init();
         __ERC1155_init("");
         __Ownable_init();
 
-        pixNFT = IPIX(pix);
         moderators[msg.sender] = true;
         _name = "PIX Landmark";
         _symbol = "PIXLand";
@@ -83,7 +85,7 @@ contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
         lastTokenId += 1;
         _mint(to, lastTokenId, amount, "");
         landCategories[lastTokenId] = category;
-        emit LandmarkMinted(to, lastTokenId, category);
+        emit LandmarkMinted(to, lastTokenId, amount, category);
     }
 
     function uri(uint256 id) public view override returns (string memory) {

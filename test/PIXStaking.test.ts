@@ -104,15 +104,6 @@ describe('PIXStaking', function () {
         '',
       );
     });
-
-    it('should provide correct rewards', async function () {
-      await pixStaking.connect(alice).claim();
-      expect(await pixToken.balanceOf(await alice.getAddress())).to.closeTo(
-        BigNumber.from(10050),
-        1,
-        '',
-      );
-    });
   });
 
   describe('unstake', () => {
