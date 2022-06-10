@@ -30,7 +30,6 @@ contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
 
     mapping(address => bool) public moderators;
     mapping(uint256 => PIXCategory) public landCategories;
-    uint256 public lastTokenId;
 
     modifier onlyMod() {
         require(moderators[msg.sender], "Landmark: NON_MODERATOR");
@@ -62,30 +61,35 @@ contract PIXLandmark is ERC1155SupplyUpgradeable, OwnableUpgradeable {
 
     function safeMint(
         address to,
+        uint256 id,
         uint256 amount,
         PIXCategory category
     ) external onlyMod {
-        _safeMint(to, amount, category);
+        _safeMint(to, id, amount, category);
     }
 
     function batchMint(
         address to,
+        uint256[] calldata ids,
         uint256[] calldata amounts,
         PIXCategory[] calldata categories
     ) external onlyMod {
-        require(amounts.length == categories.length, "Landmark: INVALID_ARGUMENTS");
-        for (uint256 i; i < categories.length; i += 1) _safeMint(to, amounts[i], categories[i]);
+        require(
+            ids.length == categories.length && amounts.length == categories.length,
+            "Landmark: INVALID_ARGUMENTS"
+        );
+        for (uint256 i; i < ids.length; i += 1) _safeMint(to, ids[i], amounts[i], categories[i]);
     }
 
     function _safeMint(
         address to,
+        uint256 id,
         uint256 amount,
         PIXCategory category
     ) internal onlyMod {
-        lastTokenId += 1;
-        _mint(to, lastTokenId, amount, "");
-        landCategories[lastTokenId] = category;
-        emit LandmarkMinted(to, lastTokenId, amount, category);
+        _mint(to, id, amount, "");
+        landCategories[id] = category;
+        emit LandmarkMinted(to, id, amount, category);
     }
 
     function uri(uint256 id) public view override returns (string memory) {

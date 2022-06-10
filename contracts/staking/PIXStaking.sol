@@ -161,8 +161,13 @@ contract PIXStaking is OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC721Hol
     }
 
     function claim() external {
-        uint256[] memory tokenIds = new uint256[](stakedNFTs[msg.sender].length);
+        uint256 count;
+        for (uint256 i; i < stakedNFTs[msg.sender].length; i += 1) {
+            if (stakers[stakedNFTs[msg.sender][i]] == address(0)) continue;
+            count++;
+        }
         uint256 k;
+        uint256[] memory tokenIds = new uint256[](count);
         for (uint256 i; i < stakedNFTs[msg.sender].length; i += 1) {
             if (stakers[stakedNFTs[msg.sender][i]] == address(0)) continue;
             tokenIds[k++] = stakedNFTs[msg.sender][i];

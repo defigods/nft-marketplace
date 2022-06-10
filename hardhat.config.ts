@@ -26,6 +26,16 @@ export default {
       chainId: 80001,
       accounts: [process.env.PRIVATE_KEY],
     },
+    eth: {
+      url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
+      chainId: 1,
+      accounts: [process.env.PRIVATE_KEY],
+    },
+    rinkeby: {
+      url: `https://rinkeby.infura.io/v3/${process.env.INFURA_KEY}`,
+      chainId: 4,
+      accounts: [process.env.PRIVATE_KEY],
+    },
   },
   namedAccounts: {
     deployer: {
