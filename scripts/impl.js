@@ -1,8 +1,8 @@
-const { ethers, upgrades } = require('hardhat');
+const { ethers } = require('hardhat');
 
 async function main() {
-  const ContractFactory = await ethers.getContractFactory('PIXLandmark');
-  const contract = await upgrades.deployProxy(ContractFactory);
+  const ContractFactory = await ethers.getContractFactory('NFT');
+  const contract = await ContractFactory.deploy();
   await contract.deployed();
 
   console.log('Deployed at', contract.address);
